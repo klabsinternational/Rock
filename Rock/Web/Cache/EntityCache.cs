@@ -57,11 +57,6 @@ namespace Rock.Web.Cache
         /// </summary>
         internal readonly static PropertyInfo CacheOrderProperty = typeof( T ).GetProperty( "Order" );
 
-        /// <summary>
-        /// The cache is active property
-        /// </summary>
-        internal readonly static PropertyInfo CacheIsActiveProperty = typeof( T ).GetProperty( "IsActive" );
-
         #endregion Cache Item Properties
 
         #region Properties
@@ -361,22 +356,11 @@ namespace Rock.Web.Cache
             /*
              * 2020-02-27 BJW
              *
-             * The following default filters and ordering logic were added as the result of a developer discussion:
+             * The following default ordering logic was added as the result of a developer discussion:
              * https://app.asana.com/0/0/1163635725705322/f
-             * We wanted by default the cache to exclude inactive items. We also wanted by default the cache to order
-             * items by the typical Order property if it existed and then to smartly order by name or some other
-             * meaningful property.
+             * We wanted by default the cache to order items by the typical Order property if it existed
+             * and then to smartly order by name or some other meaningful property.
              */
-
-            // If the cached entity has an IsActive property, the only include the active entities
-            if ( CacheIsActiveProperty != null && CacheIsActiveProperty.PropertyType == typeof( bool? ) )
-            {
-                allValues = allValues.Where( i => ( bool? ) CacheIsActiveProperty.GetValue( i, null ) != false ).ToList();
-            }
-            else if ( CacheIsActiveProperty != null && CacheIsActiveProperty.PropertyType == typeof( bool ) )
-            {
-                allValues = allValues.Where( i => ( bool ) CacheIsActiveProperty.GetValue( i, null ) ).ToList();
-            }
 
             // If the cached entity has an Order property, then order by that. Then order by name or title if one of those
             // properties exist. Finally order by id for consistency
