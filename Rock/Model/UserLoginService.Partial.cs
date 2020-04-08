@@ -64,6 +64,34 @@ namespace Rock.Model
         }
 
         /// <summary>
+        /// Gets the user by username and password (if the password is correct).
+        /// </summary>
+        /// <param name="username">The username.</param>
+        /// <param name="password">The password.</param>
+        /// <returns></returns>
+        public UserLogin GetByUserNameAndPassword( string username, string password )
+        {
+            var userLogin = GetByUserName( username );
+            var component = AuthenticationContainer.GetComponent( userLogin.EntityType.Name );
+            var success = component.Authenticate( userLogin, password );
+            return success ? userLogin : null;
+        }
+
+        /// <summary>
+        /// Gets the oauth client by identifier and secret.
+        /// </summary>
+        /// <param name="clientId">The client identifier.</param>
+        /// <param name="clientSecret">The client secret.</param>
+        /// <returns></returns>
+        public UserLogin GetOauthClientByIdAndSecret( string clientId, string clientSecret )
+        {
+            var user = GetByUserNameAndPassword( clientId, clientSecret );
+            return user?.EntityType?.Guid == SystemGuid.EntityType.AUTHENTICATION_OAUTH_CLIENT.AsGuid() ?
+                user :
+                null;
+        }
+
+        /// <summary>
         /// Returns true if there is a UserLogin record matching the specified userName
         /// </summary>
         /// <param name="userName">Name of the user.</param>

@@ -32,6 +32,11 @@ namespace Rock.SystemGuid
         public const string AUTHENTICATION_DATABASE = "4E9B798F-BB68-4C0E-9707-0928D15AB020";
 
         /// <summary>
+        /// The oauth client authentication
+        /// </summary>
+        public const string AUTHENTICATION_OAUTH_CLIENT = "2A6BC4CF-F957-439A-AD31-FEA7540FD3C8";
+
+        /// <summary>
         /// The pin authentication provider
         /// </summary>
         public const string AUTHENTICATION_PIN = "1FB5A259-F45C-4857-AF3D-3B9E32DB0EEE";
