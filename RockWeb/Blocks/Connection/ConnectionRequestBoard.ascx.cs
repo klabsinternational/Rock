@@ -108,7 +108,7 @@ namespace RockWeb.Blocks.Connection
         /// <param name="e">The <see cref="System.Web.UI.WebControls.RepeaterItemEventArgs"/> instance containing the event data.</param>
         protected void rptConnnectionTypes_ItemDataBound( object sender, RepeaterItemEventArgs e )
         {
-            if ( e.Item.ItemType != ListItemType.Item )
+            if ( e.Item.ItemType != ListItemType.Item && e.Item.ItemType != ListItemType.AlternatingItem )
             {
                 return;
             }
@@ -118,6 +118,25 @@ namespace RockWeb.Blocks.Connection
 
             rptConnectionOpportunities.DataSource = viewModel.ConnectionOpportunities;
             rptConnectionOpportunities.DataBind();
+        }
+
+        /// <summary>
+        /// Handles the ItemDataBound event of the rptColumns control.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void rptColumns_ItemDataBound( object sender, RepeaterItemEventArgs e )
+        {
+            if ( e.Item.ItemType != ListItemType.Item && e.Item.ItemType != ListItemType.AlternatingItem )
+            {
+                return;
+            }
+
+            var rptCards = e.Item.FindControl( "rptCards" ) as Repeater;
+            var viewModel = e.Item.DataItem as ConnectionStatusViewModel;
+
+            rptCards.DataSource = viewModel.Requests;
+            rptCards.DataBind();
         }
 
         /// <summary>
@@ -193,7 +212,7 @@ namespace RockWeb.Blocks.Connection
         /// Shows the error.
         /// </summary>
         /// <param name="text">The text.</param>
-        private void ShowError(string text)
+        private void ShowError( string text )
         {
             nbNotificationBox.Title = "Oops";
             nbNotificationBox.NotificationBoxType = NotificationBoxType.Danger;
@@ -238,7 +257,6 @@ namespace RockWeb.Blocks.Connection
                 var rockContext = new RockContext();
                 var connectionTypeService = new ConnectionTypeService( rockContext );
 
-                rockContext.SqlLogging( true );
                 _connectionTypeViewModels = connectionTypeService.Queryable().AsNoTracking()
                     .Include( ct => ct.ConnectionOpportunities )
                     .Where( ct => ct.IsActive )
@@ -256,7 +274,6 @@ namespace RockWeb.Blocks.Connection
                             } ).ToList()
                     } )
                     .ToList();
-                rockContext.SqlLogging( false );
             }
 
             return _connectionTypeViewModels;
@@ -273,25 +290,39 @@ namespace RockWeb.Blocks.Connection
             var connectionRequestService = new ConnectionRequestService( rockContext );
             var connectionOpportunityService = new ConnectionOpportunityService( rockContext );
 
-            rockContext.SqlLogging( true );
             // Query the statuses and requests in such a way that we get all statuses, even if there
             // are no requests in that column at this time
             var connectionRequestsByStatus = connectionRequestService.Queryable()
                 .AsNoTracking()
                 .Where( cr => cr.ConnectionOpportunityId == ConnectionOpportunityId )
-                .GroupBy( cr => cr.ConnectionStatusId )
-                .ToDictionary( g => g.Key, g => g.Select( cr => new ConnectionRequestViewModel
+                .Select( cr => new ConnectionRequestViewModel
                 {
-                    PersonName = cr.PersonAlias.Person.FullName,
-                    ConnectorPersonName = cr.ConnectorPersonAlias.Person.FullName
-                } ).ToList() );
+                    ConnectionStatusId = cr.ConnectionStatusId,
+                    PersonNickName = cr.PersonAlias.Person.NickName,
+                    PersonLastName = cr.PersonAlias.Person.LastName,
+                    PersonPhotoId = cr.PersonAlias.Person.PhotoId,
+                    CampusName = cr.Campus.Name,
+                    CampusCode = cr.Campus.ShortCode,
+                    ConnectorPersonNickName = cr.ConnectorPersonAlias.Person.NickName,
+                    ConnectorPersonLastName = cr.ConnectorPersonAlias.Person.LastName,
+                    ActivityCount = cr.ConnectionRequestActivities.Count,
+                    DateOpened = cr.CreatedDateTime,
+                    LastActivityDate = cr.ConnectionRequestActivities
+                        .Select( cra => cra.CreatedDateTime )
+                        .OrderByDescending( d => d )
+                        .FirstOrDefault()
+                } )
+                .ToList()
+                .GroupBy( cr => cr.ConnectionStatusId )
+                .ToDictionary( g => g.Key, g => g.ToList() );
 
             var viewModels = connectionOpportunityService.Queryable()
                 .AsNoTracking()
                 .Where( co => co.Id == ConnectionOpportunityId )
                 .SelectMany( co => co.ConnectionType.ConnectionStatuses )
                 .Where( cs => cs.IsActive )
-                .Select( cs => new ConnectionStatusViewModel {
+                .Select( cs => new ConnectionStatusViewModel
+                {
                     Id = cs.Id,
                     Name = cs.Name
                 } )
@@ -299,10 +330,8 @@ namespace RockWeb.Blocks.Connection
 
             foreach ( var viewModel in viewModels )
             {
-                viewModel.Requests = connectionRequestsByStatus[viewModel.Id];
+                viewModel.Requests = connectionRequestsByStatus.GetValueOrDefault( viewModel.Id, new List<ConnectionRequestViewModel>() );
             }
-
-            rockContext.SqlLogging( false );
 
             return viewModels;
         }
@@ -412,7 +441,27 @@ namespace RockWeb.Blocks.Connection
             /// <value>
             /// The name of the person.
             /// </value>
-            public string PersonName { get; set; }
+            public string PersonNickName { get; set; }
+
+            /// <summary>
+            /// Person Last Name
+            /// </summary>
+            public string PersonLastName { get; set; }
+
+            /// <summary>
+            /// Person Photo Id
+            /// </summary>
+            public int? PersonPhotoId { get; set; }
+
+            /// <summary>
+            /// Campus Name
+            /// </summary>
+            public string CampusName { get; set; }
+
+            /// <summary>
+            /// Campus Code
+            /// </summary>
+            public string CampusCode { get; set; }
 
             /// <summary>
             /// Gets or sets the name of the connector person.
@@ -420,7 +469,207 @@ namespace RockWeb.Blocks.Connection
             /// <value>
             /// The name of the connector person.
             /// </value>
-            public string ConnectorPersonName { get; set; }
+            public string ConnectorPersonNickName { get; set; }
+
+            /// <summary>
+            /// Gets or sets the last name of the connector person.
+            /// </summary>
+            public string ConnectorPersonLastName { get; set; }
+
+            /// <summary>
+            /// Connection Status Id
+            /// </summary>
+            public int ConnectionStatusId { get; set; }
+
+            /// <summary>
+            /// Activity count
+            /// </summary>
+            public int ActivityCount { get; set; }
+
+            /// <summary>
+            /// Last activity date
+            /// </summary>
+            public DateTime? LastActivityDate { get; set; }
+
+            /// <summary>
+            /// Date Opened
+            /// </summary>
+            public DateTime? DateOpened { get; set; }
+
+            /// <summary>
+            /// Activity Count Text
+            /// </summary>
+            public string ActivityCountText
+            {
+                get
+                {
+                    if ( ActivityCount == 1 )
+                    {
+                        return "1 Activity";
+                    }
+
+                    return string.Format( "{0} Activities", ActivityCount );
+                }
+            }
+
+            /// <summary>
+            /// Connector Person Fullname
+            /// </summary>
+            public string ConnectorPersonFullname
+            {
+                get
+                {
+                    return string.Format( "{0} {1}", ConnectorPersonNickName, ConnectorPersonLastName );
+                }
+            }
+
+            /// <summary>
+            /// Person Fullname
+            /// </summary>
+            public string PersonFullname
+            {
+                get
+                {
+                    return string.Format( "{0} {1}", PersonNickName, PersonLastName );
+                }
+            }
+
+            /// <summary>
+            /// Person Photo Html
+            /// </summary>
+            public string PersonPhotoUrl
+            {
+                get
+                {
+                    return PersonPhotoId.HasValue ?
+                        string.Format( "/GetImage.ashx?id={0}", PersonPhotoId.Value ) :
+                        "/Assets/Images/person-no-photo-unknown.svg";
+                }
+            }
+
+            /// <summary>
+            /// Has Campus
+            /// </summary>
+            public string CampusHtml
+            {
+                get
+                {
+                    if ( CampusCode.IsNullOrWhiteSpace() )
+                    {
+                        return string.Empty;
+                    }
+
+                    return string.Format( @"<span class=""badge badge-info font-weight-normal"" title=""{0}"">{1}</span>",
+                        CampusName,
+                        CampusCode );
+                }
+            }
+
+            /// <summary>
+            /// Days Since Opening
+            /// </summary>
+            public int? DaysSinceOpening
+            {
+                get
+                {
+                    if ( !DateOpened.HasValue )
+                    {
+                        return null;
+                    }
+
+                    return ( RockDateTime.Now - DateOpened.Value ).Days;
+                }
+            }
+
+            /// <summary>
+            /// Days Since Opening Short Text
+            /// </summary>
+            public string DaysSinceOpeningShortText
+            {
+                get
+                {
+                    if ( !DaysSinceOpening.HasValue )
+                    {
+                        return "No Opening";
+                    }
+
+                    return string.Format( "{0}d", DaysSinceOpening.Value );
+                }
+            }
+
+            /// <summary>
+            /// Days Since Opening Long Text
+            /// </summary>
+            public string DaysSinceOpeningLongText
+            {
+                get
+                {
+                    if ( !DaysSinceOpening.HasValue )
+                    {
+                        return "No Opening";
+                    }
+
+                    if ( DaysSinceOpening.Value == 1 )
+                    {
+                        return string.Format( "Opened 1 Day Ago ({0})", DateOpened.Value.ToShortDateString() );
+                    }
+
+                    return string.Format( "Opened {0} Days Ago ({1})", DaysSinceOpening.Value, DateOpened.Value.ToShortDateString() );
+                }
+            }
+
+            /// <summary>
+            /// Days Since Last Activity
+            /// </summary>
+            public int? DaysSinceLastActivity
+            {
+                get
+                {
+                    if ( !LastActivityDate.HasValue )
+                    {
+                        return null;
+                    }
+
+                    return ( RockDateTime.Now - LastActivityDate.Value ).Days;
+                }
+            }
+
+            /// <summary>
+            /// Days Since Last Activity Short Text
+            /// </summary>
+            public string DaysSinceLastActivityShortText
+            {
+                get
+                {
+                    if ( !DaysSinceLastActivity.HasValue )
+                    {
+                        return "No Activity";
+                    }
+
+                    return string.Format( "{0}d", DaysSinceLastActivity.Value );
+                }
+            }
+
+            /// <summary>
+            /// Days Since Last Activity Long Text
+            /// </summary>
+            public string DaysSinceLastActivityLongText
+            {
+                get
+                {
+                    if ( !DaysSinceLastActivity.HasValue )
+                    {
+                        return "No Activity";
+                    }
+
+                    if ( DaysSinceLastActivity.Value == 1 )
+                    {
+                        return "1 Day Since Last Activity";
+                    }
+
+                    return string.Format( "{0} Days Since Last Activity", DaysSinceLastActivity.Value );
+                }
+            }
         }
 
         #endregion View Models
