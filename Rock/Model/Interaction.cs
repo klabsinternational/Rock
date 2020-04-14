@@ -204,6 +204,16 @@ namespace Rock.Model
         [DataMember]
         public double? InteractionTimeToServe { get; set; }
 
+        /// <summary>
+        /// Gets or sets the Id of the <see cref="Rock.Model.InteractionChannel"/> channel that that is associated with this interaction.
+        /// </summary>
+        /// <value>
+        /// An <see cref="System.Int32"/> representing the Id of the <see cref="Rock.Model.InteractionChannel"/> channel that this interaction is associated with.
+        /// </value>
+        [DataMember( IsRequired = true )]
+        [Required]
+        public int InteractionChannelId { get; set; }
+
         #endregion
 
         #region Campaign Meta fields
@@ -237,6 +247,15 @@ namespace Rock.Model
         [DataMember]
         [MaxLength( 50 )]
         public string Campaign { get; set; }
+
+        /// <summary>
+        /// Gets or sets the channel.
+        /// </summary>
+        /// <value>
+        /// The channel.
+        /// </value>
+        [DataMember]
+        public virtual InteractionChannel InteractionChannel { get; set; }
 
         /// <summary>
         /// Gets or sets the campaign content.
@@ -407,6 +426,7 @@ namespace Rock.Model
             this.HasOptional( r => r.InteractionSession ).WithMany( r => r.Interactions ).HasForeignKey( r => r.InteractionSessionId ).WillCascadeOnDelete( false );
             this.HasOptional( r => r.PersonalDevice ).WithMany().HasForeignKey( r => r.PersonalDeviceId ).WillCascadeOnDelete( false );
             this.HasOptional( r => r.RelatedEntityType ).WithMany().HasForeignKey( r => r.RelatedEntityTypeId ).WillCascadeOnDelete( false );
+            this.HasRequired( r => r.InteractionChannel ).WithMany().HasForeignKey( r => r.InteractionChannelId ).WillCascadeOnDelete( false );
 
             // NOTE: When creating a migration for this, don't create the actual FK's in the database for this just in case there are outlier OccurrenceDates that aren't in the AnalyticsSourceDate table
             // and so that the AnalyticsSourceDate can be rebuilt from scratch as needed
