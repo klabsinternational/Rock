@@ -182,7 +182,7 @@ namespace Rock.Model
             var rockContext = new RockContext();
 
             string userName = UserLogin.GetCurrentUserName();
-            if ( userName != string.Empty )
+            if ( !userName.IsNullOrWhiteSpace() )
             {
                 if ( userName.StartsWith( "rckipid=" ) )
                 {
