@@ -78,6 +78,8 @@ namespace Rock.Rest.Controllers
             var excludedGroupTypeIdList = excludedGroupTypeIds.SplitDelimitedValues().AsIntegerList().Except( new List<int> { 0 } ).ToList();
 
             var groupService = (GroupService)Service;
+            var rockContext = groupService.Context as RockContext;
+            rockContext.SqlLogging( true );
 
             // if specific group types are specified, show the groups regardless of ShowInNavigation
             bool limitToShowInNavigation = !includedGroupTypeIdList.Any();
@@ -186,7 +188,9 @@ namespace Rock.Rest.Controllers
                 g.HasChildren = qryHasChildrenList.Any( a => a == groupId );
             }
 
-            return groupNameList.AsQueryable();
+            var returnValue = groupNameList.AsQueryable();
+            rockContext.SqlLogging( false );
+            return returnValue;
         }
 
         /// <summary>

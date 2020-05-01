@@ -513,14 +513,31 @@ namespace Rock.Model
         /// <returns></returns>
         public List<GroupTypeCache> GetAllDescendentsGroupTypes( int parentGroupId, bool includeInactiveChildGroups )
         {
-            var cte = GetGroupDescendentsCTESql( parentGroupId, includeInactiveChildGroups );
+            var cteBuilder = new StringBuilder( "with CTE as" );
+            cteBuilder.AppendLine( "(" );
+            cteBuilder.AppendLine( $"select [Id], [GroupTypeId] from [Group] where [ParentGroupId]={parentGroupId} and [IsArchived] = 0" );
+
+            if ( !includeInactiveChildGroups )
+            {
+                cteBuilder.AppendLine( " and [IsActive] = 1" );
+            }
+
+            cteBuilder.AppendLine( "union all" );
+            cteBuilder.AppendLine( "select a.[Id], a.[GroupTypeId] from [Group] [a]" );
+            cteBuilder.AppendLine( "inner join CTE pcte on pcte.Id = [a].[ParentGroupId] where [a].[IsArchived] = 0" );
+
+            if ( !includeInactiveChildGroups )
+            {
+                cteBuilder.AppendLine( " and a.[IsActive] = 1" );
+            }
+
+            cteBuilder.AppendLine( ")" );
 
             var sql = $@"
-                {cte}
+                {cteBuilder}
                 select distinct GroupTypeId from CTE";
 
             var groupTypeIds = ( this.Context as RockContext ).Database.SqlQuery<int>( sql );
-                
 
             return groupTypeIds.Select( a => GroupTypeCache.Get( a ) ).ToList();
         }
