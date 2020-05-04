@@ -25,7 +25,7 @@ using Rock.Model;
 
 namespace Rock.OIDC
 {
-    internal class OAuthAppProvider : OAuthAuthorizationServerProvider
+    internal class RockOAuthAuthorizationServerProvider : OAuthAuthorizationServerProvider
     {
         /// <summary>
         /// Check the resource owner's credentials (ie Ted Decker)
@@ -45,7 +45,7 @@ namespace Rock.OIDC
                     new Claim( ClaimTypes.Name, context.UserName )
                 };
 
-                var claimsIdentity = new ClaimsIdentity( claims, Config.OAuthOptions.AuthenticationType );
+                var claimsIdentity = new ClaimsIdentity( claims, OAuthDefaults.AuthenticationType );
                 var ticket = new AuthenticationTicket( claimsIdentity, new AuthenticationProperties() );
                 context.Validated( ticket );
             }
@@ -63,16 +63,41 @@ namespace Rock.OIDC
             if ( context.TryGetBasicCredentials( out var clientId, out var clientSecret ) )
             {
                 var rockContext = new RockContext();
-                var userLoginService = new UserLoginService( rockContext );
-                var user = userLoginService.GetOauthClientByIdAndSecret( clientId, clientSecret );
+                var authClientService = new AuthClientService( rockContext );
+                var authClient = authClientService.GetByClientIdAndSecret( clientId, clientSecret );
 
-                if ( user != null )
+                if ( authClient != null )
                 {
                     context.Validated();
                 }
             }
 
             return base.ValidateClientAuthentication( context );
+        }
+
+        /// <summary>
+        /// Called to validate that the context.ClientId is a registered "client_id", and that the context.RedirectUri a "redirect_uri"
+        /// registered for that client. This only occurs when processing the Authorize endpoint. The application MUST implement this
+        /// call, and it MUST validate both of those factors before calling context.Validated. If the context.Validated method is called
+        /// with a given redirectUri parameter, then IsValidated will only become true if the incoming redirect URI matches the given redirect URI.
+        /// If context.Validated is not called the request will not proceed further.
+        /// </summary>
+        /// <param name="context">The context of the event carries information in and results out.</param>
+        /// <returns>
+        /// Task to enable asynchronous execution
+        /// </returns>
+        public override Task ValidateClientRedirectUri( OAuthValidateClientRedirectUriContext context )
+        {
+            var rockContext = new RockContext();
+            var authClientService = new AuthClientService( rockContext );
+            var authClient = authClientService.GetByClientId( context.ClientId );
+
+            if ( authClient != null && authClient.RedirectUrl.Equals( context.RedirectUri, System.StringComparison.OrdinalIgnoreCase ) )
+            {
+                context.Validated();
+            }
+
+            return base.ValidateClientRedirectUri( context );
         }
     }
 }

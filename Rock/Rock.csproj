@@ -465,6 +465,11 @@
     <Compile Include="Jobs\SendMessageResults.cs" />
     <Compile Include="Jobs\PostV110DataMigrationsUpdateDateKeyValues.cs" />
     <Compile Include="Jobs\PostV103DataMigrationsSpiritualGifts.cs" />
+    <Compile Include="Model\AuthClient.cs" />
+    <Compile Include="Model\AuthTicket.cs" />
+    <Compile Include="Model\CodeGenerated\AuthClientService.cs" />
+    <Compile Include="Model\CodeGenerated\AuthTicketService.cs" />
+    <Compile Include="Model\AuthClientService.Partial.cs" />
     <Compile Include="Plugin\HotFixes\105_PageParameterFilterBlock.cs" />
     <Compile Include="Plugin\HotFixes\104_MigrationRollupsFor10_3_0.cs" />
     <Compile Include="Plugin\HotFixes\109_DisableCommunicationPersonParameter.cs" />

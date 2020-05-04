@@ -97,7 +97,7 @@ namespace Rock.Security.Authentication
         /// <param name="user">The user.</param>
         /// <param name="password">The password.</param>
         /// <returns></returns>
-        public override Boolean Authenticate( UserLogin user, string password )
+        public override bool Authenticate( UserLogin user, string password )
         {
             try
             {
@@ -264,12 +264,32 @@ namespace Rock.Security.Authentication
             }
         }
 
+        /// <summary>
+        /// Determines whether [is bcrypt match] [the specified hash].
+        /// </summary>
+        /// <param name="hash">The hash.</param>
+        /// <param name="password">The password.</param>
+        /// <returns>
+        ///   <c>true</c> if [is bcrypt match] [the specified hash]; otherwise, <c>false</c>.
+        /// </returns>
+        public bool IsBcryptMatch( string hash, string password )
+        {
+            try
+            {
+                return BCrypt.Net.BCrypt.Verify( password, hash );
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private bool AuthenticateBcrypt( UserLogin user, string password )
         {
             try {
                 var hash = user.Password;
                 var currentCost = hash.Substring( 4, 2 ).AsInteger();
-                var matches = BCrypt.Net.BCrypt.Verify( password, hash );
+                var matches = IsBcryptMatch( hash, password );
 
                 if ( matches && ( currentCost != ( GetAttributeValue( "BCryptCostFactor" ).AsIntegerOrNull() ?? 11 ) ) )
                 {

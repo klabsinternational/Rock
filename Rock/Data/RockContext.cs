@@ -334,12 +334,28 @@ namespace Rock.Data
         public DbSet<AuditDetail> AuditDetails { get; set; }
 
         /// <summary>
+        /// Gets or sets the authentication clients.
+        /// </summary>
+        /// <value>
+        /// The authentication clients.
+        /// </value>
+        public DbSet<AuthClient> AuthClients { get; set; }
+
+        /// <summary>
         /// Gets or sets the Auths.
         /// </summary>
         /// <value>
         /// the Auths.
         /// </value>
         public DbSet<Auth> Auths { get; set; }
+
+        /// <summary>
+        /// Gets or sets the authentication tickets.
+        /// </summary>
+        /// <value>
+        /// The authentication tickets.
+        /// </value>
+        public DbSet<AuthTicket> AuthTickets { get; set; }
 
         /// <summary>
         /// Gets or sets the background checks.

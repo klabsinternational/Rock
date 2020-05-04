@@ -15,7 +15,13 @@
 // </copyright>
 //
 
+using System;
+using Microsoft.Owin;
+using Microsoft.Owin.Security.Infrastructure;
+using Microsoft.Owin.Security.OAuth;
 using Owin;
+using Rock.Data;
+using Rock.Model;
 using Rock.Utility;
 
 namespace Rock.OIDC
@@ -36,8 +42,69 @@ namespace Rock.OIDC
         /// <param name="app"></param>
         public void OnStartup( IAppBuilder app )
         {
-            var options = Config.OAuthOptions;
-            app.UseOAuthBearerTokens( options );
+            var oAuthOptions = new OAuthAuthorizationServerOptions
+            {
+                AuthorizeEndpointPath = new PathString( Paths.AuthorizePath ),
+                TokenEndpointPath = new PathString( Paths.TokenPath ),
+                ApplicationCanDisplayErrors = true,
+                AllowInsecureHttp = true,
+
+                // Authorization server provider which controls the lifecycle of Authorization Server
+                Provider = new RockOAuthAuthorizationServerProvider(),
+
+                // Authorization code provider which creates and receives authorization code
+                AuthorizationCodeProvider = new AuthenticationTokenProvider
+                {
+                    OnCreate = CreateAuthenticationCode,
+                    OnReceive = ReceiveAuthenticationCode,
+                },
+
+                // Refresh token provider which creates and receives referesh token
+                RefreshTokenProvider = new AuthenticationTokenProvider
+                {
+                    OnCreate = CreateRefreshToken,
+                    OnReceive = ReceiveRefreshToken,
+                }
+            };
+
+            // Setup Authorization Server
+            app.UseOAuthAuthorizationServer( oAuthOptions );
+            app.UseOAuthBearerTokens( oAuthOptions );
+        }
+
+        private void CreateAuthenticationCode( AuthenticationTokenCreateContext context )
+        {
+            var rockContext = new RockContext();
+            var authenticationTicketService = new AuthTicketService( rockContext);
+
+            context.SetToken( Guid.NewGuid().ToString() );
+
+            authenticationTicketService.Add( new AuthTicket
+            {
+                Token = new Guid( context.Token ),
+                SerializedTicket = context.SerializeTicket()
+            } );
+
+            rockContext.SaveChanges();
+        }
+
+        private void ReceiveAuthenticationCode( AuthenticationTokenReceiveContext context )
+        {
+            var rockContext = new RockContext();
+            var authenticationTicketService = new AuthTicketService( rockContext );
+
+            var authenticationTicket = authenticationTicketService.Get( new Guid( context.Token ) );
+            context.DeserializeTicket( authenticationTicket.SerializedTicket );
+        }
+
+        private void CreateRefreshToken( AuthenticationTokenCreateContext context )
+        {
+            context.SetToken( context.SerializeTicket() );
+        }
+
+        private void ReceiveRefreshToken( AuthenticationTokenReceiveContext context )
+        {
+            context.DeserializeTicket( context.Token );
         }
     }
 }
