@@ -1,4 +1,20 @@
-﻿using System;
+﻿// <copyright>
+// Copyright by the Spark Development Network
+//
+// Licensed under the Rock Community License (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.rockrms.com/license
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// </copyright>
+//
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -46,13 +62,17 @@ namespace Rock.Storage.Common
 
             var delimiter = includeOnlyFiles ? "/" : string.Empty;
 
-            // The initial depth is for the things inside the directory, which means it's the depth of the directory plus 1
-            var initialDepth = GetKeyDepth( directory ) + 1;
+            var initialDepth = 0;
 
             // If the directory is root "/" then Google won't return anything
             if ( directory == "/" )
             {
                 directory = string.Empty;
+            }
+            else
+            {
+                // The initial depth is for the things inside the directory, which means it's the depth of the directory plus 1
+                initialDepth = GetKeyDepth( directory ) + 1;
             }
 
             using ( var client = GetStorageClient( accountKeyJson ) )
@@ -67,6 +87,8 @@ namespace Rock.Storage.Common
 
                 if ( includeOnlyFolders )
                 {
+                    var parentFoldersToAdd = new List<GoogleObject>();
+
                     // Depending on how the folder was created, it may not have an actual object, just objects nested inside.
                     // That means we have to infer the existence of folders based on the paths of the objects within.
                     objects.ForEach( o =>
@@ -76,8 +98,20 @@ namespace Rock.Storage.Common
                             var indexOfLastSlash = o.Name.LastIndexOf( '/' );
                             o.Name = o.Name.Remove( indexOfLastSlash + 1 );
                         }
-                    } );
 
+                        var folderPath = o.Name;
+                        var folderDivider = folderPath.IndexOf( "/" );
+                        while ( folderDivider > 0 )
+                        {
+                            folderPath = folderPath.Substring( 0, folderDivider );
+                            parentFoldersToAdd.Add( new GoogleObject
+                            {
+                                Name = folderPath + "/",
+                            } );
+                            folderDivider = folderPath.IndexOf( "/" );
+                        }
+                    } );
+                    objects.AddRange( parentFoldersToAdd );
                     objects = objects.GroupBy( o => o.Name ).Select( g => g.First() ).ToList();
                     objects.RemoveAll( o => !o.Name.EndsWith( "/" ) );
                 }
@@ -85,7 +119,7 @@ namespace Rock.Storage.Common
                 // If recursion is not allowed, then remove objects that are beyond the initial depth
                 if ( !allowRecursion )
                 {
-                    objects.RemoveAll( o => GetKeyDepth( o.Name ) > initialDepth );
+                    objects.RemoveAll( o => GetKeyDepth( o.Name ) != initialDepth );
                 }
 
                 // Google includes the root directory of the listing request, but Rock does not expect to get "self" in the list
@@ -162,7 +196,7 @@ namespace Rock.Storage.Common
             // Remove the last character because folders like "a/b/" are actually at depth 1 and sibling to files like "a/1.txt"
             if ( key.EndsWith( "/" ) )
             {
-                key.Substring( 0, key.Trim().Length - 1 );
+                key = key.Substring( 0, key.Trim().Length - 1 );
             }
 
             var depth = key.Count( c => c == '/' );

@@ -7,13 +7,13 @@ namespace Rock.Migrations
     using System.Resources;
     
     [GeneratedCode("EntityFramework.Migrations", "6.1.3-40302")]
-    public sealed partial class FinancialPaymentDetailGatewayPersonId : IMigrationMetadata
+    public sealed partial class PhoneFullNumber23 : IMigrationMetadata
     {
-        private readonly ResourceManager Resources = new ResourceManager(typeof(FinancialPaymentDetailGatewayPersonId));
+        private readonly ResourceManager Resources = new ResourceManager(typeof(AddGroupSyncScheduleIntervalMinutes));
         
         string IMigrationMetadata.Id
         {
-            get { return "202002252111210_FinancialPaymentDetailGatewayPersonId"; }
+            get { return "202004222034519_PhoneFullNumber23"; }
         }
         
         string IMigrationMetadata.Source

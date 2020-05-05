@@ -110,7 +110,7 @@ namespace Rock.Blocks.Types.Mobile.Events
             /// <summary>
             /// The event template default value.
             /// </summary>
-            public const string EventTemplate = @"<Frame HasShadow=""false"" StyleClass=""calendar-event"">
+            public const string EventTemplate = @"<Frame HasShadow=""false"" StyleClass=""calendar-event-summary"">
     <StackLayout Spacing=""0"">
         <Label StyleClass=""calendar-event-title"" Text=""{Binding Name}"" />
         {% if Item.EndDateTime == null %}
@@ -129,10 +129,7 @@ namespace Rock.Blocks.Types.Mobile.Events
             /// <summary>
             /// The day header template default value.
             /// </summary>
-            public const string DayHeaderTemplate = @"<Frame HasShadow=""false"" StyleClass=""calendar-events-day"">
-    <Label Text=""{Binding ., StringFormat=""{0:dddd MMMM d}""}"" />
-</Frame>
-";
+            public const string DayHeaderTemplate = @"<Label Text=""{Binding ., StringFormat='{}{0:dddd MMMM d}'}"" StyleClass=""calendar-events-day, heading2"" />";
         }
 
         /// <summary>

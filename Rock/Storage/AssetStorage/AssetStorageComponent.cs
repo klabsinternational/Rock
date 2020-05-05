@@ -48,7 +48,7 @@ namespace Rock.Storage.AssetStorage
         /// <summary>
         /// Initializes a new instance of the <see cref="AssetStorageComponent"/> class.
         /// </summary>
-        public AssetStorageComponent() : base(false)
+        public AssetStorageComponent() : base( false )
         {
             // Override default constructor of Component that loads attributes (not needed for asset storage components, needs to be done by each AssetStorageProvider)
         }
@@ -354,6 +354,12 @@ namespace Rock.Storage.AssetStorage
         /// <returns></returns>
         protected virtual string GetFileTypeIcon( string fileName )
         {
+            // If this not running in an actual HttpContext (tests), just return the "other" icon.
+            if ( FileSystemCompontHttpContext == null )
+            {
+                return "/Assets/Icons/FileTypes/other.png";
+            }
+
             string fileExtension = Path.GetExtension( fileName ).TrimStart( '.' );
             string virtualThumbnailFilePath = string.Format( "/Assets/Icons/FileTypes/{0}.png", fileExtension );
             string thumbnailFilePath = FileSystemCompontHttpContext.Request.MapPath( virtualThumbnailFilePath );
@@ -361,7 +367,7 @@ namespace Rock.Storage.AssetStorage
             if ( !File.Exists( thumbnailFilePath ) )
             {
                 virtualThumbnailFilePath = "/Assets/Icons/FileTypes/other.png";
-                thumbnailFilePath = FileSystemCompontHttpContext.Request.MapPath( virtualThumbnailFilePath );
+                //thumbnailFilePath = FileSystemCompontHttpContext.Request.MapPath( virtualThumbnailFilePath );
             }
 
             return virtualThumbnailFilePath;
@@ -441,7 +447,7 @@ namespace Rock.Storage.AssetStorage
 
             // Get file extension and then trim any trailing spaces (to catch any nefarious stuff).
             string fileExtension = Path.GetExtension( fileName ).ToLower().TrimStart( new char[] { '.' } ).Trim();
-            
+
             if ( contentFileTypeWhiteList.Any() && !contentFileTypeWhiteList.Contains( fileExtension ) )
             {
                 return false;

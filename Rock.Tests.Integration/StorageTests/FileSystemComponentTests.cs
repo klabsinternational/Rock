@@ -13,23 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // </copyright>
-//
+
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Web;
-
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 using Rock;
-using Rock.Storage;
-using Rock.Storage.AssetStorage;
-using Rock.Model;
 using Rock.Data;
-using Rock.Tests.Integration.Utility;
+using Rock.Model;
+using Rock.Storage.AssetStorage;
 using Rock.Tests.Shared;
 
 namespace Rock.Tests.Integration.StorageTests
@@ -49,6 +42,7 @@ namespace Rock.Tests.Integration.StorageTests
     public class FileSystemComponentTests
     {
         private static string webContentFolder = string.Empty;
+        private static string appDataTempFolder = string.Empty;
 
         [TestInitialize]
         public void Initialize()
@@ -56,12 +50,30 @@ namespace Rock.Tests.Integration.StorageTests
             // Set up a fake webContentFolder that we will use with the Asset Storage component
             webContentFolder = Path.Combine( TestContext.DeploymentDirectory, "TestData", "Content" );
             EnsureFolder( webContentFolder );
+
+            appDataTempFolder = Path.Combine( TestContext.DeploymentDirectory, "App_Data", $"{System.Guid.NewGuid()}" );
+            EnsureFolder( appDataTempFolder );
+        }
+
+        [ClassCleanup]
+        public static void CleanupFolder()
+        {
+            // WARNING: Only delete if this is the TestFolder/Content folder we setup.
+            if ( webContentFolder.EndsWith( "\\TestData\\Content" ) )
+            {
+                Directory.Delete( webContentFolder, recursive: true );
+            }
+
+            if ( !string.IsNullOrEmpty( appDataTempFolder ) )
+            {
+                Directory.Delete( appDataTempFolder, recursive: true );
+            }
         }
 
         private AssetStorageProvider GetAssetStorageProvider()
         {
             var assetStorageService = new AssetStorageProviderService( new RockContext() );
-            AssetStorageProvider assetStorageProvider = assetStorageService.Get( 3 );// need mock
+            AssetStorageProvider assetStorageProvider = assetStorageService.Get( 1 ); // this is the stock, local file system provider
             assetStorageProvider.LoadAttributes();
             assetStorageProvider.SetAttributeValue( "RootFolder", "TestFolder" );
 
@@ -280,7 +292,7 @@ namespace Rock.Tests.Integration.StorageTests
 
                 var downloadedAsset = fileSystemComponent.GetObject( assetStorageProvider, asset, false );
 
-                using ( FileStream fs = new FileStream( @"C:\temp\TestGetObjectDownloaded.jpg", FileMode.Create ) )
+                using ( FileStream fs = new FileStream( Path.Combine( appDataTempFolder, @"TestGetObjectDownloaded.jpg" ), FileMode.Create ) )
                 using ( downloadedAsset.AssetStream )
                 {
                     downloadedAsset.AssetStream.CopyTo( fs );
@@ -348,16 +360,6 @@ namespace Rock.Tests.Integration.StorageTests
             }
         }
 
-        [ClassCleanup]
-        public static void CleanupFolder()
-        {
-            // WARNING: Only delete if this is the TestFolder/Content folder we setup.
-            if ( webContentFolder.EndsWith( "\\TestData\\Content" ) )
-            {
-                Directory.Delete( webContentFolder, recursive: true );
-            }
-        }
-
         #region Utility Methods to help us fake the HttpContext
 
         private TestContext testContextInstance;
@@ -384,9 +386,9 @@ namespace Rock.Tests.Integration.StorageTests
             var path = Path.GetDirectoryName( pathAndFile );
             var filename = Path.GetFileName( pathAndFile );
             Directory.CreateDirectory( path );
-            if ( ! string.IsNullOrEmpty( filename ) )
+            if ( !string.IsNullOrEmpty( filename ) )
             {
-                File.Create( pathAndFile ).Dispose();
+                File.Copy( @"TestData\test.jpg", pathAndFile, true );
             }
         }
 

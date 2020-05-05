@@ -486,12 +486,12 @@ namespace RockWeb.Blocks.Steps
             var lbCardAddStep = e.Item.FindControl( "lbCardAddStep" ) as LinkButton;
 
             lbCardAddStep.Visible = cardData.CanAddStep;
-            pnlPrereqs.Visible = !cardData.HasMetPrerequisites;
+            pnlPrereqs.Visible = UserCanEdit && !cardData.HasMetPrerequisites;
 
             // Existing step records panel
             var steps = GetPersonStepsOfType( stepTypeId );
-            var canEdit = cardData.StepType.AllowManualEditing || UserCanEdit;
-            var canDelete = cardData.StepType.AllowManualEditing || UserCanEdit;
+            var canEdit = cardData.StepType.AllowManualEditing && UserCanEdit;
+            var canDelete = cardData.StepType.AllowManualEditing && UserCanEdit;
 
             var data = steps.Select( s => new CardStepViewModel
             {
@@ -659,7 +659,7 @@ namespace RockWeb.Blocks.Steps
 
                 if ( program != null )
                 {
-                    _stepTypes = program.StepTypes.Where( st => st.IsActive ).ToList();
+                    _stepTypes = OrderStepTypes( program.StepTypes.Where( st => st.IsActive ) ).ToList();
                 }
             }
 
@@ -843,7 +843,7 @@ namespace RockWeb.Blocks.Steps
         /// <returns></returns>
         private bool CanAddStep( StepType stepType )
         {
-            if ( !stepType.AllowManualEditing && !UserCanEdit )
+            if ( !stepType.AllowManualEditing || !UserCanEdit )
             {
                 return false;
             }
@@ -1047,7 +1047,7 @@ namespace RockWeb.Blocks.Steps
                     cardCssClasses.Add( "has-add" );
                 }
 
-                if ( !hasMetPrerequisites )
+                if ( UserCanEdit && !hasMetPrerequisites )
                 {
                     cardCssClasses.Add( "has-prerequisite" );
                 }

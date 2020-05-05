@@ -44,7 +44,7 @@ namespace Rock.Storage.AssetStorage
         Key = AttributeKey.BucketName )]
 
     [EncryptedTextField( "Service Account JSON Key",
-        Description = "The Service Account key JSON file contents that is used to access Google Cloud Storage. See https://console.cloud.google.com/iam-admin/serviceaccounts",
+        Description = "The Service Account key JSON file contents that is used to access Google Cloud Storage. See https://console.cloud.google.com/iam-admin/serviceaccounts to create a service account and its key. Paste the entire contents of the file here.",
         IsRequired = true,
         Order = 2,
         Key = AttributeKey.ServiceAccountKey )]
@@ -118,6 +118,7 @@ namespace Rock.Storage.AssetStorage
         {
             var rootFolder = GetRootFolder( assetStorageProvider );
             FixKey( asset, rootFolder );
+
             return GetAssetsFromGoogle( assetStorageProvider, asset.Key, null, false );
         }
 
@@ -145,6 +146,7 @@ namespace Rock.Storage.AssetStorage
         {
             var rootFolder = GetRootFolder( assetStorageProvider );
             FixKey( asset, rootFolder );
+
             return GetAssetsFromGoogle( assetStorageProvider, asset.Key, AssetType.File, false );
         }
 
@@ -172,6 +174,7 @@ namespace Rock.Storage.AssetStorage
         {
             var rootFolder = GetRootFolder( assetStorageProvider );
             FixKey( asset, rootFolder );
+
             return GetAssetsFromGoogle( assetStorageProvider, asset.Key, AssetType.Folder, false );
         }
 
@@ -195,6 +198,9 @@ namespace Rock.Storage.AssetStorage
         /// <returns></returns>
         public override Asset GetObject( AssetStorageProvider assetStorageProvider, Asset asset, bool createThumbnail )
         {
+            var rootFolder = GetRootFolder( assetStorageProvider );
+            FixKey( asset, rootFolder );
+
             using ( var client = GetStorageClient( assetStorageProvider ) )
             {
                 var bucketName = GetBucketName( assetStorageProvider );
@@ -218,6 +224,9 @@ namespace Rock.Storage.AssetStorage
         /// <returns></returns>
         public override bool UploadObject( AssetStorageProvider assetStorageProvider, Asset asset )
         {
+            var rootFolder = GetRootFolder( assetStorageProvider );
+            FixKey( asset, rootFolder );
+
             var bucketName = GetBucketName( assetStorageProvider );
             var googleObject = TranslateRockAssetToGoogleObject( asset, bucketName );
 
@@ -237,6 +246,9 @@ namespace Rock.Storage.AssetStorage
         /// <returns></returns>
         public override bool CreateFolder( AssetStorageProvider assetStorageProvider, Asset asset )
         {
+            var rootFolder = GetRootFolder( assetStorageProvider );
+            FixKey( asset, rootFolder );
+
             // https://stackoverflow.com/a/38417397
             // Google storage doesn't actually have folders, so we just upload an empty object ending with
             // a '/' to create the illusion of a directory.
@@ -254,6 +266,9 @@ namespace Rock.Storage.AssetStorage
         /// <returns></returns>
         public override bool DeleteAsset( AssetStorageProvider assetStorageProvider, Asset asset )
         {
+            var rootFolder = GetRootFolder( assetStorageProvider );
+            FixKey( asset, rootFolder );
+
             var bucketName = GetBucketName( assetStorageProvider );
             var accountKeyJson = GetServiceAccountKeyJson( assetStorageProvider );
             var isFolder = asset.Type == AssetType.Folder;
@@ -271,6 +286,9 @@ namespace Rock.Storage.AssetStorage
         /// <returns></returns>
         public override bool RenameAsset( AssetStorageProvider assetStorageProvider, Asset asset, string newName )
         {
+            var rootFolder = GetRootFolder( assetStorageProvider );
+            FixKey( asset, rootFolder );
+
             var originalAsset = GetObject( assetStorageProvider, asset );
 
             var newAsset = originalAsset.Clone();
@@ -293,6 +311,9 @@ namespace Rock.Storage.AssetStorage
         /// <returns></returns>
         public override string CreateDownloadLink( AssetStorageProvider assetStorageProvider, Asset asset )
         {
+            var rootFolder = GetRootFolder( assetStorageProvider );
+            FixKey( asset, rootFolder );
+
             using ( var client = GetStorageClient( assetStorageProvider ) )
             {
                 var bucketName = GetBucketName( assetStorageProvider );
@@ -315,6 +336,7 @@ namespace Rock.Storage.AssetStorage
         {
             var rootFolder = GetRootFolder( assetStorageProvider );
             FixKey( asset, rootFolder );
+
             return GetAssetsFromGoogle( assetStorageProvider, asset.Key, null, false );
         }
 
