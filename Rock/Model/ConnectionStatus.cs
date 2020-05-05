@@ -29,7 +29,7 @@ namespace Rock.Model
     [RockDomain( "Connection" )]
     [Table( "ConnectionStatus" )]
     [DataContract]
-    public partial class ConnectionStatus : Model<ConnectionStatus>, IHasActiveFlag
+    public partial class ConnectionStatus : Model<ConnectionStatus>, IHasActiveFlag, IOrdered
     {
 
         #region Entity Properties
@@ -97,12 +97,26 @@ namespace Rock.Model
         ///   <c>true</c> if this instance is active; otherwise, <c>false</c>.
         /// </value>
         [DataMember]
-        public bool IsActive
-        {
-            get { return _isActive; }
-            set { _isActive = value; }
-        }
-        private bool _isActive = true;
+        public bool IsActive { get; set; }
+
+        /// <summary>
+        /// Gets or sets the order.
+        /// </summary>
+        /// <value>
+        /// The order.
+        /// </value>
+        [DataMember]
+        public int Order { get; set; }
+
+        /// <summary>
+        /// Gets or sets the color of the highlight.
+        /// </summary>
+        /// <value>
+        /// The color of the highlight.
+        /// </value>
+        [MaxLength( 50 )]
+        [DataMember]
+        public string HighlightColor { get; set; }
 
         #endregion
 

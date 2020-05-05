@@ -250,21 +250,39 @@
                         <div class="btn-group">
                             <button type="button" class="btn btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fa fa-sort"></i>Sort</button>
                             <ul class="dropdown-menu">
-                                <li><a href="#">Requestor</a></li>
-                                <li><a href="#">Connector</a></li>
-                                <li><a href="#">Date Added <small class="text-muted">Oldest First</small></a></li>
-                                <li><a href="#">Date Added <small class="text-muted">Newest First</small></a></li>
-                                <li><a href="#">Last Activity <small class="text-muted">Oldest First</small></a></li>
-                                <li><a href="#">Last Activity <small class="text-muted">Newest First</small></a></li>
+                                <asp:Repeater ID="rptSort" runat="server" OnItemCommand="rptSort_ItemCommand">
+                                    <ItemTemplate>
+                                        <li>
+                                            <asp:LinkButton runat="server" CommandArgument='<%# Eval("SortBy") %>'>
+                                                <%# Eval("Title") %>
+                                                <small class="text-muted"><%# Eval("SubTitle") %></small>
+                                            </asp:LinkButton>
+                                        </li>
+                                    </ItemTemplate>
+                                </asp:Repeater>
                             </ul>
                         </div>
                         <a href="javascript:void(0);" onclick="$('#filter-drawer').slideToggle()" class="btn btn-xs"><i class="fa fa-filter"></i>Filters</a>
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fa fa-building"></i>All Campuses</button>
+                        <div runat="server" id="divCampusBtnGroup" class="btn-group">
+                            <button type="button" class="btn btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-building"></i>
+                                <asp:Literal runat="server" ID="lCurrentCampusName" />
+                            </button>
                             <ul class="dropdown-menu">
-                                <li><a href="#">All Campuses</a></li>
-                                <li><a href="#">Campus 1</a></li>
-                                <li><a href="#">Campus 2</a></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lbAllCampuses" OnClick="lbAllCampuses_Click">
+                                        All Campuses
+                                    </asp:LinkButton>
+                                </li>
+                                <asp:Repeater ID="rptCampuses" runat="server" OnItemCommand="rptCampuses_ItemCommand">
+                                    <ItemTemplate>
+                                        <li>
+                                            <asp:LinkButton runat="server" CommandArgument='<%# Eval("Id") %>'>
+                                                <%# Eval("Name") %>
+                                            </asp:LinkButton>
+                                        </li>
+                                    </ItemTemplate>
+                                </asp:Repeater>
                             </ul>
                         </div>
                         <a href="#" class="btn btn-xs"><i class="fa fa-list"></i>List</a>

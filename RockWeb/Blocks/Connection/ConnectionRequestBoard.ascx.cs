@@ -21,10 +21,10 @@ using System.Data.Entity;
 using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
-using DocumentFormat.OpenXml.Office2010.ExcelAc;
 using Rock;
 using Rock.Data;
 using Rock.Model;
+using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
@@ -42,8 +42,11 @@ namespace RockWeb.Blocks.Connection
         #region ViewState Properties
 
         /// <summary>
-        /// Page Parameter Keys
+        /// Gets or sets the connection opportunity identifier.
         /// </summary>
+        /// <value>
+        /// The connection opportunity identifier.
+        /// </value>
         private int? ConnectionOpportunityId
         {
             get
@@ -53,6 +56,50 @@ namespace RockWeb.Blocks.Connection
             set
             {
                 ViewState["ConnectionOpportunityId"] = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the current sort property.
+        /// </summary>
+        /// <value>
+        /// The current sort property.
+        /// </value>
+        private SortProperty? CurrentSortProperty
+        {
+            get
+            {
+                var value = ViewState["CurrentSortProperty"].ToStringSafe();
+                SortProperty sortProperty;
+
+                if ( !value.IsNullOrWhiteSpace() && Enum.TryParse( value, out sortProperty ) )
+                {
+                    return sortProperty;
+                }
+
+                return null;
+            }
+            set
+            {
+                ViewState["CurrentSortProperty"] = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the campus identifier.
+        /// </summary>
+        /// <value>
+        /// The campus identifier.
+        /// </value>
+        private int? CampusId
+        {
+            get
+            {
+                return ViewState["CampusId"].ToStringSafe().AsIntegerOrNull();
+            }
+            set
+            {
+                ViewState["CampusId"] = value;
             }
         }
 
@@ -150,6 +197,50 @@ namespace RockWeb.Blocks.Connection
             BindUI();
         }
 
+        /// <summary>
+        /// Handles the ItemCommand event of the rptCampuses control.
+        /// </summary>
+        /// <param name="source">The source of the event.</param>
+        /// <param name="e">The <see cref="RepeaterCommandEventArgs"/> instance containing the event data.</param>
+        protected void rptCampuses_ItemCommand( object source, RepeaterCommandEventArgs e )
+        {
+            CampusId = e.CommandArgument.ToStringSafe().AsIntegerOrNull();
+            BindUI();
+        }
+
+        /// <summary>
+        /// Handles the Click event of the lbAllCampuses control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void lbAllCampuses_Click( object sender, EventArgs e )
+        {
+            CampusId = null;
+            BindUI();
+        }
+
+        /// <summary>
+        /// Handles the ItemCommand event of the rptSort control.
+        /// </summary>
+        /// <param name="source">The source of the event.</param>
+        /// <param name="e">The <see cref="RepeaterCommandEventArgs"/> instance containing the event data.</param>
+        protected void rptSort_ItemCommand( object source, RepeaterCommandEventArgs e )
+        {
+            var value = e.CommandArgument.ToStringSafe();
+            SortProperty sortProperty;
+
+            if ( !value.IsNullOrWhiteSpace() && Enum.TryParse( value, out sortProperty ) )
+            {
+                CurrentSortProperty = sortProperty;
+            }
+            else
+            {
+                CurrentSortProperty = null;
+            }
+
+            BindUI();
+        }
+
         #endregion Events
 
         #region UI Bindings
@@ -169,8 +260,47 @@ namespace RockWeb.Blocks.Connection
             }
 
             BindHeader();
+            BindSortOptions();
+            BindCampuses();
             BindConnectionTypesRepeater();
             BindColumnsRepeater();
+        }
+
+        /// <summary>
+        /// Binds the campuses.
+        /// </summary>
+        private void BindCampuses()
+        {
+            var campuseViewModels = GetCampusViewModels();
+
+            // If there is only 1 campus, then we don't show campus controls throughout Rock
+            if ( campuseViewModels.Count <= 1 )
+            {
+                CampusId = null;
+                divCampusBtnGroup.Visible = false;
+                return;
+            }
+
+            var currentCampusViewModel = CampusId.HasValue ?
+                campuseViewModels.FirstOrDefault( c => c.Id == CampusId.Value ) :
+                null;
+
+            lCurrentCampusName.Text = currentCampusViewModel == null ?
+                "All Campuses" :
+                currentCampusViewModel.Name;
+
+            rptCampuses.DataSource = campuseViewModels;
+            rptCampuses.DataBind();
+        }
+
+        /// <summary>
+        /// Binds the sort options.
+        /// </summary>
+        private void BindSortOptions()
+        {
+            var sortOptionViewModels = GetSortOptions();
+            rptSort.DataSource = sortOptionViewModels;
+            rptSort.DataBind();
         }
 
         /// <summary>
@@ -223,6 +353,21 @@ namespace RockWeb.Blocks.Connection
         #endregion Notification Box
 
         #region Data Access
+
+        /// <summary>
+        /// Gets the sort options.
+        /// </summary>
+        /// <returns></returns>
+        private List<SortOptionViewModel> GetSortOptions() {
+            return new List<SortOptionViewModel> {
+                new SortOptionViewModel { SortBy = SortProperty.Requestor, Title = "Requestor" },
+                new SortOptionViewModel { SortBy = SortProperty.Connector, Title = "Connector" },
+                new SortOptionViewModel { SortBy = SortProperty.DateAdded, Title = "Date Added", SubTitle = "Oldest First" },
+                new SortOptionViewModel { SortBy = SortProperty.DateAddedDesc, Title = "Date Added", SubTitle = "Newest First" },
+                new SortOptionViewModel { SortBy = SortProperty.LastActivity, Title = "Last Activity", SubTitle = "Oldest First" },
+                new SortOptionViewModel { SortBy = SortProperty.LastActivityDesc, Title = "Last Activity", SubTitle = "Newest First" }
+            };
+        }
 
         /// <summary>
         /// Gets the connection opportunity.
@@ -292,9 +437,11 @@ namespace RockWeb.Blocks.Connection
 
             // Query the statuses and requests in such a way that we get all statuses, even if there
             // are no requests in that column at this time
-            var connectionRequestsByStatus = connectionRequestService.Queryable()
+            var connectionRequestsQuery = connectionRequestService.Queryable()
                 .AsNoTracking()
-                .Where( cr => cr.ConnectionOpportunityId == ConnectionOpportunityId )
+                .Where( cr =>
+                    cr.ConnectionOpportunityId == ConnectionOpportunityId &&
+                    ( !CampusId.HasValue || CampusId.Value == cr.CampusId.Value ) )
                 .Select( cr => new ConnectionRequestViewModel
                 {
                     ConnectionStatusId = cr.ConnectionStatusId,
@@ -311,7 +458,50 @@ namespace RockWeb.Blocks.Connection
                         .Select( cra => cra.CreatedDateTime )
                         .OrderByDescending( d => d )
                         .FirstOrDefault()
-                } )
+                } );
+
+            switch ( CurrentSortProperty )
+            {
+                case SortProperty.Requestor:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName )
+                        .ThenBy( cr => cr.DateOpened );
+                    break;
+                case SortProperty.Connector:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderBy( cr => cr.ConnectorPersonLastName )
+                        .ThenBy( cr => cr.ConnectorPersonNickName )
+                        .ThenBy( cr => cr.DateOpened );
+                    break;
+                case SortProperty.DateAdded:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderBy( cr => cr.DateOpened )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
+                case SortProperty.DateAddedDesc:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderByDescending( cr => cr.DateOpened )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
+                case SortProperty.LastActivityDesc:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderByDescending( cr => cr.LastActivityDate )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
+                case SortProperty.LastActivity:
+                default:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderBy( cr => cr.LastActivityDate )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
+            }
+
+            var connectionRequestsByStatus = connectionRequestsQuery
                 .ToList()
                 .GroupBy( cr => cr.ConnectionStatusId )
                 .ToDictionary( g => g.Key, g => g.ToList() );
@@ -334,6 +524,20 @@ namespace RockWeb.Blocks.Connection
             }
 
             return viewModels;
+        }
+
+        /// <summary>
+        /// Gets the campus view models.
+        /// </summary>
+        /// <returns></returns>
+        private List<CampusViewModel> GetCampusViewModels()
+        {
+            return CampusCache.All()
+                .Where( c => c.IsActive != false )
+                .OrderBy( c => c.Order )
+                .ThenBy( c => c.Name )
+                .Select( c => new CampusViewModel { Id = c.Id, Name = c.Name } )
+                .ToList();
         }
 
         #endregion
@@ -672,6 +876,75 @@ namespace RockWeb.Blocks.Connection
             }
         }
 
+        /// <summary>
+        /// Campus View Model
+        /// </summary>
+        private class CampusViewModel
+        {
+            /// <summary>
+            /// Gets or sets the identifier.
+            /// </summary>
+            /// <value>
+            /// The identifier.
+            /// </value>
+            public int Id { get; set; }
+
+            /// <summary>
+            /// Gets or sets the name.
+            /// </summary>
+            /// <value>
+            /// The name.
+            /// </value>
+            public string Name { get; set; }
+        }
+
+        /// <summary>
+        /// Sort Option View Model
+        /// </summary>
+        private class SortOptionViewModel
+        {
+            /// <summary>
+            /// Gets or sets the sort by.
+            /// </summary>
+            /// <value>
+            /// The sort by.
+            /// </value>
+            public SortProperty SortBy { get; set; }
+
+            /// <summary>
+            /// Gets or sets the title.
+            /// </summary>
+            /// <value>
+            /// The title.
+            /// </value>
+            public string Title { get; set; }
+
+            /// <summary>
+            /// Gets or sets the sub title.
+            /// </summary>
+            /// <value>
+            /// The sub title.
+            /// </value>
+            public string SubTitle { get; set; }
+        }
+
         #endregion View Models
+
+        #region Enums
+
+        /// <summary>
+        /// The sort property
+        /// </summary>
+        private enum SortProperty
+        {
+            Requestor,
+            Connector,
+            DateAdded,
+            DateAddedDesc,
+            LastActivity,
+            LastActivityDesc
+        }
+
+        #endregion Enums
     }
 }

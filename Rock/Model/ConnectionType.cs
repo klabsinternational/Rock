@@ -33,9 +33,8 @@ namespace Rock.Model
     [RockDomain( "Connection" )]
     [Table( "ConnectionType" )]
     [DataContract]
-    public partial class ConnectionType : Model<ConnectionType>
+    public partial class ConnectionType : Model<ConnectionType>, IOrdered
     {
-
         #region Entity Properties
 
         /// <summary>
@@ -139,6 +138,42 @@ namespace Rock.Model
         /// </value>
         [Required]
         public bool EnableRequestSecurity { get; set; }
+
+        /// <summary>
+        /// Gets or sets the default view mode (list or board).
+        /// </summary>
+        /// <value>
+        /// The default view.
+        /// </value>
+        [DataMember]
+        public ConnectionTypeViewMode DefaultView { get; set; }
+
+        /// <summary>
+        /// Gets or sets the request header lava.
+        /// </summary>
+        /// <value>
+        /// The request header lava.
+        /// </value>
+        [DataMember]
+        public string RequestHeaderLava { get; set; }
+
+        /// <summary>
+        /// Gets or sets the request badge lava.
+        /// </summary>
+        /// <value>
+        /// The request badge lava.
+        /// </value>
+        [DataMember]
+        public string RequestBadgeLava { get; set; }
+
+        /// <summary>
+        /// Gets or sets the order.
+        /// </summary>
+        /// <value>
+        /// The order.
+        /// </value>
+        [DataMember]
+        public int Order { get; set; }
 
         #endregion
 
@@ -262,23 +297,43 @@ namespace Rock.Model
         }
 
         #endregion
-    }
 
-    #region Entity Configuration
+        #region Entity Configuration
 
-    /// <summary>
-    /// ConnectionType Configuration class.
-    /// </summary>
-    public partial class ConnectionTypeConfiguration : EntityTypeConfiguration<ConnectionType>
-    {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ConnectionTypeConfiguration" /> class.
+        /// ConnectionType Configuration class.
         /// </summary>
-        public ConnectionTypeConfiguration()
+        public partial class ConnectionTypeConfiguration : EntityTypeConfiguration<ConnectionType>
         {
-            this.HasOptional( p => p.OwnerPersonAlias ).WithMany().HasForeignKey( p => p.OwnerPersonAliasId ).WillCascadeOnDelete( false );
+            /// <summary>
+            /// Initializes a new instance of the <see cref="ConnectionTypeConfiguration" /> class.
+            /// </summary>
+            public ConnectionTypeConfiguration()
+            {
+                this.HasOptional( p => p.OwnerPersonAlias ).WithMany().HasForeignKey( p => p.OwnerPersonAliasId ).WillCascadeOnDelete( false );
+            }
         }
-    }
 
-    #endregion
+        #endregion
+
+        #region Enumerations
+
+        /// <summary>
+        /// Represents the view mode of a <see cref="ConnectionType"/>.
+        /// </summary>
+        public enum ConnectionTypeViewMode
+        {
+            /// <summary>
+            /// The <see cref="ConnectionType"/> is viewed as list.
+            /// </summary>
+            List = 0,
+
+            /// <summary>
+            /// The <see cref="ConnectionType"/> is viewed as a board.
+            /// </summary>
+            Board = 1
+        }
+
+        #endregion
+    }
 }
