@@ -16,9 +16,9 @@
 //
 
 using System;
+using Microsoft.Extensions.Logging;
 using Microsoft.Owin;
 using Microsoft.Owin.Security.Infrastructure;
-using Microsoft.Owin.Security.OAuth;
 using Owin;
 using Rock.Data;
 using Rock.Model;
@@ -42,34 +42,59 @@ namespace Rock.OIDC
         /// <param name="app"></param>
         public void OnStartup( IAppBuilder app )
         {
-            var oAuthOptions = new OAuthAuthorizationServerOptions
+            app.UseOpenIdConnectServer(options =>
             {
-                AuthorizeEndpointPath = new PathString( Paths.AuthorizePath ),
-                TokenEndpointPath = new PathString( Paths.TokenPath ),
-                ApplicationCanDisplayErrors = true,
-                AllowInsecureHttp = true,
+                options.Provider = new AuthorizationProvider();
 
-                // Authorization server provider which controls the lifecycle of Authorization Server
-                Provider = new RockOAuthAuthorizationServerProvider(),
+                // Enable the authorization, logout, token and userinfo endpoints.
+                options.AuthorizationEndpointPath = new PathString(Paths.AuthorizePath);
+                options.LogoutEndpointPath = new PathString(Paths.LogoutPath);
+                options.TokenEndpointPath = new PathString(Paths.TokenPath);
+                options.UserinfoEndpointPath = new PathString(Paths.UserInfo);
 
-                // Authorization code provider which creates and receives authorization code
-                AuthorizationCodeProvider = new AuthenticationTokenProvider
-                {
-                    OnCreate = CreateAuthenticationCode,
-                    OnReceive = ReceiveAuthenticationCode,
-                },
+                // Note: see AuthorizationModule.cs for more
+                // information concerning ApplicationCanDisplayErrors.
+                options.ApplicationCanDisplayErrors = true;
+                options.AllowInsecureHttp = true;
 
-                // Refresh token provider which creates and receives referesh token
-                RefreshTokenProvider = new AuthenticationTokenProvider
-                {
-                    OnCreate = CreateRefreshToken,
-                    OnReceive = ReceiveRefreshToken,
-                }
-            };
+                // Register a new ephemeral key, that is discarded when the application
+                // shuts down. Tokens signed using this key are automatically invalidated.
+                // This method should only be used during development.
+                options.SigningCredentials.AddEphemeralKey();
 
-            // Setup Authorization Server
-            app.UseOAuthAuthorizationServer( oAuthOptions );
-            app.UseOAuthBearerTokens( oAuthOptions );
+                // Note: to override the default access token format and use JWT, assign AccessTokenHandler:
+                //
+                // options.AccessTokenHandler = new JwtSecurityTokenHandler
+                // {
+                //     InboundClaimTypeMap = new Dictionary<string, string>(),
+                //     OutboundClaimTypeMap = new Dictionary<string, string>()
+                // };
+                //
+                // Note: when using JWT as the access token format, you have to register a signing key.
+                //
+                // You can register a new ephemeral key, that is discarded when the application shuts down.
+                // Tokens signed using this key are automatically invalidated and thus this method
+                // should only be used during development:
+                //
+                // options.SigningCredentials.AddEphemeralKey();
+                //
+                // On production, using a X.509 certificate stored in the machine store is recommended.
+                // You can generate a self-signed certificate using Pluralsight's self-cert utility:
+                // https://s3.amazonaws.com/pluralsight-free/keith-brown/samples/SelfCert.zip
+                //
+                // options.SigningCredentials.AddCertificate("7D2A741FE34CC2C7369237A5F2078988E17A6A75");
+                //
+                // Alternatively, you can also store the certificate as an embedded .pfx resource
+                // directly in this assembly or in a file published alongside this project:
+                //
+                // options.SigningCredentials.AddCertificate(
+                //     assembly: typeof(Startup).GetTypeInfo().Assembly,
+                //     resource: "Nancy.Server.Certificate.pfx",
+                //     password: "Owin.Security.OpenIdConnect.Server");
+
+                // Register the logging listeners used by the OpenID Connect server middleware.
+                options.UseLogging(logger => logger.AddConsole().AddDebug());
+            });
         }
 
         /// <summary>

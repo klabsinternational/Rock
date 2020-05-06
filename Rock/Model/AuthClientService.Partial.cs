@@ -15,7 +15,7 @@
 // </copyright>
 //
 using System.Data.Entity;
-using System.Linq;
+using System.Threading.Tasks;
 using Rock.Security;
 using Rock.Web.Cache;
 
@@ -31,9 +31,19 @@ namespace Rock.Model
         /// </summary>
         /// <param name="clientId">The client identifier.</param>
         /// <returns></returns>
-        public AuthClient GetByClientId( string clientId )
+        public async Task<AuthClient> GetByClientId( string clientId )
         {
-            return Queryable().AsNoTracking().FirstOrDefault( ac => ac.ClientId == clientId );
+            return await Queryable().AsNoTracking().FirstOrDefaultAsync( ac => ac.ClientId == clientId );
+        }
+
+        /// <summary>
+        /// Gets the by logout redirect URL.
+        /// </summary>
+        /// <param name="logoutRedirectUrl">The logout redirect URL.</param>
+        /// <returns></returns>
+        public async Task<AuthClient> GetByLogoutRedirectUrl( string logoutRedirectUrl )
+        {
+            return await Queryable().AsNoTracking().FirstOrDefaultAsync( ac => ac.LogoutRedirectUrl == logoutRedirectUrl );
         }
 
         /// <summary>
@@ -42,9 +52,9 @@ namespace Rock.Model
         /// <param name="clientId">The client identifier.</param>
         /// <param name="clientSecret">The client secret.</param>
         /// <returns></returns>
-        public AuthClient GetByClientIdAndSecret( string clientId, string clientSecret )
+        public async Task<AuthClient> GetByClientIdAndSecret( string clientId, string clientSecret )
         {
-            var authClient = GetByClientId( clientId );
+            var authClient = await GetByClientId( clientId );
 
             if ( authClient == null )
             {
