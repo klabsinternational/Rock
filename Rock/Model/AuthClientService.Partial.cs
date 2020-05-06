@@ -46,6 +46,11 @@ namespace Rock.Model
         {
             var authClient = GetByClientId( clientId );
 
+            if ( authClient == null )
+            {
+                return null;
+            }
+
             var entityTypeName = EntityTypeCache.Get<Security.Authentication.Database>().Name;
             var databaseAuth = AuthenticationContainer.GetComponent( entityTypeName ) as Security.Authentication.Database;
             var success = databaseAuth.IsBcryptMatch( authClient.ClientSecretHash, clientSecret );

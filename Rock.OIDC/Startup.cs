@@ -72,6 +72,10 @@ namespace Rock.OIDC
             app.UseOAuthBearerTokens( oAuthOptions );
         }
 
+        /// <summary>
+        /// Creates the authentication code.
+        /// </summary>
+        /// <param name="context">The context.</param>
         private void CreateAuthenticationCode( AuthenticationTokenCreateContext context )
         {
             var rockContext = new RockContext();
@@ -88,6 +92,10 @@ namespace Rock.OIDC
             rockContext.SaveChanges();
         }
 
+        /// <summary>
+        /// Receives the authentication code.
+        /// </summary>
+        /// <param name="context">The context.</param>
         private void ReceiveAuthenticationCode( AuthenticationTokenReceiveContext context )
         {
             var rockContext = new RockContext();
@@ -97,11 +105,19 @@ namespace Rock.OIDC
             context.DeserializeTicket( authenticationTicket.SerializedTicket );
         }
 
+        /// <summary>
+        /// Creates the refresh token.
+        /// </summary>
+        /// <param name="context">The context.</param>
         private void CreateRefreshToken( AuthenticationTokenCreateContext context )
         {
             context.SetToken( context.SerializeTicket() );
         }
 
+        /// <summary>
+        /// Receives the refresh token.
+        /// </summary>
+        /// <param name="context">The context.</param>
         private void ReceiveRefreshToken( AuthenticationTokenReceiveContext context )
         {
             context.DeserializeTicket( context.Token );

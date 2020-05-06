@@ -53,11 +53,18 @@ namespace Rock.OIDC
             return base.GrantResourceOwnerCredentials( context );
         }
 
-        /// <summary>`
-        /// Check the client credentials (ie Church Online)
+        /// <summary>
+        /// Called to validate that the origin of the request is a registered "client_id", and that the correct credentials for that
+        /// client are present on the request. If the web application accepts Basic authentication credentials,
+        /// context.TryGetBasicCredentials(out clientId, out clientSecret) may be called to acquire those values if present in the
+        /// request header. If the web application accepts "client_id" and "client_secret" as form encoded POST parameters,
+        /// context.TryGetFormCredentials(out clientId, out clientSecret) may be called to acquire those values if present in the
+        /// request body. If context.Validated is not called the request will not proceed further.
         /// </summary>
-        /// <param name="context"></param>
-        /// <returns></returns>
+        /// <param name="context">The context of the event carries information in and results out.</param>
+        /// <returns>
+        /// Task to enable asynchronous execution
+        /// </returns>
         public override Task ValidateClientAuthentication( OAuthValidateClientAuthenticationContext context )
         {
             if ( context.TryGetBasicCredentials( out var clientId, out var clientSecret ) )
@@ -98,6 +105,55 @@ namespace Rock.OIDC
             }
 
             return base.ValidateClientRedirectUri( context );
+        }
+
+        /// <summary>
+        /// Called for each request to the Authorize endpoint to determine if the request is valid and should continue.
+        /// The default behavior when using the OAuthAuthorizationServerProvider is to assume well-formed requests, with
+        /// validated client credentials, should continue processing. An application may add any additional constraints.
+        /// </summary>
+        /// <param name="context">The context of the event carries information in and results out.</param>
+        /// <returns>
+        /// Task to enable asynchronous execution
+        /// </returns>
+        public override Task ValidateTokenRequest( OAuthValidateTokenRequestContext context )
+        {
+            context.Validated();
+            return base.ValidateTokenRequest( context );
+        }
+
+        /// <summary>
+        /// Called for each request to the Authorize endpoint to determine if the request is valid and should continue.
+        /// The default behavior when using the OAuthAuthorizationServerProvider is to assume well-formed requests, with
+        /// validated client redirect URI, should continue processing. An application may add any additional constraints.
+        /// </summary>
+        /// <param name="context">The context of the event carries information in and results out.</param>
+        /// <returns>
+        /// Task to enable asynchronous execution
+        /// </returns>
+        public override Task ValidateAuthorizeRequest( OAuthValidateAuthorizeRequestContext context )
+        {
+            context.Validated();
+            return base.ValidateAuthorizeRequest( context );
+        }
+
+        /// <summary>
+        /// Called at the final stage of an incoming Authorize endpoint request before the execution continues on to the web application
+        /// component responsible for producing the html response. Anything present in the OWIN pipeline following the Authorization Server
+        /// may produce the response for the Authorize page. If running on IIS any ASP.NET technology running on the server may produce
+        /// the response for the Authorize page. If the web application wishes to produce the response directly in the AuthorizeEndpoint
+        /// call it may write to the context.Response directly and should call context.RequestCompleted to stop other handlers from
+        /// executing. If the web application wishes to grant the authorization directly in the AuthorizeEndpoint call it cay call
+        /// context.OwinContext.Authentication.SignIn with the appropriate ClaimsIdentity and should call context.RequestCompleted to
+        /// stop other handlers from executing.
+        /// </summary>
+        /// <param name="context">The context of the event carries information in and results out.</param>
+        /// <returns>
+        /// Task to enable asynchronous execution
+        /// </returns>
+        public override Task AuthorizeEndpoint( OAuthAuthorizeEndpointContext context )
+        {
+            return base.AuthorizeEndpoint( context );
         }
     }
 }
