@@ -38,6 +38,7 @@ namespace RockWeb
         public void Configuration( IAppBuilder app )
         {
             app.MapSignalR();
+            Rock.Auth.Startup.OnStartup( app );
 
             // Find any plugins that implement IRockOwinStartup
             try
