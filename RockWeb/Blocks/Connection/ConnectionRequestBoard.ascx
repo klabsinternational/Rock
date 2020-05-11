@@ -236,19 +236,40 @@
                     </div>
                     <div class="d-block">
                         <div class="btn-group">
-                            <button type="button" class="btn btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fa fa-user"></i>All Connectors</button>
+                            <button type="button" class="btn btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-user"></i>
+                                <asp:Literal runat="server" ID="lConnectorText" />
+                            </button>
                             <ul class="dropdown-menu">
-                                <li><a href="#">All Connectors</a></li>
-                                <li><a href="#">My Connections</a></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lbAllConnectors" OnClick="lbAllConnectors_Click">
+                                        All Connectors
+                                    </asp:LinkButton>
+                                </li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lbMyConnections" OnClick="lbMyConnections_Click">
+                                        My Connections
+                                    </asp:LinkButton>
+                                </li>
                                 <li role="separator" class="divider"></li>
-                                <li><a href="#">Ted Decker</a></li>
-                                <li><a href="#">Phil Coffee</a></li>
+                                <asp:Repeater ID="rConnectors" runat="server" OnItemCommand="rConnectors_ItemCommand">
+                                    <ItemTemplate>
+                                        <li>
+                                            <asp:LinkButton runat="server" CommandArgument='<%# Eval("PersonAliasId") %>'>
+                                                <%# Eval("FullName") %>
+                                            </asp:LinkButton>
+                                        </li>
+                                    </ItemTemplate>
+                                </asp:Repeater>
                             </ul>
                         </div>
                     </div>
                     <div class="d-block">
                         <div class="btn-group">
-                            <button type="button" class="btn btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fa fa-sort"></i>Sort</button>
+                            <button type="button" class="btn btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-sort"></i>
+                                <asp:Literal runat="server" ID="lSortText" />
+                            </button>
                             <ul class="dropdown-menu">
                                 <asp:Repeater ID="rptSort" runat="server" OnItemCommand="rptSort_ItemCommand">
                                     <ItemTemplate>
@@ -270,9 +291,7 @@
                             </button>
                             <ul class="dropdown-menu">
                                 <li>
-                                    <asp:LinkButton runat="server" ID="lbAllCampuses" OnClick="lbAllCampuses_Click">
-                                        All Campuses
-                                    </asp:LinkButton>
+                                    <asp:LinkButton runat="server" ID="lbAllCampuses" OnClick="lbAllCampuses_Click"></asp:LinkButton>
                                 </li>
                                 <asp:Repeater ID="rptCampuses" runat="server" OnItemCommand="rptCampuses_ItemCommand">
                                     <ItemTemplate>
@@ -285,16 +304,42 @@
                                 </asp:Repeater>
                             </ul>
                         </div>
-                        <a href="#" class="btn btn-xs"><i class="fa fa-list"></i>List</a>
+                        <asp:LinkButton ID="lbToggleViewMode" runat="server" CssClass="btn btn-xs" OnClick="lbToggleViewMode_Click" />
                     </div>
                 </div>
 
                 <div id="filter-drawer" class="panel-drawer" style="display: none;">
-                    <div data-note="REPLACE ME" style="display: grid; place-items: center; height: 200px;">Rock Filter Controls Here</div>
+                    <div class="container-fluid padding-t-md padding-b-md">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <Rock:SlidingDateRangePicker ID="sdrpLastActivityDateRange" runat="server" Label="Last Activity Date Range" EnabledSlidingDateRangeUnits="Day, Week, Month, Year" EnabledSlidingDateRangeTypes="Previous, Last, Current, DateRange" />
+                            </div>
+                            <div class="col-md-4">
+                                <Rock:PersonPicker ID="ppRequester" runat="server" Label="Requester" />
+                            </div>
+                            <div class="col-md-4">
+                                <Rock:PersonPicker ID="ppConnector" runat="server" Label="Connector" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <asp:LinkButton runat="server" ID="lbApplyFilter" CssClass="btn btn-primary btn-xs" OnClick="lbApplyFilter_Click">
+                                    Apply
+                                </asp:LinkButton>
+                                <asp:LinkButton runat="server" ID="lbClearFilter" CssClass="btn btn-link btn-xs" OnClick="lbClearFilter_Click">
+                                    Clear
+                                </asp:LinkButton>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="panel-body p-0 overflow-scroll board-column-container cursor-grab">
+            <div id="divListPanel" runat="server" class="panel-body p-0 overflow-scroll">
+                List View
+            </div>
+
+            <div id="divBoardPanel" runat="server" class="panel-body p-0 overflow-scroll board-column-container cursor-grab">
                 <div class="d-flex flex-row w-100 h-100">
 
                     <asp:Repeater ID="rptColumns" runat="server" OnItemDataBound="rptColumns_ItemDataBound">

@@ -39,6 +39,57 @@ namespace RockWeb.Blocks.Connection
 
     public partial class ConnectionRequestBoard : RockBlock
     {
+        #region Keys
+
+        /// <summary>
+        /// User Preference Key
+        /// </summary>
+        private static class UserPreferenceKey
+        {
+            /// <summary>
+            /// The sort by
+            /// </summary>
+            public const string SortBy = "SortBy";
+
+            /// <summary>
+            /// The campus filter
+            /// </summary>
+            public const string CampusFilter = "CampusFilter";
+
+            /// <summary>
+            /// The view mode
+            /// </summary>
+            public const string ViewMode = "ViewMode";
+
+            /// <summary>
+            /// Connector Person Alias Id
+            /// </summary>
+            public const string ConnectorPersonAliasId = "ConnectorPersonAliasId";
+        }
+
+        /// <summary>
+        /// Filter Key
+        /// </summary>
+        private static class FilterKey
+        {
+            /// <summary>
+            /// Date Range
+            /// </summary>
+            public const string DateRange = "DateRange";
+
+            /// <summary>
+            /// Requester
+            /// </summary>
+            public const string Requester = "Requester";
+
+            /// <summary>
+            /// Connector
+            /// </summary>
+            public const string Connector = "Connector";
+        }
+
+        #endregion Keys
+
         #region ViewState Properties
 
         /// <summary>
@@ -60,12 +111,45 @@ namespace RockWeb.Blocks.Connection
         }
 
         /// <summary>
+        /// Connector Person Alias Id
+        /// </summary>
+        private int? ConnectorPersonAliasId
+        {
+            get
+            {
+                return ViewState["ConnectorPersonAliasId"].ToStringSafe().AsIntegerOrNull();
+            }
+            set
+            {
+                ViewState["ConnectorPersonAliasId"] = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this instance is card view mode.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is card view mode; otherwise, <c>false</c>.
+        /// </value>
+        private bool IsCardViewMode
+        {
+            get
+            {
+                return ViewState["IsCardViewMode"].ToStringSafe().AsBooleanOrNull() ?? true;
+            }
+            set
+            {
+                ViewState["IsCardViewMode"] = value;
+            }
+        }
+
+        /// <summary>
         /// Gets or sets the current sort property.
         /// </summary>
         /// <value>
         /// The current sort property.
         /// </value>
-        private SortProperty? CurrentSortProperty
+        private SortProperty CurrentSortProperty
         {
             get
             {
@@ -77,7 +161,7 @@ namespace RockWeb.Blocks.Connection
                     return sortProperty;
                 }
 
-                return null;
+                return SortProperty.Order;
             }
             set
             {
@@ -130,6 +214,7 @@ namespace RockWeb.Blocks.Connection
 
             if ( !Page.IsPostBack )
             {
+                LoadSettings();
                 BindUI();
             }
         }
@@ -194,6 +279,7 @@ namespace RockWeb.Blocks.Connection
         protected void rptConnectionOpportunities_ItemCommand( object source, RepeaterCommandEventArgs e )
         {
             ConnectionOpportunityId = e.CommandArgument.ToStringSafe().AsIntegerOrNull();
+            LoadSettings();
             BindUI();
         }
 
@@ -204,7 +290,9 @@ namespace RockWeb.Blocks.Connection
         /// <param name="e">The <see cref="RepeaterCommandEventArgs"/> instance containing the event data.</param>
         protected void rptCampuses_ItemCommand( object source, RepeaterCommandEventArgs e )
         {
-            CampusId = e.CommandArgument.ToStringSafe().AsIntegerOrNull();
+            var campusIdString = e.CommandArgument.ToStringSafe();
+            CampusId = campusIdString.AsIntegerOrNull();
+            SaveSettingByConnectionType( UserPreferenceKey.CampusFilter, campusIdString ?? string.Empty );
             BindUI();
         }
 
@@ -216,6 +304,7 @@ namespace RockWeb.Blocks.Connection
         protected void lbAllCampuses_Click( object sender, EventArgs e )
         {
             CampusId = null;
+            SaveSettingByConnectionType( UserPreferenceKey.CampusFilter, string.Empty );
             BindUI();
         }
 
@@ -227,6 +316,7 @@ namespace RockWeb.Blocks.Connection
         protected void rptSort_ItemCommand( object source, RepeaterCommandEventArgs e )
         {
             var value = e.CommandArgument.ToStringSafe();
+            SaveSettingByConnectionType( UserPreferenceKey.SortBy, value ?? string.Empty );
             SortProperty sortProperty;
 
             if ( !value.IsNullOrWhiteSpace() && Enum.TryParse( value, out sortProperty ) )
@@ -235,9 +325,85 @@ namespace RockWeb.Blocks.Connection
             }
             else
             {
-                CurrentSortProperty = null;
+                CurrentSortProperty = SortProperty.Order;
             }
 
+            BindUI();
+        }
+
+        /// <summary>
+        /// Handles the Click event of the lbToggleViewMode control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void lbToggleViewMode_Click( object sender, EventArgs e )
+        {
+            IsCardViewMode = !IsCardViewMode;
+            SaveSettingByConnectionType( UserPreferenceKey.ViewMode, IsCardViewMode.ToString() );
+            BindUI();
+        }
+
+        /// <summary>
+        /// Apply the filter
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void lbApplyFilter_Click( object sender, EventArgs e )
+        {
+            SaveSettingByConnectionType( FilterKey.DateRange, sdrpLastActivityDateRange.DelimitedValues );
+            SaveSettingByConnectionType( FilterKey.Requester, ppRequester.PersonId.ToStringSafe() );
+            SaveSettingByConnectionType( FilterKey.Connector, ppConnector.PersonId.ToStringSafe() );
+
+            BindUI();
+        }
+
+        /// <summary>
+        /// Clear the filter
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void lbClearFilter_Click( object sender, EventArgs e )
+        {
+            SaveSettingByConnectionType( FilterKey.DateRange, string.Empty );
+            SaveSettingByConnectionType( FilterKey.Requester, string.Empty );
+            SaveSettingByConnectionType( FilterKey.Connector, string.Empty );
+
+            BindUI();
+        }
+
+        /// <summary>
+        /// All connectors click
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void lbAllConnectors_Click( object sender, EventArgs e )
+        {
+            ConnectorPersonAliasId = null;
+            SaveSettingByConnectionType( UserPreferenceKey.ConnectorPersonAliasId, string.Empty );
+            BindUI();
+        }
+
+        /// <summary>
+        /// My connections click
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void lbMyConnections_Click( object sender, EventArgs e )
+        {
+            ConnectorPersonAliasId = CurrentPersonAliasId;
+            SaveSettingByConnectionType( UserPreferenceKey.ConnectorPersonAliasId, ConnectorPersonAliasId.ToStringSafe() );
+            BindUI();
+        }
+
+        /// <summary>
+        /// Handles the ItemCommand event of the rConnectors control.
+        /// </summary>
+        /// <param name="source">The source of the event.</param>
+        /// <param name="e">The <see cref="RepeaterCommandEventArgs"/> instance containing the event data.</param>
+        protected void rConnectors_ItemCommand( object source, RepeaterCommandEventArgs e )
+        {
+            ConnectorPersonAliasId = e.CommandArgument.ToStringSafe().AsIntegerOrNull();
+            SaveSettingByConnectionType( UserPreferenceKey.ConnectorPersonAliasId, ConnectorPersonAliasId.ToStringSafe() );
             BindUI();
         }
 
@@ -250,9 +416,12 @@ namespace RockWeb.Blocks.Connection
         /// </summary>
         private void BindUI()
         {
-            var connectionOpportunity = GetConnectionOpportunity();
+            if ( !ConnectionOpportunityId.HasValue )
+            {
+                GetConnectionOpportunity();
+            }
 
-            if ( connectionOpportunity == null )
+            if ( !ConnectionOpportunityId.HasValue )
             {
                 pnlView.Visible = false;
                 ShowError( "At least one connection opportunity is required before this block can be used" );
@@ -260,10 +429,50 @@ namespace RockWeb.Blocks.Connection
             }
 
             BindHeader();
+            BindViewModeToggle();
+            BindFilterControls();
             BindSortOptions();
+            BindConnectorOptions();
             BindCampuses();
             BindConnectionTypesRepeater();
-            BindColumnsRepeater();
+
+            if (IsCardViewMode)
+            {
+                divBoardPanel.Visible = true;
+                divListPanel.Visible = false;
+                BindColumnsRepeater();
+            }
+            else
+            {
+                divBoardPanel.Visible = false;
+                divListPanel.Visible = true;
+            }
+        }
+
+
+        /// <summary>
+        /// Bind the filter controls
+        /// </summary>
+        private void BindFilterControls()
+        {
+            sdrpLastActivityDateRange.DelimitedValues = LoadSettingByConnectionType( FilterKey.DateRange );
+            ppRequester.PersonId = LoadSettingByConnectionType( FilterKey.Requester ).AsIntegerOrNull();
+            ppConnector.PersonId = LoadSettingByConnectionType( FilterKey.Connector ).AsIntegerOrNull();
+        }
+
+        /// <summary>
+        /// Binds the view mode toggle.
+        /// </summary>
+        private void BindViewModeToggle()
+        {
+            if ( IsCardViewMode )
+            {
+                lbToggleViewMode.Text = @"<i class=""fa fa-list""></i> List";
+            }
+            else
+            {
+                lbToggleViewMode.Text = @"<i class=""fa fa-th-large""></i> Board";
+            }
         }
 
         /// <summary>
@@ -287,10 +496,43 @@ namespace RockWeb.Blocks.Connection
 
             lCurrentCampusName.Text = currentCampusViewModel == null ?
                 "All Campuses" :
-                currentCampusViewModel.Name;
+                string.Format( "Campus: {0}", currentCampusViewModel.Name );
 
             rptCampuses.DataSource = campuseViewModels;
             rptCampuses.DataBind();
+        }
+
+        /// <summary>
+        /// Binds the connector options.
+        /// </summary>
+        private void BindConnectorOptions()
+        {
+            var connectorViewModels = GetConnectors();
+
+            if ( !ConnectorPersonAliasId.HasValue )
+            {
+                lConnectorText.Text = "All Connectors";
+            }
+            else if ( ConnectorPersonAliasId == CurrentPersonAliasId )
+            {
+                lConnectorText.Text = "My Requests";
+            }
+            else
+            {
+                var connector = connectorViewModels.FirstOrDefault( c => c.PersonAliasId == ConnectorPersonAliasId );
+
+                if ( connector != null )
+                {
+                    lConnectorText.Text = string.Format( "Connector: {0}", connector.Fullname );
+                }
+                else
+                {
+                    lConnectorText.Text = string.Format( "Connector: Person Alias {0}", ConnectorPersonAliasId );
+                }
+            }
+
+            rConnectors.DataSource = connectorViewModels;
+            rConnectors.DataBind();
         }
 
         /// <summary>
@@ -298,6 +540,27 @@ namespace RockWeb.Blocks.Connection
         /// </summary>
         private void BindSortOptions()
         {
+            switch ( CurrentSortProperty )
+            {
+                case SortProperty.Requestor:
+                    lSortText.Text = "Sort: Requestor";
+                    break;
+                case SortProperty.Connector:
+                    lSortText.Text = "Sort: Connector";
+                    break;
+                case SortProperty.DateAdded:
+                case SortProperty.DateAddedDesc:
+                    lSortText.Text = "Sort: Date Added";
+                    break;
+                case SortProperty.LastActivity:
+                case SortProperty.LastActivityDesc:
+                    lSortText.Text = "Sort: Last Activity";
+                    break;
+                default:
+                    lSortText.Text = "Sort";
+                    break;
+            }
+
             var sortOptionViewModels = GetSortOptions();
             rptSort.DataSource = sortOptionViewModels;
             rptSort.DataBind();
@@ -355,11 +618,71 @@ namespace RockWeb.Blocks.Connection
         #region Data Access
 
         /// <summary>
+        /// Loads the settings.
+        /// </summary>
+        private void LoadSettings()
+        {
+            // Make sure the connection opportunity id and record are in sync
+            GetConnectionOpportunity();
+
+            // Load the view mode
+            IsCardViewMode = LoadSettingByConnectionType( UserPreferenceKey.ViewMode ).AsBooleanOrNull() ?? true;
+
+            // Load the sort property
+            SortProperty sortProperty;
+
+            if ( Enum.TryParse( LoadSettingByConnectionType( UserPreferenceKey.SortBy ), out sortProperty ) )
+            {
+                CurrentSortProperty = sortProperty;
+            }
+            else
+            {
+                CurrentSortProperty = SortProperty.Order;
+            }
+
+            // Load the campus id
+            CampusId = LoadSettingByConnectionType( UserPreferenceKey.CampusFilter ).AsIntegerOrNull();
+
+            // Load the connector filter
+            ConnectorPersonAliasId = LoadSettingByConnectionType( UserPreferenceKey.ConnectorPersonAliasId ).AsIntegerOrNull();
+        }
+
+        /// <summary>
+        /// Loads the type of the setting by connection.
+        /// </summary>
+        /// <param name="subKey">The sub key.</param>
+        /// <returns></returns>
+        private string LoadSettingByConnectionType( string subKey )
+        {
+            var connectionOpportunity = GetConnectionOpportunity();
+
+            if ( connectionOpportunity == null )
+            {
+                return string.Empty;
+            }
+
+            var key = string.Format( "{0}-{1}", connectionOpportunity.ConnectionTypeId, subKey );
+            return GetBlockUserPreference( key );
+        }
+
+        /// <summary>
+        /// Saves the type of the setting by connection.
+        /// </summary>
+        /// <param name="subKey">The sub key.</param>
+        /// <param name="value">The value.</param>
+        private void SaveSettingByConnectionType( string subKey, string value )
+        {
+            var key = string.Format( "{0}-{1}", ConnectionOpportunityId ?? 0, subKey );
+            SetBlockUserPreference( key, value );
+        }
+
+        /// <summary>
         /// Gets the sort options.
         /// </summary>
         /// <returns></returns>
         private List<SortOptionViewModel> GetSortOptions() {
             return new List<SortOptionViewModel> {
+                new SortOptionViewModel { SortBy = SortProperty.Order, Title = string.Empty },
                 new SortOptionViewModel { SortBy = SortProperty.Requestor, Title = "Requestor" },
                 new SortOptionViewModel { SortBy = SortProperty.Connector, Title = "Connector" },
                 new SortOptionViewModel { SortBy = SortProperty.DateAdded, Title = "Date Added", SubTitle = "Oldest First" },
@@ -375,21 +698,29 @@ namespace RockWeb.Blocks.Connection
         /// <returns></returns>
         private ConnectionOpportunity GetConnectionOpportunity()
         {
+            // Do not make a db call if the id and current record are in sync
+            if ( _connectionOpportunity != null && _connectionOpportunity.Id == ConnectionOpportunityId )
+            {
+                return _connectionOpportunity;
+            }
+
             var rockContext = new RockContext();
             var connectionOpportunityService = new ConnectionOpportunityService( rockContext );
             var query = connectionOpportunityService.Queryable().AsNoTracking();
 
-            var connectionOpportunity = ConnectionOpportunityId.HasValue ?
+            _connectionOpportunity = ConnectionOpportunityId.HasValue ?
                 query.FirstOrDefault( co => co.Id == ConnectionOpportunityId.Value ) :
                 query.FirstOrDefault();
 
-            if ( !ConnectionOpportunityId.HasValue && connectionOpportunity != null )
+            // Select the first record if one is not explicitly selected
+            if ( !ConnectionOpportunityId.HasValue && _connectionOpportunity != null )
             {
-                ConnectionOpportunityId = connectionOpportunity.Id;
+                ConnectionOpportunityId = _connectionOpportunity.Id;
             }
 
-            return connectionOpportunity;
+            return _connectionOpportunity;
         }
+        private ConnectionOpportunity _connectionOpportunity = null;
 
         /// <summary>
         /// Gets the connection type view models.
@@ -426,6 +757,30 @@ namespace RockWeb.Blocks.Connection
         private List<ConnectionTypeViewModel> _connectionTypeViewModels = null;
 
         /// <summary>
+        /// Gets a list of connectors
+        /// </summary>
+        /// <returns></returns>
+        private List<ConnectorViewModel> GetConnectors()
+        {
+            var rockContext = new RockContext();
+            var connectionRequestService = new ConnectionRequestService( rockContext );
+
+            return connectionRequestService.Queryable()
+                .AsNoTracking()
+                .Where( cr => cr.ConnectorPersonAliasId.HasValue )
+                .Where( cr => cr.ConnectorPersonAliasId.Value != CurrentPersonAliasId )
+                .Select( cr => new ConnectorViewModel
+                {
+                    LastName = cr.ConnectorPersonAlias.Person.LastName,
+                    NickName = cr.ConnectorPersonAlias.Person.NickName,
+                    PersonAliasId = cr.ConnectorPersonAliasId.Value
+                } )
+                .OrderBy( c => c.LastName )
+                .Distinct()
+                .ToList();
+        }
+
+        /// <summary>
         /// Gets the connection status view models.
         /// </summary>
         /// <returns></returns>
@@ -445,6 +800,7 @@ namespace RockWeb.Blocks.Connection
                 .Select( cr => new ConnectionRequestViewModel
                 {
                     ConnectionStatusId = cr.ConnectionStatusId,
+                    PersonId = cr.PersonAlias.PersonId,
                     PersonNickName = cr.PersonAlias.Person.NickName,
                     PersonLastName = cr.PersonAlias.Person.LastName,
                     PersonPhotoId = cr.PersonAlias.Person.PhotoId,
@@ -452,14 +808,51 @@ namespace RockWeb.Blocks.Connection
                     CampusCode = cr.Campus.ShortCode,
                     ConnectorPersonNickName = cr.ConnectorPersonAlias.Person.NickName,
                     ConnectorPersonLastName = cr.ConnectorPersonAlias.Person.LastName,
+                    ConnectorPersonId = cr.ConnectorPersonAlias.PersonId,
+                    ConnectorPersonAliasId = cr.ConnectorPersonAliasId,
                     ActivityCount = cr.ConnectionRequestActivities.Count,
                     DateOpened = cr.CreatedDateTime,
+                    Order = cr.Order,
                     LastActivityDate = cr.ConnectionRequestActivities
                         .Select( cra => cra.CreatedDateTime )
                         .OrderByDescending( d => d )
                         .FirstOrDefault()
                 } );
 
+            // Filter by connector
+            if ( ConnectorPersonAliasId.HasValue )
+            {
+                connectionRequestsQuery = connectionRequestsQuery.Where( cr => cr.ConnectorPersonAliasId == ConnectorPersonAliasId );
+            }
+
+            // Filter by date range
+            var minDate = sdrpLastActivityDateRange.SelectedDateRange.Start;
+            if (minDate.HasValue)
+            {
+                connectionRequestsQuery = connectionRequestsQuery.Where( cr => cr.LastActivityDate >= minDate.Value );
+            }
+
+            var maxDate = sdrpLastActivityDateRange.SelectedDateRange.End;
+            if ( maxDate.HasValue )
+            {
+                connectionRequestsQuery = connectionRequestsQuery.Where( cr => cr.LastActivityDate <= maxDate.Value );
+            }
+
+            // Filter requester
+            var requesterId = ppRequester.PersonId;
+            if (requesterId.HasValue)
+            {
+                connectionRequestsQuery = connectionRequestsQuery.Where( cr => cr.PersonId == requesterId.Value );
+            }
+
+            // Filter requester
+            var connectorId = ppConnector.PersonId;
+            if ( connectorId.HasValue )
+            {
+                connectionRequestsQuery = connectionRequestsQuery.Where( cr => cr.ConnectorPersonId == connectorId.Value );
+            }
+
+            // Sort by the selected sorting property
             switch ( CurrentSortProperty )
             {
                 case SortProperty.Requestor:
@@ -493,9 +886,16 @@ namespace RockWeb.Blocks.Connection
                         .ThenBy( cr => cr.PersonNickName );
                     break;
                 case SortProperty.LastActivity:
-                default:
                     connectionRequestsQuery = connectionRequestsQuery
                         .OrderBy( cr => cr.LastActivityDate )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
+                case SortProperty.Order:
+                default:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderBy( cr => cr.Order )
+                        .ThenBy( cr => cr.LastActivityDate )
                         .ThenBy( cr => cr.PersonLastName )
                         .ThenBy( cr => cr.PersonNickName );
                     break;
@@ -511,6 +911,8 @@ namespace RockWeb.Blocks.Connection
                 .Where( co => co.Id == ConnectionOpportunityId )
                 .SelectMany( co => co.ConnectionType.ConnectionStatuses )
                 .Where( cs => cs.IsActive )
+                .OrderBy( cs => cs.Order )
+                .ThenBy( cs => cs.Name )
                 .Select( cs => new ConnectionStatusViewModel
                 {
                     Id = cs.Id,
@@ -536,7 +938,13 @@ namespace RockWeb.Blocks.Connection
                 .Where( c => c.IsActive != false )
                 .OrderBy( c => c.Order )
                 .ThenBy( c => c.Name )
-                .Select( c => new CampusViewModel { Id = c.Id, Name = c.Name } )
+                .Select( c => new CampusViewModel
+                {
+                    Id = c.Id,
+                    Name = c.ShortCode.IsNullOrWhiteSpace() ?
+                        c.Name :
+                        c.ShortCode
+                } )
                 .ToList();
         }
 
@@ -640,6 +1048,11 @@ namespace RockWeb.Blocks.Connection
         private class ConnectionRequestViewModel
         {
             /// <summary>
+            /// Requester Person Id
+            /// </summary>
+            public int? PersonId { get; set; }
+
+            /// <summary>
             /// Gets or sets the name of the person.
             /// </summary>
             /// <value>
@@ -681,6 +1094,16 @@ namespace RockWeb.Blocks.Connection
             public string ConnectorPersonLastName { get; set; }
 
             /// <summary>
+            /// Connector Person Id
+            /// </summary>
+            public int? ConnectorPersonId { get; set; }
+
+            /// <summary>
+            /// Connector person alias id
+            /// </summary>
+            public int? ConnectorPersonAliasId { get; set; }
+
+            /// <summary>
             /// Connection Status Id
             /// </summary>
             public int ConnectionStatusId { get; set; }
@@ -699,6 +1122,14 @@ namespace RockWeb.Blocks.Connection
             /// Date Opened
             /// </summary>
             public DateTime? DateOpened { get; set; }
+
+            /// <summary>
+            /// Gets or sets the order.
+            /// </summary>
+            /// <value>
+            /// The order.
+            /// </value>
+            public int Order { get; set; }
 
             /// <summary>
             /// Activity Count Text
@@ -879,6 +1310,47 @@ namespace RockWeb.Blocks.Connection
         /// <summary>
         /// Campus View Model
         /// </summary>
+        private class ConnectorViewModel
+        {
+            /// <summary>
+            /// Gets or sets the person alias identifier.
+            /// </summary>
+            /// <value>
+            /// The identifier.
+            /// </value>
+            public int PersonAliasId { get; set; }
+
+            /// <summary>
+            /// Gets or sets the nick name.
+            /// </summary>
+            /// <value>
+            /// The name.
+            /// </value>
+            public string NickName { get; set; }
+
+            /// <summary>
+            /// Gets or sets the last name.
+            /// </summary>
+            /// <value>
+            /// The name.
+            /// </value>
+            public string LastName { get; set; }
+
+            /// <summary>
+            /// Person Fullname
+            /// </summary>
+            public string Fullname
+            {
+                get
+                {
+                    return string.Format( "{0} {1}", NickName, LastName );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Campus View Model
+        /// </summary>
         private class CampusViewModel
         {
             /// <summary>
@@ -928,6 +1400,22 @@ namespace RockWeb.Blocks.Connection
             public string SubTitle { get; set; }
         }
 
+        /// <summary>
+        /// Connector Option View Model
+        /// </summary>
+        private class ConnectorOptionViewModel
+        {
+            /// <summary>
+            /// Person Alias Id
+            /// </summary>
+            public int PersonAliasId { get; set; }
+
+            /// <summary>
+            /// Name
+            /// </summary>
+            public string Name { get; set; }
+        }
+
         #endregion View Models
 
         #region Enums
@@ -942,7 +1430,8 @@ namespace RockWeb.Blocks.Connection
             DateAdded,
             DateAddedDesc,
             LastActivity,
-            LastActivityDesc
+            LastActivityDesc,
+            Order
         }
 
         #endregion Enums
