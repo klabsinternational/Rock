@@ -15,7 +15,6 @@
 // </copyright>
 //
 
-using System.Collections.Generic;
 using System.IdentityModel.Tokens;
 using Owin;
 
