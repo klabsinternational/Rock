@@ -14,6 +14,7 @@
 // limitations under the License.
 // </copyright>
 //
+using System;
 using System.Data.Entity;
 using System.Threading.Tasks;
 using Rock.Security;
@@ -37,13 +38,14 @@ namespace Rock.Model
         }
 
         /// <summary>
-        /// Gets the by logout redirect URL.
+        /// Gets the by post logout redirect URL.
         /// </summary>
-        /// <param name="logoutRedirectUrl">The logout redirect URL.</param>
+        /// <param name="postLogoutRedirectUrl">The logout redirect URL.</param>
         /// <returns></returns>
-        public async Task<AuthClient> GetByLogoutRedirectUrl( string logoutRedirectUrl )
+        public async Task<AuthClient> GetByPostLogoutRedirectUrl( string postLogoutRedirectUrl )
         {
-            return await Queryable().AsNoTracking().FirstOrDefaultAsync( ac => ac.LogoutRedirectUrl == logoutRedirectUrl );
+            return await Queryable().AsNoTracking().FirstOrDefaultAsync( ac =>
+                ac.PostLogoutRedirectUri.Equals( postLogoutRedirectUrl, StringComparison.OrdinalIgnoreCase ) );
         }
 
         /// <summary>

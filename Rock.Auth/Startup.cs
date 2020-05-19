@@ -78,7 +78,7 @@ namespace Rock.Auth
                 //     password: "Owin.Security.OpenIdConnect.Server");
 
                 // Register the logging listeners used by the OpenID Connect server middleware.
-                //options.UseLogging( logger => logger.AddConsole().AddDebug() );
+                // options.UseLogging( logger => logger.AddConsole().AddDebug() );
             } );
         }
     }
