@@ -15,6 +15,8 @@
 // </copyright>
 //
 
+using System.Collections.Generic;
+using System.IdentityModel.Tokens;
 using Owin;
 
 namespace Rock.Auth
@@ -27,9 +29,9 @@ namespace Rock.Auth
         /// <param name="app"></param>
         public static void OnStartup( IAppBuilder app )
         {
-            /*
             app.UseOpenIdConnectServer( options =>
             {
+                /*
                 options.Provider = new AuthorizationProvider();
 
                 // Enable the authorization, logout, token and userinfo endpoints.
@@ -47,15 +49,14 @@ namespace Rock.Auth
                 // shuts down. Tokens signed using this key are automatically invalidated.
                 // This method should only be used during development.
                 options.SigningCredentials.AddEphemeralKey();
+                */
 
                 // Note: to override the default access token format and use JWT, assign AccessTokenHandler:
                 //
-                // options.AccessTokenHandler = new JwtSecurityTokenHandler
-                // {
-                //     InboundClaimTypeMap = new Dictionary<string, string>(),
-                //     OutboundClaimTypeMap = new Dictionary<string, string>()
-                // };
-                //
+                options.AccessTokenHandler = new JwtSecurityTokenHandler
+                {
+                };
+                
                 // Note: when using JWT as the access token format, you have to register a signing key.
                 //
                 // You can register a new ephemeral key, that is discarded when the application shuts down.
@@ -81,7 +82,6 @@ namespace Rock.Auth
                 // Register the logging listeners used by the OpenID Connect server middleware.
                 //options.UseLogging( logger => logger.AddConsole().AddDebug() );
             } );
-            */
         }
     }
 }
