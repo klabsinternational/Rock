@@ -16,6 +16,7 @@
 //
 
 using System.IdentityModel.Tokens;
+using Microsoft.Owin;
 using Owin;
 
 namespace Rock.Auth
@@ -30,7 +31,6 @@ namespace Rock.Auth
         {
             app.UseOpenIdConnectServer( options =>
             {
-                /*
                 options.Provider = new AuthorizationProvider();
 
                 // Enable the authorization, logout, token and userinfo endpoints.
@@ -48,7 +48,6 @@ namespace Rock.Auth
                 // shuts down. Tokens signed using this key are automatically invalidated.
                 // This method should only be used during development.
                 options.SigningCredentials.AddEphemeralKey();
-                */
 
                 // Note: to override the default access token format and use JWT, assign AccessTokenHandler:
                 //
