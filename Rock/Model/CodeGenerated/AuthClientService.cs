@@ -93,7 +93,6 @@ namespace Rock.Model
             target.ForeignGuid = source.ForeignGuid;
             target.ForeignKey = source.ForeignKey;
             target.IsActive = source.IsActive;
-            target.LogoutRedirectUrl = source.LogoutRedirectUrl;
             target.Name = source.Name;
             target.RedirectUri = source.RedirectUri;
             target.PostLogoutRedirectUri = source.PostLogoutRedirectUri;

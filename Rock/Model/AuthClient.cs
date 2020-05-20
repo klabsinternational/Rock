@@ -88,15 +88,5 @@ namespace Rock.Model
         [DataMember( IsRequired = true )]
         [Required]
         public string PostLogoutRedirectUri { get; set; }
-
-        /// <summary>
-        /// Gets or sets the logout redirect URL.
-        /// </summary>
-        /// <value>
-        /// The logout redirect URL.
-        /// </value>
-        [DataMember( IsRequired = true )]
-        [Required]
-        public string LogoutRedirectUrl { get; set; }
     }
 }
