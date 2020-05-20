@@ -15,7 +15,6 @@
 // </copyright>
 //
 
-using System.IdentityModel.Tokens;
 using Microsoft.Owin;
 using Owin;
 
@@ -51,9 +50,7 @@ namespace Rock.Auth
 
                 // Note: to override the default access token format and use JWT, assign AccessTokenHandler:
                 //
-                options.AccessTokenHandler = new JwtSecurityTokenHandler
-                {
-                };
+                //options.AccessTokenHandler = new JwtSecurityTokenHandler
                 
                 // Note: when using JWT as the access token format, you have to register a signing key.
                 //
