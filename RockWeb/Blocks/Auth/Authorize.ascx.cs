@@ -277,7 +277,7 @@ namespace RockWeb.Blocks.Auth
             // Notify ASOS that the authorization grant has been denied by the resource owner.
             // Note: OpenIdConnectServerHandler will automatically take care of redirecting
             // the user agent to the client application using the appropriate response_mode.
-            return Challenge( OpenIdConnectServerDefaults.AuthenticationScheme );
+            //return Challenge( OpenIdConnectServerDefaults.AuthenticationScheme );
         }
 
         #endregion Events

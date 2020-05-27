@@ -22,7 +22,7 @@ using Owin.Security.OpenIdConnect.Server;
 using Rock.Data;
 using Rock.Model;
 
-namespace Rock.Auth
+namespace Rock.Oidc
 {
     /// <summary>
     /// Authorization Provider

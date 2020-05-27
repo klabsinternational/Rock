@@ -7,8 +7,8 @@
     <ProjectGuid>{8CCB8E2A-073C-48CB-B31A-621EC5430A42}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Rock.Auth</RootNamespace>
-    <AssemblyName>Rock.Auth</AssemblyName>
+    <RootNamespace>Rock.Oidc</RootNamespace>
+    <AssemblyName>Rock.Oidc</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>

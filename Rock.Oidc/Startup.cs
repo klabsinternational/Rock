@@ -18,7 +18,7 @@
 using Microsoft.Owin;
 using Owin;
 
-namespace Rock.Auth
+namespace Rock.Oidc
 {
     public static class Startup
     {

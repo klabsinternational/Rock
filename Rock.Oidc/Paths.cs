@@ -15,7 +15,7 @@
 // </copyright>
 //
 
-namespace Rock.Auth
+namespace Rock.Oidc
 {
     /// <summary>
     /// OIDC Paths/Routes
