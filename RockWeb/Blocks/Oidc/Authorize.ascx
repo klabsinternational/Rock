@@ -1,4 +1,4 @@
-﻿<%@ Control Language="C#" AutoEventWireup="true" CodeFile="Authorize.ascx.cs" Inherits="RockWeb.Blocks.Auth.Authorize" %>
+﻿<%@ Control Language="C#" AutoEventWireup="true" CodeFile="Authorize.ascx.cs" Inherits="RockWeb.Blocks.Oidc.Authorize" %>
 
 <asp:UpdatePanel ID="upnlContent" runat="server">
     <ContentTemplate>

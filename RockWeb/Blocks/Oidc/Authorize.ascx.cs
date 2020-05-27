@@ -17,27 +17,21 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
 using System.Linq.Dynamic;
-using System.Net;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using AspNet.Security.OpenIdConnect.Extensions;
 using AspNet.Security.OpenIdConnect.Primitives;
 using AspNet.Security.OpenIdConnect.Server;
-using DocumentFormat.OpenXml.Office2010.ExcelAc;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.Authentication;
-using NuGet;
-using OpenXmlPowerTools;
 using Rock;
-using Rock.Auth;
 using Rock.Data;
 using Rock.Model;
 using Rock.Web.UI;
 
-namespace RockWeb.Blocks.Auth
+namespace RockWeb.Blocks.Oidc
 {
     /// <summary>
     /// Prompts user for login credentials.
@@ -277,7 +271,7 @@ namespace RockWeb.Blocks.Auth
             // Notify ASOS that the authorization grant has been denied by the resource owner.
             // Note: OpenIdConnectServerHandler will automatically take care of redirecting
             // the user agent to the client application using the appropriate response_mode.
-            //return Challenge( OpenIdConnectServerDefaults.AuthenticationScheme );
+            return Challenge( OpenIdConnectServerDefaults.AuthenticationScheme );
         }
 
         #endregion Events
