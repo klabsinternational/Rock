@@ -81,11 +81,6 @@ namespace RockWeb.Blocks.Connection
             /// Requester
             /// </summary>
             public const string Requester = "Requester";
-
-            /// <summary>
-            /// Connector
-            /// </summary>
-            public const string Connector = "Connector";
         }
 
         #endregion Keys
@@ -352,7 +347,6 @@ namespace RockWeb.Blocks.Connection
         {
             SaveSettingByConnectionType( FilterKey.DateRange, sdrpLastActivityDateRange.DelimitedValues );
             SaveSettingByConnectionType( FilterKey.Requester, ppRequester.PersonId.ToStringSafe() );
-            SaveSettingByConnectionType( FilterKey.Connector, ppConnector.PersonId.ToStringSafe() );
 
             BindUI();
         }
@@ -366,7 +360,6 @@ namespace RockWeb.Blocks.Connection
         {
             SaveSettingByConnectionType( FilterKey.DateRange, string.Empty );
             SaveSettingByConnectionType( FilterKey.Requester, string.Empty );
-            SaveSettingByConnectionType( FilterKey.Connector, string.Empty );
 
             BindUI();
         }
@@ -457,7 +450,6 @@ namespace RockWeb.Blocks.Connection
         {
             sdrpLastActivityDateRange.DelimitedValues = LoadSettingByConnectionType( FilterKey.DateRange );
             ppRequester.PersonId = LoadSettingByConnectionType( FilterKey.Requester ).AsIntegerOrNull();
-            ppConnector.PersonId = LoadSettingByConnectionType( FilterKey.Connector ).AsIntegerOrNull();
         }
 
         /// <summary>
@@ -843,13 +835,6 @@ namespace RockWeb.Blocks.Connection
             if (requesterId.HasValue)
             {
                 connectionRequestsQuery = connectionRequestsQuery.Where( cr => cr.PersonId == requesterId.Value );
-            }
-
-            // Filter requester
-            var connectorId = ppConnector.PersonId;
-            if ( connectorId.HasValue )
-            {
-                connectionRequestsQuery = connectionRequestsQuery.Where( cr => cr.ConnectorPersonId == connectorId.Value );
             }
 
             // Sort by the selected sorting property

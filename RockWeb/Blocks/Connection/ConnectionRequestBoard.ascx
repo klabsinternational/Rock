@@ -317,9 +317,6 @@
                             <div class="col-md-4">
                                 <Rock:PersonPicker ID="ppRequester" runat="server" Label="Requester" />
                             </div>
-                            <div class="col-md-4">
-                                <Rock:PersonPicker ID="ppConnector" runat="server" Label="Connector" />
-                            </div>
                         </div>
                         <div class="row">
                             <div class="col-sm-12">

@@ -31,6 +31,14 @@ namespace Rock.Model
     [DataContract]
     public partial class ConnectionStatus : Model<ConnectionStatus>, IHasActiveFlag, IOrdered
     {
+        #region Constants
+
+        /// <summary>
+        /// The default highlight color
+        /// </summary>
+        public static readonly string DefaultHighlightColor = "#f3f3f3";
+
+        #endregion Constants
 
         #region Entity Properties
 
