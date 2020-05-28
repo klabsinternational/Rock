@@ -219,6 +219,41 @@ namespace RockWeb.Blocks.Connection
         #region Events
 
         /// <summary>
+        /// Handles the Sorting event of the gRequests control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="GridViewSortEventArgs"/> instance containing the event data.</param>
+        protected void gRequests_Sorting( object sender, GridViewSortEventArgs e )
+        {
+            SortProperty sortProperty;
+
+            if ( !Enum.TryParse( e.SortExpression, out sortProperty ) )
+            {
+                return;
+            }
+
+            var isDescending = e.SortDirection == SortDirection.Descending || (
+                gRequests.SortProperty != null &&
+                gRequests.SortProperty.Property == e.SortExpression &&
+                gRequests.SortProperty.Direction == SortDirection.Descending
+            );
+
+            switch ( sortProperty )
+            {
+                case SortProperty.Requestor:
+                    if ( isDescending )
+                    {
+                        sortProperty = SortProperty.RequestorDesc;
+                    }
+                    break;
+            }
+
+            CurrentSortProperty = sortProperty;
+            BindSortOptions();
+            BindGrid();
+        }
+
+        /// <summary>
         /// Handles the BlockUpdated event of the control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
@@ -439,6 +474,7 @@ namespace RockWeb.Blocks.Connection
             {
                 divBoardPanel.Visible = false;
                 divListPanel.Visible = true;
+                BindGrid();
             }
         }
 
@@ -535,9 +571,11 @@ namespace RockWeb.Blocks.Connection
             switch ( CurrentSortProperty )
             {
                 case SortProperty.Requestor:
+                case SortProperty.RequestorDesc:
                     lSortText.Text = "Sort: Requestor";
                     break;
                 case SortProperty.Connector:
+                case SortProperty.ConnectorDesc:
                     lSortText.Text = "Sort: Connector";
                     break;
                 case SortProperty.DateAdded:
@@ -587,6 +625,26 @@ namespace RockWeb.Blocks.Connection
         {
             rptColumns.DataSource = GetConnectionStatusViewModels();
             rptColumns.DataBind();
+        }
+
+        /// <summary>
+        /// Binds the grid.
+        /// </summary>
+        private void BindGrid()
+        {
+            // Sync the sort controls of the grid with the sort control in the control bar
+            var propertyString = CurrentSortProperty.ToString();
+            var isDesc = propertyString.EndsWith( "Desc" );
+
+            gRequests.SortProperty = new Rock.Web.UI.Controls.SortProperty
+            {
+                Property = propertyString.Replace( "Desc", string.Empty ),
+                Direction = isDesc ? SortDirection.Descending : SortDirection.Ascending
+            };
+
+            // Bind the data
+            gRequests.SetLinqDataSource( GetConnectionRequestViewModelQuery() );
+            gRequests.DataBind();
         }
 
         #endregion UI Bindings
@@ -773,14 +831,13 @@ namespace RockWeb.Blocks.Connection
         }
 
         /// <summary>
-        /// Gets the connection status view models.
+        /// Gets the connection request view models.
         /// </summary>
         /// <returns></returns>
-        private List<ConnectionStatusViewModel> GetConnectionStatusViewModels()
+        private IQueryable<ConnectionRequestViewModel> GetConnectionRequestViewModelQuery()
         {
             var rockContext = new RockContext();
             var connectionRequestService = new ConnectionRequestService( rockContext );
-            var connectionOpportunityService = new ConnectionOpportunityService( rockContext );
 
             // Query the statuses and requests in such a way that we get all statuses, even if there
             // are no requests in that column at this time
@@ -819,7 +876,7 @@ namespace RockWeb.Blocks.Connection
 
             // Filter by date range
             var minDate = sdrpLastActivityDateRange.SelectedDateRange.Start;
-            if (minDate.HasValue)
+            if ( minDate.HasValue )
             {
                 connectionRequestsQuery = connectionRequestsQuery.Where( cr => cr.LastActivityDate >= minDate.Value );
             }
@@ -832,7 +889,7 @@ namespace RockWeb.Blocks.Connection
 
             // Filter requester
             var requesterId = ppRequester.PersonId;
-            if (requesterId.HasValue)
+            if ( requesterId.HasValue )
             {
                 connectionRequestsQuery = connectionRequestsQuery.Where( cr => cr.PersonId == requesterId.Value );
             }
@@ -846,10 +903,22 @@ namespace RockWeb.Blocks.Connection
                         .ThenBy( cr => cr.PersonNickName )
                         .ThenBy( cr => cr.DateOpened );
                     break;
+                case SortProperty.RequestorDesc:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderByDescending( cr => cr.PersonLastName )
+                        .ThenByDescending( cr => cr.PersonNickName )
+                        .ThenBy( cr => cr.DateOpened );
+                    break;
                 case SortProperty.Connector:
                     connectionRequestsQuery = connectionRequestsQuery
                         .OrderBy( cr => cr.ConnectorPersonLastName )
                         .ThenBy( cr => cr.ConnectorPersonNickName )
+                        .ThenBy( cr => cr.DateOpened );
+                    break;
+                case SortProperty.ConnectorDesc:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderByDescending( cr => cr.ConnectorPersonLastName )
+                        .ThenByDescending( cr => cr.ConnectorPersonNickName )
                         .ThenBy( cr => cr.DateOpened );
                     break;
                 case SortProperty.DateAdded:
@@ -864,15 +933,15 @@ namespace RockWeb.Blocks.Connection
                         .ThenBy( cr => cr.PersonLastName )
                         .ThenBy( cr => cr.PersonNickName );
                     break;
-                case SortProperty.LastActivityDesc:
-                    connectionRequestsQuery = connectionRequestsQuery
-                        .OrderByDescending( cr => cr.LastActivityDate )
-                        .ThenBy( cr => cr.PersonLastName )
-                        .ThenBy( cr => cr.PersonNickName );
-                    break;
                 case SortProperty.LastActivity:
                     connectionRequestsQuery = connectionRequestsQuery
                         .OrderBy( cr => cr.LastActivityDate )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
+                case SortProperty.LastActivityDesc:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderByDescending( cr => cr.LastActivityDate )
                         .ThenBy( cr => cr.PersonLastName )
                         .ThenBy( cr => cr.PersonNickName );
                     break;
@@ -886,7 +955,20 @@ namespace RockWeb.Blocks.Connection
                     break;
             }
 
-            var connectionRequestsByStatus = connectionRequestsQuery
+            return connectionRequestsQuery;
+        }
+
+        /// <summary>
+        /// Gets the connection status view models.
+        /// </summary>
+        /// <returns></returns>
+        private List<ConnectionStatusViewModel> GetConnectionStatusViewModels()
+        {
+            var rockContext = new RockContext();
+            var connectionOpportunityService = new ConnectionOpportunityService( rockContext );
+            var connectionRequestViewModelQuery = GetConnectionRequestViewModelQuery();
+
+            var connectionRequestsByStatus = connectionRequestViewModelQuery
                 .ToList()
                 .GroupBy( cr => cr.ConnectionStatusId )
                 .ToDictionary( g => g.Key, g => g.ToList() );
@@ -1411,7 +1493,9 @@ namespace RockWeb.Blocks.Connection
         private enum SortProperty
         {
             Requestor,
+            RequestorDesc,
             Connector,
+            ConnectorDesc,
             DateAdded,
             DateAddedDesc,
             LastActivity,

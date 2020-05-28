@@ -332,8 +332,14 @@
                 </div>
             </div>
 
-            <div id="divListPanel" runat="server" class="panel-body p-0 overflow-scroll">
-                List View
+            <div id="divListPanel" runat="server" class="panel-body p-0">
+                <Rock:Grid ID="gRequests" runat="server" AllowSorting="true" OnSorting="gRequests_Sorting">
+                    <Columns>
+                        <Rock:SelectField></Rock:SelectField>
+                        <Rock:RockLiteralField ID="lStatusColors" HeaderText="" />
+                        <Rock:RockBoundField DataField="PersonFullname" HeaderText="Name" SortExpression="Requestor" />
+                    </Columns>
+                </Rock:Grid>
             </div>
 
             <div id="divBoardPanel" runat="server" class="panel-body p-0 overflow-scroll board-column-container cursor-grab">
