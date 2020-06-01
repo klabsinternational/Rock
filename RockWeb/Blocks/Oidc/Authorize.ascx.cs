@@ -21,11 +21,11 @@ using System.Linq;
 using System.Linq.Dynamic;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Web;
 using AspNet.Security.OpenIdConnect.Extensions;
 using AspNet.Security.OpenIdConnect.Primitives;
 using AspNet.Security.OpenIdConnect.Server;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http.Authentication;
+using Owin;
 using Rock;
 using Rock.Data;
 using Rock.Model;
@@ -37,7 +37,7 @@ namespace RockWeb.Blocks.Oidc
     /// Prompts user for login credentials.
     /// </summary>
     [DisplayName( "Authorize" )]
-    [Category( "Auth" )]
+    [Category( "Oidc" )]
     [Description( "Choose to authorize the auth client to access the user's data." )]
 
     public partial class Authorize : RockBlock
@@ -84,17 +84,8 @@ namespace RockWeb.Blocks.Oidc
             if ( !Page.IsPostBack )
             {
                 Task.Run(async () => {
-                    if ( IsValidAuthorizationRequest() )
-                    {
-                        pnlPanel.Visible = true;
-                        await BindClientName();
-                        BindScopes();
-                    }
-                    else
-                    {
-                        pnlPanel.Visible = false;
-                        BindValidationError();
-                    }
+                    await BindClientName();
+                    BindScopes();
                 } ).Wait();
             }
         }
@@ -104,51 +95,18 @@ namespace RockWeb.Blocks.Oidc
         #region Methods
 
         /// <summary>
-        /// Determines whether [is valid authorization request].
+        /// Shows the error.
         /// </summary>
-        /// <returns>
-        ///   <c>true</c> if [is valid authorization request]; otherwise, <c>false</c>.
-        /// </returns>
-        private bool IsValidAuthorizationRequest()
+        /// <param name="message">The message.</param>
+        private void ShowError( string message )
         {
-            return Response == null || Response.StatusCode / 100 == 2;
-        }
-
-        /// <summary>
-        /// Gets the authorization validation error.
-        /// </summary>
-        /// <returns></returns>
-        private string GetAuthorizationValidationError()
-        {
-            if ( IsValidAuthorizationRequest() )
-            {
-                return string.Empty;
-            }
-
-            // TODO figure out how to get the error set within Rock.Auth.AuthorizationProvider
-            return "There is a problem with this authorization request and you cannot continue.";
+            nbNotificationBox.Text = message;
+            nbNotificationBox.Visible = true;
         }
 
         #endregion Methods
 
         #region UI Bindings
-
-        /// <summary>
-        /// Binds the validation error.
-        /// </summary>
-        private void BindValidationError()
-        {
-            var error = GetAuthorizationValidationError();
-
-            if ( error.IsNullOrWhiteSpace() )
-            {
-                nbNotificationBox.Visible = false;
-                return;
-            }
-
-            nbNotificationBox.Visible = true;
-            nbNotificationBox.Text = error;
-        }
 
         /// <summary>
         /// Binds the name of the client.
@@ -220,50 +178,67 @@ namespace RockWeb.Blocks.Oidc
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void btnAllow_Click( object sender, EventArgs e )
         {
+            var owinContext = Context.GetOwinContext();
+
+            var response = owinContext.GetOpenIdConnectResponse();
+            if ( response != null )
+            {
+                ShowError( response.ErrorDescription.IsNullOrWhiteSpace() ? "Response is not null" : response.ErrorDescription );
+                return;
+            }
+
+            var request = owinContext.GetOpenIdConnectRequest();
+            if ( request == null )
+            {
+                ShowError( "Request is null" );
+                return;
+            }
+
+            // Note: Owin.Security.OpenIdConnect.Server automatically ensures an application
+            // corresponds to the client_id specified in the authorization request using
+            // IOpenIdConnectServerProvider.ValidateClientRedirectUri (see AuthorizationProvider.cs).
+            // In theory, this null check is thus not strictly necessary. That said, a race condition
+            // and a null reference exception could appear here if you manually removed the application
+            // details from the database after the initial check made by Owin.Security.OpenIdConnect.Server.
+            AuthClient authClient = null;
+            Task.Run( async () => authClient = await GetAuthClient() ).Wait();
+
+            if ( authClient == null )
+            {
+                ShowError( "The auth client was not found" );
+                return;
+            }
+
             // Create a new ClaimsIdentity containing the claims that
             // will be used to create an id_token, a token or a code.
-            var identity = new ClaimsIdentity(
-                OpenIdConnectServerDefaults.AuthenticationScheme,
-                OpenIdConnectConstants.Claims.Name,
-                OpenIdConnectConstants.Claims.Role );
+            var identity = new ClaimsIdentity( "Bearer" );
 
-            // Note: the "sub" claim is mandatory and an exception is thrown if this claim is missing.
-            var subjectClaim = new Claim( OpenIdConnectConstants.Claims.Subject, CurrentPerson.Guid.ToString() );
-            subjectClaim.SetDestinations(
-                OpenIdConnectConstants.Destinations.AccessToken,
-                OpenIdConnectConstants.Destinations.IdentityToken );
-
-            var nameClaim = new Claim( OpenIdConnectConstants.Claims.Name, CurrentPerson.FullName );
-            subjectClaim.SetDestinations(
-                OpenIdConnectConstants.Destinations.AccessToken,
-                OpenIdConnectConstants.Destinations.IdentityToken );
-
-            identity.AddClaim( subjectClaim );
-            identity.AddClaim( nameClaim );
-
-            // Create a new authentication ticket holding the user identity.
-            var ticket = new AuthenticationTicket(
-                new ClaimsPrincipal( identity ),
-                new AuthenticationProperties(),
-                OpenIdConnectServerDefaults.AuthenticationScheme );
-
-            // Set the list of scopes granted to the client application.
-            // Note: this sample always grants the "openid", "email" and "profile" scopes
-            // when they are requested by the client application: a real world application
-            // would probably display a form allowing to select the scopes to grant.
-            ticket.SetScopes( new[]
+            foreach ( var claim in owinContext.Authentication.User.Claims )
             {
-                /* openid: */ OpenIdConnectConstants.Scopes.OpenId,
-                /* email: */ OpenIdConnectConstants.Scopes.Email,
-                /* profile: */ OpenIdConnectConstants.Scopes.Profile,
-                /* offline_access: */ OpenIdConnectConstants.Scopes.OfflineAccess
-            }.Intersect( GetRequestedScopes() ) );
+                // Allow ClaimTypes.Name to be added in the id_token.
+                // ClaimTypes.NameIdentifier is automatically added, even if its
+                // destination is not defined or doesn't include "id_token".
+                // The other claims won't be visible for the client application.
+                if ( claim.Type == ClaimTypes.Name )
+                {
+                    /* TODO
+                    claim.WithDestination( "id_token" )
+                         .WithDestination( "token" );
+                    */
+                }
 
-            // Set the resources servers the access token should be issued for.
-            ticket.SetResources( "resource_server" );
+                identity.AddClaim( claim );
+            }
 
-            // Returning a SignInResult will ask ASOS to serialize the specified identity to build appropriate tokens.
-            return SignIn( ticket.Principal, ticket.Properties, ticket.AuthenticationScheme );
+            // Create a new ClaimsIdentity containing the claims associated with the application.
+            // Note: setting identity.Actor is not mandatory but can be useful to access
+            // the whole delegation chain from the resource server (see ResourceController.cs).
+            identity.Actor = new ClaimsIdentity( "Bearer" );
+            identity.Actor.AddClaim( ClaimTypes.NameIdentifier, authClient.ClientId );
+            identity.Actor.AddClaim( ClaimTypes.Name, authClient.Name, "id_token token" );
+
+            var manager = Request.GetOwinContext().Authentication;
+            manager.SignIn( identity );
         }
 
         protected void btnDeny_Click( object sender, EventArgs e )
@@ -271,7 +246,8 @@ namespace RockWeb.Blocks.Oidc
             // Notify ASOS that the authorization grant has been denied by the resource owner.
             // Note: OpenIdConnectServerHandler will automatically take care of redirecting
             // the user agent to the client application using the appropriate response_mode.
-            return Challenge( OpenIdConnectServerDefaults.AuthenticationScheme );
+            var owinContext = Context.GetOwinContext();
+            owinContext.Authentication.Challenge( OpenIdConnectServerDefaults.AuthenticationScheme );
         }
 
         #endregion Events

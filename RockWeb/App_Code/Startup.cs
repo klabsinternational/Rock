@@ -40,7 +40,7 @@ namespace RockWeb
             app.MapSignalR();
 
             // This is for OIDC Connect
-            Rock.Auth.Startup.OnStartup( app );
+            Rock.Oidc.Startup.OnStartup( app );
 
             // Find any plugins that implement IRockOwinStartup
             try

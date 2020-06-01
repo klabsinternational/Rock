@@ -76,7 +76,7 @@ namespace Rock.Model
             {
                 registeredTypes = new BlockTypeService( rockContext )
                     .Queryable().AsNoTracking()
-                    .Where( b => b.EntityTypeId.HasValue )
+                    .Where( b => b.EntityType.AssemblyName != null )
                     .ToList()
                     .Select( b => Type.GetType( b.EntityType.AssemblyName, false ) )
                     .Where( b => b != null )
