@@ -276,6 +276,7 @@
                                         <li>
                                             <asp:LinkButton runat="server" CommandArgument='<%# Eval("SortBy") %>'>
                                                 <%# Eval("Title") %>
+                                                &nbsp;
                                                 <small class="text-muted"><%# Eval("SubTitle") %></small>
                                             </asp:LinkButton>
                                         </li>
@@ -291,7 +292,7 @@
                             </button>
                             <ul class="dropdown-menu">
                                 <li>
-                                    <asp:LinkButton runat="server" ID="lbAllCampuses" OnClick="lbAllCampuses_Click"></asp:LinkButton>
+                                    <asp:LinkButton runat="server" ID="lbAllCampuses" OnClick="lbAllCampuses_Click">&nbsp</asp:LinkButton>
                                 </li>
                                 <asp:Repeater ID="rptCampuses" runat="server" OnItemCommand="rptCampuses_ItemCommand">
                                     <ItemTemplate>
@@ -333,11 +334,27 @@
             </div>
 
             <div id="divListPanel" runat="server" class="panel-body p-0">
-                <Rock:Grid ID="gRequests" runat="server" AllowSorting="true" OnSorting="gRequests_Sorting">
+                <Rock:Grid ID="gRequests" runat="server" AllowSorting="true" OnSorting="gRequests_Sorting" OnRowDataBound="gRequests_RowDataBound" OnRowSelected="gRequests_RowSelected">
                     <Columns>
                         <Rock:SelectField></Rock:SelectField>
-                        <Rock:RockLiteralField ID="lStatusColors" HeaderText="" />
+                        <Rock:RockLiteralField ID="lStatusIcons" HeaderText="" ItemStyle-HorizontalAlign="Left" HeaderStyle-HorizontalAlign="Left" />
                         <Rock:RockBoundField DataField="PersonFullname" HeaderText="Name" SortExpression="Requestor" />
+                        <Rock:RockBoundField DataField="CampusName" HeaderText="Campus" SortExpression="Campus" />
+                        <Rock:RockBoundField DataField="GroupName" HeaderText="Group" SortExpression="Group" />
+                        <Rock:RockBoundField DataField="ConnectorPersonFullname" HeaderText="Connector" SortExpression="Connector" />
+                        <Rock:RockBoundField DataField="LastActivityText" HeaderText="Last Activity" SortExpression="LastActivity" HtmlEncode="false" />
+                        <asp:TemplateField HeaderText="State" SortExpression="ConnectionState" >
+                            <ItemTemplate>
+                                <%# Eval("StateLabel") %>
+                            </ItemTemplate>
+                        </asp:TemplateField>
+                        <asp:TemplateField HeaderText="Status" SortExpression="Status">
+                            <ItemTemplate>
+                                <span class='label label-<%# Eval("StatusLabel") %>'><%# Eval("StatusName") %></span>
+                            </ItemTemplate>
+                        </asp:TemplateField>
+                        <Rock:SecurityField />
+                        <Rock:DeleteField OnClick="gRequests_Delete" />
                     </Columns>
                 </Rock:Grid>
             </div>
@@ -356,13 +373,11 @@
                                     <div class="board-heading-pill mt-2 mb-3" style="background: #009CE3"></div>
                                 </div>
                                 <div class="board-cards">
-                                    <asp:Repeater ID="rptCards" runat="server">
+                                    <asp:Repeater ID="rptCards" runat="server" OnItemDataBound="rptCards_ItemDataBound" OnItemCommand="rptCards_ItemCommand">
                                         <ItemTemplate>
                                             <div class="board-card">
                                                 <div class="d-flex justify-content-between">
-                                                    <div class="board-card-pills">
-                                                        <div class="board-card-pill badge-danger"></div>
-                                                    </div>
+                                                    <asp:Literal runat="server" ID="lStatusIcons" />
                                                     <%# Eval("CampusHtml") %>
                                                 </div>
                                                 <div class="board-card-main d-flex">
@@ -381,7 +396,11 @@
                                                                 <i class="fa fa-ellipsis-h"></i>
                                                             </button>
                                                             <ul class="dropdown-menu">
-                                                                <li><a href="#">View Details</a></li>
+                                                                <li>
+                                                                    <asp:LinkButton runat="server" CommandArgument='<%# Eval("Id") %>'>
+                                                                        View Details
+                                                                    </asp:LinkButton>
+                                                                </li>
                                                                 <li><a href="#">Mark connected</a></li>
                                                                 <li role="separator" class="divider"></li>
                                                                 <li><a href="#" class="dropdown-item-danger">Delete</a></li>
@@ -411,6 +430,12 @@
             </div>
         
         </asp:Panel>
+
+        <Rock:ModalDialog ID="mdDetail" runat="server" ValidationGroup="vgDetail" Title="Connection Request" Visible="false">
+            <Content>
+                Modal
+            </Content>
+        </Rock:ModalDialog>
 
     </ContentTemplate>
 </asp:UpdatePanel>

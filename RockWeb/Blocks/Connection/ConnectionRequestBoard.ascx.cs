@@ -18,12 +18,16 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Entity;
+using System.Data.Entity.SqlServer;
 using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using OpenXmlPowerTools;
 using Rock;
+using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
+using Rock.Security;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
@@ -37,9 +41,64 @@ namespace RockWeb.Blocks.Connection
     [Category( "Connection" )]
     [Description( "Display the Connection Requests for a selected Connection Opportunity as a list or board view." )]
 
+    [CodeEditorField(
+        "Connection Request Status Icons Template",
+        Description = "Lava Template that can be used to customize what is displayed for the status icons in the connection request grid.",
+        EditorMode = CodeEditorMode.Lava,
+        EditorTheme = CodeEditorTheme.Rock,
+        DefaultValue = ConnectionRequestStatusIconsTemplateDefaultValue,
+        Key = AttributeKey.ConnectionRequestStatusIconsTemplate,
+        Order = 7 )]
+
+    [BooleanField(
+        "Enable Request Security",
+        DefaultBooleanValue = false,
+        Description = "When enabled, the the security column for request would be displayed.",
+        Key = AttributeKey.EnableRequestSecurity,
+        IsRequired = true,
+        Order = 8
+    )]
+
     public partial class ConnectionRequestBoard : RockBlock
     {
+        #region Defaults
+
+        private const string ConnectionRequestStatusIconsTemplateDefaultValue = @"
+<div class='status-list'>
+    {% if ConnectionRequestStatusIcons.IsAssignedToYou %}
+    <span class='badge badge-info js-legend-badge' data-toggle='tooltip' data-original-title='Assigned To You'><span class='sr-only'>Assigned To You</span></span>
+    {% endif %}
+    {% if ConnectionRequestStatusIcons.IsUnassigned %}
+    <span class='badge badge-warning js-legend-badge' data-toggle='tooltip' data-original-title='Unassigned'><span class='sr-only'>Unassigned</span></span>
+    {% endif %}
+    {% if ConnectionRequestStatusIcons.IsCritical %}
+    <span class='badge badge-critical js-legend-badge' data-toggle='tooltip' data-original-title='Critical'><span class='sr-only'>Critical</span></span>
+    {% endif %}
+    {% if ConnectionRequestStatusIcons.IsIdle %}
+    <span class='badge badge-danger js-legend-badge' data-toggle='tooltip' data-original-title='{{ IdleTooltip }}'><span class='sr-only'>{{ IdleTooltip }}</span></span>
+    {% endif %}
+</div>
+";
+
+        #endregion Defaults
+
         #region Keys
+
+        /// <summary>
+        /// Attribute Key
+        /// </summary>
+        private static class AttributeKey
+        {
+            /// <summary>
+            /// The connection request status icons template
+            /// </summary>
+            public const string ConnectionRequestStatusIconsTemplate = "ConnectionRequestStatusIconsTemplate";
+
+            /// <summary>
+            /// The enable request security
+            /// </summary>
+            public const string EnableRequestSecurity = "EnableRequestSecurity";
+        }
 
         /// <summary>
         /// User Preference Key
@@ -102,6 +161,24 @@ namespace RockWeb.Blocks.Connection
             set
             {
                 ViewState["ConnectionOpportunityId"] = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the connection request identifier.
+        /// </summary>
+        /// <value>
+        /// The connection request identifier.
+        /// </value>
+        private int? ConnectionRequestId
+        {
+            get
+            {
+                return ViewState["ConnectionRequestId"].ToStringSafe().AsIntegerOrNull();
+            }
+            set
+            {
+                ViewState["ConnectionRequestId"] = value;
             }
         }
 
@@ -216,7 +293,125 @@ namespace RockWeb.Blocks.Connection
 
         #endregion Base Control Methods
 
-        #region Events
+        #region Helper Methods
+
+        /// <summary>
+        /// Gets the status icon HTML.
+        /// </summary>
+        /// <returns></returns>
+        private string GetStatusIconHtml( ConnectionRequestViewModel viewModel )
+        {
+            if ( viewModel == null )
+            {
+                return string.Empty;
+            }
+
+            var connectionType = GetConnectionType();
+            var daysUntilRequestIdle = connectionType == null ? ( int? ) null : connectionType.DaysUntilRequestIdle;
+            var connectionRequestStatusIconTemplate = GetAttributeValue( AttributeKey.ConnectionRequestStatusIconsTemplate );
+            var mergeFields = new Dictionary<string, object>();
+
+            var connectionRequestStatusIcons = new
+            {
+                viewModel.IsAssignedToYou,
+                viewModel.IsCritical,
+                viewModel.IsIdle,
+                viewModel.IsUnassigned
+            };
+
+            mergeFields.Add( "ConnectionRequestStatusIcons", DotLiquid.Hash.FromAnonymousObject( connectionRequestStatusIcons ) );
+            mergeFields.Add( "IdleTooltip", string.Format( "Idle (no activity in {0} days)", daysUntilRequestIdle ) );
+            return connectionRequestStatusIconTemplate.ResolveMergeFields( mergeFields );
+        }
+
+        /// <summary>
+        /// Shows the modal.
+        /// </summary>
+        private void ShowModal( int connectionRequestId )
+        {
+            ConnectionRequestId = connectionRequestId;
+            mdDetail.Show();
+        }
+
+        #endregion Helper Methods
+
+        #region Grid Events
+
+        /// <summary>
+        /// Handles the RowSelected event of the gRequests control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="RowEventArgs"/> instance containing the event data.</param>
+        protected void gRequests_RowSelected( object sender, RowEventArgs e )
+        {
+            ShowModal( e.RowKeyId );
+        }
+
+        /// <summary>
+        /// Handles the GridRebind event of the gRequests control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        /// <exception cref="System.NotImplementedException"></exception>
+        protected void gRequests_GridRebind( object sender, GridRebindEventArgs e )
+        {
+            BindGrid();
+        }
+
+        /// <summary>
+        /// Handles the Delete event of the gRequests control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="RowEventArgs"/> instance containing the event data.</param>
+        protected void gRequests_Delete( object sender, RowEventArgs e )
+        {
+            using ( var rockContext = new RockContext() )
+            {
+                var service = new ConnectionRequestService( rockContext );
+                var connectionRequest = service.Get( e.RowKeyId );
+                if ( connectionRequest != null )
+                {
+                    string errorMessage;
+                    if ( !service.CanDelete( connectionRequest, out errorMessage ) )
+                    {
+                        ShowError( errorMessage );
+                        return;
+                    }
+
+                    rockContext.WrapTransaction( () =>
+                    {
+                        new ConnectionRequestActivityService( rockContext ).DeleteRange( connectionRequest.ConnectionRequestActivities );
+                        service.Delete( connectionRequest );
+                        rockContext.SaveChanges();
+                    } );
+                }
+            }
+
+            BindGrid();
+        }
+
+        /// <summary>
+        /// Handles the RowDataBound event of the gRequests control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="GridViewRowEventArgs"/> instance containing the event data.</param>
+        protected void gRequests_RowDataBound( object sender, GridViewRowEventArgs e )
+        {
+            if ( e.Row.RowType != DataControlRowType.DataRow )
+            {
+                return;
+            }
+
+            var lStatusIcons = e.Row.FindControl( "lStatusIcons" ) as Literal;
+            var viewModel = e.Row.DataItem as ConnectionRequestViewModel;
+
+            if ( lStatusIcons == null || viewModel == null )
+            {
+                return;
+            }
+
+            lStatusIcons.Text = GetStatusIconHtml( viewModel );
+        }
 
         /// <summary>
         /// Handles the Sorting event of the gRequests control.
@@ -246,11 +441,55 @@ namespace RockWeb.Blocks.Connection
                         sortProperty = SortProperty.RequestorDesc;
                     }
                     break;
+                case SortProperty.Campus:
+                    if ( isDescending )
+                    {
+                        sortProperty = SortProperty.CampusDesc;
+                    }
+                    break;
+                case SortProperty.Group:
+                    if ( isDescending )
+                    {
+                        sortProperty = SortProperty.GroupDesc;
+                    }
+                    break;
+                case SortProperty.Connector:
+                    if ( isDescending )
+                    {
+                        sortProperty = SortProperty.ConnectorDesc;
+                    }
+                    break;
+                case SortProperty.LastActivity:
+                    if ( isDescending )
+                    {
+                        sortProperty = SortProperty.LastActivityDesc;
+                    }
+                    break;
             }
 
             CurrentSortProperty = sortProperty;
+            SaveSettingByConnectionType( UserPreferenceKey.SortBy, CurrentSortProperty.ToString() );
             BindSortOptions();
             BindGrid();
+        }
+
+        #endregion Grid Events
+
+        #region Events
+
+        /// <summary>
+        /// Handles the ItemCommand event of the rptCards control.
+        /// </summary>
+        /// <param name="source">The source of the event.</param>
+        /// <param name="e">The <see cref="RepeaterCommandEventArgs"/> instance containing the event data.</param>
+        protected void rptCards_ItemCommand( object source, RepeaterCommandEventArgs e )
+        {
+            var requestId = e.CommandArgument.ToStringSafe().AsIntegerOrNull();
+
+            if ( requestId.HasValue )
+            {
+                ShowModal( requestId.Value );
+            }
         }
 
         /// <summary>
@@ -299,6 +538,18 @@ namespace RockWeb.Blocks.Connection
 
             rptCards.DataSource = viewModel.Requests;
             rptCards.DataBind();
+        }
+
+        protected void rptCards_ItemDataBound( object sender, RepeaterItemEventArgs e )
+        {
+            if ( e.Item.ItemType != ListItemType.Item && e.Item.ItemType != ListItemType.AlternatingItem )
+            {
+                return;
+            }
+
+            var viewModel = e.Item.DataItem as ConnectionRequestViewModel;
+            var lStatusIcons = e.Item.FindControl( "lStatusIcons" ) as Literal;
+            lStatusIcons.Text = GetStatusIconHtml( viewModel );
         }
 
         /// <summary>
@@ -586,6 +837,14 @@ namespace RockWeb.Blocks.Connection
                 case SortProperty.LastActivityDesc:
                     lSortText.Text = "Sort: Last Activity";
                     break;
+                case SortProperty.Campus:
+                case SortProperty.CampusDesc:
+                    lSortText.Text = "Sort: Campus";
+                    break;
+                case SortProperty.Group:
+                case SortProperty.GroupDesc:
+                    lSortText.Text = "Sort: Group";
+                    break;
                 default:
                     lSortText.Text = "Sort";
                     break;
@@ -632,6 +891,24 @@ namespace RockWeb.Blocks.Connection
         /// </summary>
         private void BindGrid()
         {
+            var connectionRequestEntityId = EntityTypeCache.Get<ConnectionRequest>().Id;
+
+            var canEdit = CanEdit();
+            gRequests.Actions.ShowAdd = canEdit;
+            gRequests.IsDeleteEnabled = canEdit;
+            gRequests.ColumnsOfType<DeleteField>().First().Visible = canEdit;
+
+            gRequests.EntityIdField = "Id";
+            gRequests.PersonIdField = "PersonId";
+            gRequests.EntityTypeId = connectionRequestEntityId;
+            gRequests.DataKeyNames = new string[] { "Id" };
+
+            gRequests.GridRebind += gRequests_GridRebind;
+
+            var securityField = gRequests.ColumnsOfType<SecurityField>().FirstOrDefault();
+            securityField.EntityTypeId = connectionRequestEntityId;
+            securityField.Visible = GetAttributeValue( AttributeKey.EnableRequestSecurity ).AsBoolean();
+
             // Sync the sort controls of the grid with the sort control in the control bar
             var propertyString = CurrentSortProperty.ToString();
             var isDesc = propertyString.EndsWith( "Desc" );
@@ -666,6 +943,29 @@ namespace RockWeb.Blocks.Connection
         #endregion Notification Box
 
         #region Data Access
+
+        /// <summary>
+        /// Determines whether this instance can edit.
+        /// </summary>
+        /// <returns>
+        ///   <c>true</c> if this instance can edit; otherwise, <c>false</c>.
+        /// </returns>
+        private bool CanEdit()
+        {
+            if ( UserCanEdit )
+            {
+                return true;
+            }
+
+            var opportunity = GetConnectionOpportunity();
+
+            if ( opportunity == null )
+            {
+                return false;
+            }
+
+            return opportunity.IsAuthorized( Authorization.EDIT, CurrentPerson );
+        }
 
         /// <summary>
         /// Loads the settings.
@@ -743,6 +1043,16 @@ namespace RockWeb.Blocks.Connection
         }
 
         /// <summary>
+        /// Gets the type of the connection.
+        /// </summary>
+        /// <returns></returns>
+        private ConnectionType GetConnectionType()
+        {
+            var connectionOpportunity = GetConnectionOpportunity();
+            return connectionOpportunity == null ? null : connectionOpportunity.ConnectionType;
+        }
+
+        /// <summary>
         /// Gets the connection opportunity.
         /// </summary>
         /// <returns></returns>
@@ -756,7 +1066,9 @@ namespace RockWeb.Blocks.Connection
 
             var rockContext = new RockContext();
             var connectionOpportunityService = new ConnectionOpportunityService( rockContext );
-            var query = connectionOpportunityService.Queryable().AsNoTracking();
+            var query = connectionOpportunityService.Queryable()
+                .Include( co => co.ConnectionType )
+                .AsNoTracking();
 
             _connectionOpportunity = ConnectionOpportunityId.HasValue ?
                 query.FirstOrDefault( co => co.Id == ConnectionOpportunityId.Value ) :
@@ -838,6 +1150,12 @@ namespace RockWeb.Blocks.Connection
         {
             var rockContext = new RockContext();
             var connectionRequestService = new ConnectionRequestService( rockContext );
+            var currentDateTime = RockDateTime.Now;
+            var midnightToday = RockDateTime.Today.AddDays( 1 );
+
+            var connectionType = GetConnectionType();
+            var daysUntilIdle = connectionType == null ? 1 : connectionType.DaysUntilRequestIdle;
+            var idleDate = currentDateTime.AddDays( 0 - daysUntilIdle );
 
             // Query the statuses and requests in such a way that we get all statuses, even if there
             // are no requests in that column at this time
@@ -848,7 +1166,8 @@ namespace RockWeb.Blocks.Connection
                     ( !CampusId.HasValue || CampusId.Value == cr.CampusId.Value ) )
                 .Select( cr => new ConnectionRequestViewModel
                 {
-                    ConnectionStatusId = cr.ConnectionStatusId,
+                    Id = cr.Id,
+                    StatusId = cr.ConnectionStatusId,
                     PersonId = cr.PersonAlias.PersonId,
                     PersonNickName = cr.PersonAlias.Person.NickName,
                     PersonLastName = cr.PersonAlias.Person.LastName,
@@ -861,6 +1180,45 @@ namespace RockWeb.Blocks.Connection
                     ConnectorPersonAliasId = cr.ConnectorPersonAliasId,
                     ActivityCount = cr.ConnectionRequestActivities.Count,
                     DateOpened = cr.CreatedDateTime,
+                    GroupName = cr.AssignedGroup.Name,
+                    StatusName = cr.ConnectionStatus.Name,
+                    IsStatusCritical = cr.ConnectionStatus != null && cr.ConnectionStatus.IsCritical,
+                    IsAssignedToYou = cr.ConnectorPersonAliasId == CurrentPersonAliasId,
+                    IsCritical =
+                        cr.ConnectionStatus != null &&
+                        cr.ConnectionStatus.IsCritical &&
+                        (
+                            cr.ConnectionState == ConnectionState.Active ||
+                            (
+                                cr.ConnectionState == ConnectionState.FutureFollowUp &&
+                                cr.FollowupDate.HasValue && cr.FollowupDate.Value < midnightToday
+                            )
+                        ),
+                    IsIdle =
+                        (
+                            cr.ConnectionState == ConnectionState.Active ||
+                            (
+                                cr.ConnectionState == ConnectionState.FutureFollowUp &&
+                                cr.FollowupDate.HasValue &&
+                                cr.FollowupDate.Value < midnightToday
+                            )
+                        ) && (
+                            (
+                                cr.ConnectionRequestActivities.Any( ra => ra.CreatedDateTime.HasValue ) &&
+                                cr.ConnectionRequestActivities.Where( ra => ra.CreatedDateTime.HasValue ).Max( ra => ra.CreatedDateTime.Value ) < idleDate
+                            ) || (
+                                !cr.ConnectionRequestActivities.Any( ra => ra.CreatedDateTime.HasValue ) &&
+                                cr.CreatedDateTime.HasValue &&
+                                cr.CreatedDateTime.Value < idleDate
+                            )
+                        ),
+                    IsUnassigned = !cr.ConnectorPersonAliasId.HasValue,
+                    ConnectionState = cr.ConnectionState,
+                    LastActivityTypeName = cr.ConnectionRequestActivities
+                        .OrderByDescending( a => a.CreatedDateTime )
+                        .FirstOrDefault()
+                        .ConnectionActivityType
+                        .Name,
                     Order = cr.Order,
                     LastActivityDate = cr.ConnectionRequestActivities
                         .Select( cra => cra.CreatedDateTime )
@@ -945,6 +1303,30 @@ namespace RockWeb.Blocks.Connection
                         .ThenBy( cr => cr.PersonLastName )
                         .ThenBy( cr => cr.PersonNickName );
                     break;
+                case SortProperty.Campus:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderBy( cr => cr.CampusName )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
+                case SortProperty.CampusDesc:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderByDescending( cr => cr.CampusName )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
+                case SortProperty.Group:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderBy( cr => cr.GroupName )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
+                case SortProperty.GroupDesc:
+                    connectionRequestsQuery = connectionRequestsQuery
+                        .OrderByDescending( cr => cr.GroupName )
+                        .ThenBy( cr => cr.PersonLastName )
+                        .ThenBy( cr => cr.PersonNickName );
+                    break;
                 case SortProperty.Order:
                 default:
                     connectionRequestsQuery = connectionRequestsQuery
@@ -970,7 +1352,7 @@ namespace RockWeb.Blocks.Connection
 
             var connectionRequestsByStatus = connectionRequestViewModelQuery
                 .ToList()
-                .GroupBy( cr => cr.ConnectionStatusId )
+                .GroupBy( cr => cr.StatusId )
                 .ToDictionary( g => g.Key, g => g.ToList() );
 
             var viewModels = connectionOpportunityService.Queryable()
@@ -1114,6 +1496,13 @@ namespace RockWeb.Blocks.Connection
         /// </summary>
         private class ConnectionRequestViewModel
         {
+            #region Properties
+
+            /// <summary>
+            /// Gets or sets the identifier.
+            /// </summary>
+            public int Id { get; set; }
+
             /// <summary>
             /// Requester Person Id
             /// </summary>
@@ -1150,9 +1539,6 @@ namespace RockWeb.Blocks.Connection
             /// <summary>
             /// Gets or sets the name of the connector person.
             /// </summary>
-            /// <value>
-            /// The name of the connector person.
-            /// </value>
             public string ConnectorPersonNickName { get; set; }
 
             /// <summary>
@@ -1173,7 +1559,17 @@ namespace RockWeb.Blocks.Connection
             /// <summary>
             /// Connection Status Id
             /// </summary>
-            public int ConnectionStatusId { get; set; }
+            public int StatusId { get; set; }
+
+            /// <summary>
+            /// Gets or sets the name of the status.
+            /// </summary>
+            public string StatusName { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether this instance is status critical.
+            /// </summary>
+            public bool IsStatusCritical { get; set; }
 
             /// <summary>
             /// Activity count
@@ -1191,12 +1587,100 @@ namespace RockWeb.Blocks.Connection
             public DateTime? DateOpened { get; set; }
 
             /// <summary>
+            /// Gets or sets the name of the group.
+            /// </summary>
+            public string GroupName { get; set; }
+
+            /// <summary>
+            /// Gets or sets the last activity.
+            /// </summary>
+            public string LastActivityTypeName { get; set; }
+
+            /// <summary>
             /// Gets or sets the order.
             /// </summary>
-            /// <value>
-            /// The order.
-            /// </value>
             public int Order { get; set; }
+
+            /// <summary>
+            /// Gets or sets the state of the connection.
+            /// </summary>
+            public ConnectionState ConnectionState { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether this instance is assigned to you.
+            /// </summary>
+            public bool IsAssignedToYou { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether this instance is critical.
+            /// </summary>
+            public bool IsCritical { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether this instance is idle.
+            /// </summary>
+            public bool IsIdle { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether this instance is unassigned.
+            /// </summary>
+            public bool IsUnassigned { get; set; }
+
+            /// <summary>
+            /// Gets or sets the followup date.
+            /// </summary>
+            public DateTime? FollowupDate { get; set; }
+
+            #endregion Properties
+
+            #region Computed
+
+            /// <summary>
+            /// The state label
+            /// </summary>
+            public string StateLabel
+            {
+                get
+                {
+                    var css = string.Empty;
+
+                    switch ( ConnectionState )
+                    {
+                        case ConnectionState.Active:
+                            css = "success";
+                            break;
+                        case ConnectionState.Inactive:
+                            css = "danger";
+                            break;
+                        case ConnectionState.FutureFollowUp:
+                            css = ( FollowupDate.HasValue && FollowupDate.Value > RockDateTime.Today ) ? "info" : "danger";
+                            break;
+                        case ConnectionState.Connected:
+                            css = "success";
+                            break;
+                    }
+
+                    var text = ConnectionState.ConvertToString();
+
+                    if ( ConnectionState == ConnectionState.FutureFollowUp && FollowupDate.HasValue )
+                    {
+                        text += string.Format( " ({0})", FollowupDate.Value.ToShortDateString() );
+                    }
+
+                    return string.Format( "<span class='label label-{0}'>{1}</span>", css, text );
+                }
+            }
+
+            /// <summary>
+            /// Gets or sets the status label.
+            /// </summary>
+            public string StatusLabel
+            {
+                get
+                {
+                    return IsStatusCritical ? "warning" : "info";
+                }
+            }
 
             /// <summary>
             /// Activity Count Text
@@ -1211,6 +1695,24 @@ namespace RockWeb.Blocks.Connection
                     }
 
                     return string.Format( "{0} Activities", ActivityCount );
+                }
+            }
+
+            /// <summary>
+            /// Gets the last activity text.
+            /// </summary>
+            public string LastActivityText
+            {
+                get
+                {
+                    if ( !LastActivityTypeName.IsNullOrWhiteSpace() && LastActivityDate.HasValue )
+                    {
+                        return string.Format( "{0} (<span class='small'>{1}</small>)",
+                                LastActivityTypeName,
+                                LastActivityDate.ToRelativeDateString() );
+                    }
+
+                    return string.Empty;
                 }
             }
 
@@ -1372,6 +1874,8 @@ namespace RockWeb.Blocks.Connection
                     return string.Format( "{0} Days Since Last Activity", DaysSinceLastActivity.Value );
                 }
             }
+
+            #endregion Computed
         }
 
         /// <summary>
@@ -1500,7 +2004,15 @@ namespace RockWeb.Blocks.Connection
             DateAddedDesc,
             LastActivity,
             LastActivityDesc,
-            Order
+            Order,
+            Campus,
+            CampusDesc,
+            Group,
+            GroupDesc,
+            Status,
+            StatusDesc,
+            State,
+            StateDesc
         }
 
         #endregion Enums
