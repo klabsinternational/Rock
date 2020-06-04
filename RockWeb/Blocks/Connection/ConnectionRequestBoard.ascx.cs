@@ -22,6 +22,7 @@ using System.Data.Entity.SqlServer;
 using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using DocumentFormat.OpenXml.Office2013.PowerPoint.Roaming;
 using OpenXmlPowerTools;
 using Rock;
 using Rock.Attribute;
@@ -160,7 +161,13 @@ namespace RockWeb.Blocks.Connection
             }
             set
             {
-                ViewState["ConnectionOpportunityId"] = value;
+                var currentValue = ConnectionOpportunityId;
+
+                if ( currentValue != value )
+                {
+                    ViewState["ConnectionOpportunityId"] = value;
+                    ConnectionRequestId = null;
+                }
             }
         }
 
@@ -330,6 +337,18 @@ namespace RockWeb.Blocks.Connection
         private void ShowModal( int connectionRequestId )
         {
             ConnectionRequestId = connectionRequestId;
+            var viewModel = GetConnectionRequestViewModel();
+
+            if (viewModel == null)
+            {
+                return;
+            }
+
+            divModalPhoto.Attributes["title"] = string.Format( "{0} Profile Photo", viewModel.PersonFullname );
+            divModalPhoto.Style["background-image"] = string.Format( "url( '{0}' );", viewModel.PersonPhotoUrl );
+            lModalConnectorFullName.Text = viewModel.ConnectorPersonFullname;
+            lModalPersonFullName.Text = viewModel.PersonFullname;
+
             mdDetail.Show();
         }
 
@@ -522,11 +541,11 @@ namespace RockWeb.Blocks.Connection
         }
 
         /// <summary>
-        /// Handles the ItemDataBound event of the rptColumns control.
+        /// Handles the ItemDataBound event of the rptStatusColumns control.
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        protected void rptColumns_ItemDataBound( object sender, RepeaterItemEventArgs e )
+        protected void rptStatusColumns_ItemDataBound( object sender, RepeaterItemEventArgs e )
         {
             if ( e.Item.ItemType != ListItemType.Item && e.Item.ItemType != ListItemType.AlternatingItem )
             {
@@ -882,8 +901,8 @@ namespace RockWeb.Blocks.Connection
         /// </summary>
         private void BindColumnsRepeater()
         {
-            rptColumns.DataSource = GetConnectionStatusViewModels();
-            rptColumns.DataBind();
+            rptStatusColumns.DataSource = GetConnectionStatusViewModels();
+            rptStatusColumns.DataBind();
         }
 
         /// <summary>
@@ -1043,6 +1062,29 @@ namespace RockWeb.Blocks.Connection
         }
 
         /// <summary>
+        /// Gets the connection request view model.
+        /// </summary>
+        /// <returns></returns>
+        private ConnectionRequestViewModel GetConnectionRequestViewModel()
+        {
+            // Do not make a db call if the id and current record are in sync
+            if ( _connectionRequestViewModel != null && _connectionRequestViewModel.Id == ConnectionRequestId )
+            {
+                return _connectionRequestViewModel;
+            }
+
+            if ( !ConnectionRequestId.HasValue )
+            {
+                _connectionRequestViewModel = null;
+                return _connectionRequestViewModel;
+            }
+
+            _connectionRequestViewModel = GetConnectionRequestViewModelQuery().FirstOrDefault( cr => cr.Id == ConnectionRequestId.Value );
+            return _connectionRequestViewModel;
+        }
+        private ConnectionRequestViewModel _connectionRequestViewModel = null;
+
+        /// <summary>
         /// Gets the type of the connection.
         /// </summary>
         /// <returns></returns>
@@ -1078,6 +1120,7 @@ namespace RockWeb.Blocks.Connection
             if ( !ConnectionOpportunityId.HasValue && _connectionOpportunity != null )
             {
                 ConnectionOpportunityId = _connectionOpportunity.Id;
+                ConnectionRequestId = null;
             }
 
             return _connectionOpportunity;
@@ -1182,6 +1225,7 @@ namespace RockWeb.Blocks.Connection
                     DateOpened = cr.CreatedDateTime,
                     GroupName = cr.AssignedGroup.Name,
                     StatusName = cr.ConnectionStatus.Name,
+                    StatusHighlightColor = cr.ConnectionStatus.HighlightColor,
                     IsStatusCritical = cr.ConnectionStatus != null && cr.ConnectionStatus.IsCritical,
                     IsAssignedToYou = cr.ConnectorPersonAliasId == CurrentPersonAliasId,
                     IsCritical =
@@ -1365,13 +1409,19 @@ namespace RockWeb.Blocks.Connection
                 .Select( cs => new ConnectionStatusViewModel
                 {
                     Id = cs.Id,
-                    Name = cs.Name
+                    Name = cs.Name,
+                    HighlightColor = cs.HighlightColor
                 } )
                 .ToList();
 
             foreach ( var viewModel in viewModels )
             {
                 viewModel.Requests = connectionRequestsByStatus.GetValueOrDefault( viewModel.Id, new List<ConnectionRequestViewModel>() );
+
+                if (viewModel.HighlightColor.IsNullOrWhiteSpace())
+                {
+                    viewModel.HighlightColor = ConnectionStatus.DefaultHighlightColor;
+                }
             }
 
             return viewModels;
@@ -1483,6 +1533,14 @@ namespace RockWeb.Blocks.Connection
             public string Name { get; set; }
 
             /// <summary>
+            /// Gets or sets the color of the highlight.
+            /// </summary>
+            /// <value>
+            /// The color of the highlight.
+            /// </value>
+            public string HighlightColor { get; set; }
+
+            /// <summary>
             /// Gets or sets the requests.
             /// </summary>
             /// <value>
@@ -1499,7 +1557,7 @@ namespace RockWeb.Blocks.Connection
             #region Properties
 
             /// <summary>
-            /// Gets or sets the identifier.
+            /// Connection Request Id
             /// </summary>
             public int Id { get; set; }
 
@@ -1565,6 +1623,22 @@ namespace RockWeb.Blocks.Connection
             /// Gets or sets the name of the status.
             /// </summary>
             public string StatusName { get; set; }
+
+            /// <summary>
+            /// Gets or sets the color of the status highlight.
+            /// </summary>
+            public string StatusHighlightColor
+            {
+                get
+                {
+                    return _statusHighlightColor.IsNullOrWhiteSpace() ? ConnectionStatus.DefaultHighlightColor : _statusHighlightColor;
+                }
+                set
+                {
+                    _statusHighlightColor = value;
+                }
+            }
+            private string _statusHighlightColor = null;
 
             /// <summary>
             /// Gets or sets a value indicating whether this instance is status critical.

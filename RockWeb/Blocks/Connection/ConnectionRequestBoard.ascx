@@ -350,7 +350,7 @@
                         </asp:TemplateField>
                         <asp:TemplateField HeaderText="Status" SortExpression="Status">
                             <ItemTemplate>
-                                <span class='label label-<%# Eval("StatusLabel") %>'><%# Eval("StatusName") %></span>
+                                <span class="label label-default" style="background-color: <%# Eval("StatusHighlightColor") %>;"><%# Eval("StatusName") %></span>
                             </ItemTemplate>
                         </asp:TemplateField>
                         <Rock:SecurityField />
@@ -362,7 +362,7 @@
             <div id="divBoardPanel" runat="server" class="panel-body p-0 overflow-scroll board-column-container cursor-grab">
                 <div class="d-flex flex-row w-100 h-100">
 
-                    <asp:Repeater ID="rptColumns" runat="server" OnItemDataBound="rptColumns_ItemDataBound">
+                    <asp:Repeater ID="rptStatusColumns" runat="server" OnItemDataBound="rptStatusColumns_ItemDataBound">
                         <ItemTemplate>
                             <div class="board-column">
                                 <div class="board-heading mt-3">
@@ -370,7 +370,7 @@
                                         <span class="board-column-title"><%# Eval("Name") %></span>
                                         <span class="board-count"><%# Eval("Requests.Count") %></span>
                                     </div>
-                                    <div class="board-heading-pill mt-2 mb-3" style="background: #009CE3"></div>
+                                    <div class="board-heading-pill mt-2 mb-3" style="background: <%# Eval("HighlightColor") %>"></div>
                                 </div>
                                 <div class="board-cards">
                                     <asp:Repeater ID="rptCards" runat="server" OnItemDataBound="rptCards_ItemDataBound" OnItemCommand="rptCards_ItemCommand">
@@ -433,7 +433,17 @@
 
         <Rock:ModalDialog ID="mdDetail" runat="server" ValidationGroup="vgDetail" Title="Connection Request" Visible="false">
             <Content>
-                Modal
+                <div class="board-card-main d-flex">
+                    <div class="flex-grow-1 mb-2">
+                        <div id="divModalPhoto" runat="server" class="board-card-photo mb-1"></div>
+                        <div class="board-card-name">
+                            <asp:Literal ID="lModalPersonFullName" runat="server" />
+                        </div>
+                        <span class="board-card-assigned d-block text-muted">
+                            <asp:Literal ID="lModalConnectorFullName" runat="server" />
+                        </span>
+                    </div>
+                </div>
             </Content>
         </Rock:ModalDialog>
 
