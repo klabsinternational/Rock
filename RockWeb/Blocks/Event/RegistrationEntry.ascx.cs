@@ -1477,21 +1477,7 @@ namespace RockWeb.Blocks.Event
 
                 if ( validDiscount )
                 {
-                    string discountRegistrantNumberString = "for all registrants";
-
-                    if ( discount.MaxRegistrants.IsNotNullOrZero() )
-                    {
-                        if ( RegistrationState.RegistrantCount > discount.MaxRegistrants )
-                        {
-                            discountRegistrantNumberString = discount.MaxRegistrants == 1 ? "for 1 registrant" : string.Format( "for {0} registrants", discount.MaxRegistrants );
-                        }
-                    }
-
-                    string discountTypeAndAmountString = discount.DiscountPercentage > 0.0m ? discount.DiscountPercentage.FormatAsPercent() : discount.DiscountAmount.FormatAsCurrency();
-                    
-                    nbDiscountCode.Visible = true;
-                    nbDiscountCode.NotificationBoxType = NotificationBoxType.Success;
-                    nbDiscountCode.Text = string.Format( "Your {0} {1} {2} was successfully applied.", discountTypeAndAmountString, DiscountCodeTerm.ToLower(), discountRegistrantNumberString );
+                    ShowDiscountAppliedNotificationBox( discount );
                 }
 
                 RegistrationState.DiscountCode = validDiscount ? discountCode : string.Empty;
@@ -5112,6 +5098,30 @@ namespace RockWeb.Blocks.Event
         #region Summary/Payment Controls
 
         /// <summary>
+        /// Shows the discount applied notification box with information about the discount and its application.
+        /// </summary>
+        /// <param name="discount">The discount.</param>
+        private void ShowDiscountAppliedNotificationBox( RegistrationTemplateDiscount discount )
+        {
+            string discountRegistrantNumberString = "for all registrants";
+
+            if ( discount.MaxRegistrants.IsNotNullOrZero() )
+            {
+                if ( RegistrationState.RegistrantCount > discount.MaxRegistrants )
+                {
+                    discountRegistrantNumberString = discount.MaxRegistrants == 1 ? "for 1 registrant" : string.Format( "for {0} registrants", discount.MaxRegistrants );
+                }
+            }
+
+            string discountTypeAndAmountString = discount.DiscountPercentage > 0.0m ? discount.DiscountPercentage.FormatAsPercent() : discount.DiscountAmount.FormatAsCurrency();
+            string appliedTypeString = discount.AutoApplyDiscount ? "automatically" : "successfully";
+
+            nbDiscountCode.Visible = true;
+            nbDiscountCode.NotificationBoxType = NotificationBoxType.Success;
+            nbDiscountCode.Text = string.Format( "Your {0} {1} {2} was {3} applied.", discountTypeAndAmountString, DiscountCodeTerm.ToLower(), discountRegistrantNumberString, appliedTypeString );
+        }
+
+        /// <summary>
         /// Creates the summary controls.
         /// </summary>
         /// <param name="setValues">if set to <c>true</c> [set values].</param>
@@ -5254,6 +5264,10 @@ namespace RockWeb.Blocks.Event
                         {
                             nbDiscountCode.Text = string.Format( "'{1}' is not a valid {1}.", discountCode, DiscountCodeTerm );
                             nbDiscountCode.Visible = true;
+                        }
+                        else
+                        {
+                            ShowDiscountAppliedNotificationBox( discount );
                         }
                     }
 
