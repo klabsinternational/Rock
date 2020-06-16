@@ -1778,7 +1778,7 @@ where ISNULL(ValueAsNumeric, 0) != ISNULL((case WHEN LEN([value]) < (100)
 
             // Get the last successful job run date
             var serviceJob = serviceJobService.Get( SystemGuid.ServiceJob.ROCK_CLEANUP.AsGuid() );
-            var minDate = serviceJob?.LastSuccessfulRunDateTime ?? DateTime.MinValue;
+            var minDateKey =  Interaction.GetDateKey( serviceJob?.LastSuccessfulRunDateTime ?? DateTime.MinValue );
 
             /* 2020-04-21 MDP
              *
@@ -1794,7 +1794,7 @@ where ISNULL(ValueAsNumeric, 0) != ISNULL((case WHEN LEN([value]) < (100)
              */
 
             // Un-comment this out when debugging, and make sure to comment it back out when checking in (see above note)
-            ////minDate = DateTime.MinValue;
+            // minDateKey = Interaction.GetDateKey( DateTime.MinValue );
 
             var channelMediumTypeValueId = DefinedValueCache.Get( SystemGuid.DefinedValue.INTERACTIONCHANNELTYPE_WEBSITE ).Id;
             var updateCount = 0;
@@ -1804,6 +1804,11 @@ where ISNULL(ValueAsNumeric, 0) != ISNULL((case WHEN LEN([value]) < (100)
             var pageIdToComponentIdMap = interactionComponentService.Queryable()
                 .AsNoTracking()
                 .Where( ic => ic.InteractionChannel.ChannelTypeMediumValueId == channelMediumTypeValueId )
+                .Select(ic => new {
+                    ic.Id,
+                    ic.EntityId
+                } )
+                .ToList()
                 .Where( ic => ic.EntityId.HasValue )
                 .GroupBy( ic => ic.EntityId.Value )
                 .ToDictionary( g => g.Key, g => g.Select( ic => ic.Id ).ToList() );
@@ -1825,8 +1830,7 @@ where ISNULL(ValueAsNumeric, 0) != ISNULL((case WHEN LEN([value]) < (100)
                 // than one big query to get all pages, which was timing out.
                 var hasViewsSinceMinDate = interactionService.Queryable().AsNoTracking().Any( i =>
                     componentIds.Contains( i.InteractionComponentId ) &&
-                    i.InteractionTimeToServe.HasValue &&
-                    i.InteractionDateTime >= minDate );
+                    i.InteractionDateKey >= minDateKey );
 
                 if ( !hasViewsSinceMinDate )
                 {
@@ -1836,10 +1840,12 @@ where ISNULL(ValueAsNumeric, 0) != ISNULL((case WHEN LEN([value]) < (100)
                 // We want the last 100 interactions included in the median calculation **(reguardless of the minDate)**
                 var recentTimesToServe = interactionService.Queryable().AsNoTracking()
                     .Where( i => componentIds.Contains( i.InteractionComponentId ) )
-                    .Where( i => i.InteractionTimeToServe.HasValue )
                     .OrderByDescending( i => i.InteractionDateTime )
                     .Take( 100 )
-                    .Select( i => i.InteractionTimeToServe.Value )
+                    .Select( i => i.InteractionTimeToServe )
+                    .ToList()
+                    .Where( i => i.HasValue )
+                    .Select( i => i.Value )
                     .OrderBy( i => i )
                     .ToList();
 

@@ -36,6 +36,19 @@ namespace Rock.Model
     [DataContract]
     public partial class Interaction : Model<Interaction>
     {
+        #region Static Methods
+
+        /// <summary>
+        /// Gets the date key.
+        /// </summary>
+        /// <param name="dateTime">The date time.</param>
+        /// <returns></returns>
+        public static int GetDateKey(DateTime dateTime)
+        {
+            return dateTime.ToString( "yyyyMMdd" ).AsInteger();
+        }
+
+        #endregion Static Methods
 
         #region Entity Properties
 
@@ -271,7 +284,7 @@ namespace Rock.Model
         [DataMember]
         public int InteractionDateKey
         {
-            get => InteractionDateTime.ToString( "yyyyMMdd" ).AsInteger();
+            get => GetDateKey( InteractionDateTime );
             private set { }
         }
 
