@@ -23,6 +23,7 @@ using Rock;
 using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
+using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
@@ -157,16 +158,16 @@ namespace RockWeb.Blocks.GroupScheduling
             var scheduledOccurrencesQuery = new AttendanceOccurrenceService( rockContext ).Queryable().Where( a => a.GroupId.HasValue && a.LocationId.HasValue && a.ScheduleId.HasValue && selectedGroupIds.Contains( a.GroupId.Value ) );
             scheduledOccurrencesQuery = scheduledOccurrencesQuery.Where( a => a.OccurrenceDate >= currentDate && a.OccurrenceDate <= latestOccurrenceDate );
 
-            var occurrenceScheduledAttendancesList = scheduledOccurrencesQuery.Select( ao => new
+            var occurrenceScheduledAttendancesList = scheduledOccurrencesQuery.Select( ao => new ScheduledAttendanceInfo
             {
                 Occurrence = ao,
-                ScheduledAttendees = ao.Attendees.Where( a => a.RequestedToAttend == true || a.ScheduledToAttend == true ).Select( a => new
+                ScheduledAttendees = ao.Attendees.Where( a => a.RequestedToAttend == true || a.ScheduledToAttend == true ).Select( a => new ScheduledPersonInfo
                 {
                     ScheduledPerson = a.PersonAlias.Person,
-                    a.RequestedToAttend,
-                    a.ScheduledToAttend,
-                    a.RSVP
-                } )
+                    RequestedToAttend = a.RequestedToAttend,
+                    ScheduledToAttend = a.ScheduledToAttend,
+                    RSVP = a.RSVP
+                } ).ToList()
             } ).ToList();
 
             StringBuilder sbTable = new StringBuilder();
@@ -198,6 +199,7 @@ namespace RockWeb.Blocks.GroupScheduling
             var groupLocationsList = groupsQuery.Where( g => g.GroupLocations.Any() ).OrderBy( a => a.Order ).ThenBy( a => a.Name ).Select( g => new
             {
                 Group = g,
+                PersonRoleMap = g.Members.Select( m => new PersonRoleInGroup { PersonId = m.PersonId, GroupRoleId = m.GroupRoleId } ).ToList(),
                 LocationScheduleCapacitiesList = g.GroupLocations.OrderBy( gl => gl.Order ).ThenBy( gl => gl.Location.Name ).Select( a => new
                 {
                     ScheduleCapacitiesList = a.GroupLocationScheduleConfigs.Select( sc =>
@@ -216,6 +218,7 @@ namespace RockWeb.Blocks.GroupScheduling
             foreach ( var groupLocations in groupLocationsList )
             {
                 var group = groupLocations.Group;
+                var groupType = GroupTypeCache.Get( groupLocations.Group.GroupTypeId );
                 StringBuilder sbGroupLocations = new StringBuilder();
                 sbGroupLocations.AppendLine( string.Format( "<tbody class='group-locations js-group-locations' data-group-id='{0}' data-locations-expanded='1'>", group.Id ) );
 
@@ -254,16 +257,23 @@ namespace RockWeb.Blocks.GroupScheduling
 
                         if ( occurrenceScheduledAttendances != null && occurrenceScheduledAttendances.ScheduledAttendees.Any() )
                         {
+                            foreach ( ScheduledPersonInfo schedulePersonIfno in occurrenceScheduledAttendances.ScheduledAttendees )
+                            {
+                                // 1.7 without
+                                schedulePersonIfno.SetPersonGroupRoleInGroup( groupType, groupLocations.PersonRoleMap );
+                            }
+
                             // sort so that it is Yes, then Pending, then Denied
-                            var scheduledPersonList = occurrenceScheduledAttendances
+                            var attendanceScheduledPersonList = occurrenceScheduledAttendances
                                 .ScheduledAttendees
                                 .OrderBy( a => a.RSVP == RSVP.Yes ? 0 : 1 )
                                 .ThenBy( a => ( a.RSVP == RSVP.Maybe || a.RSVP == RSVP.Unknown ) ? 0 : 1 )
                                 .ThenBy( a => a.RSVP == RSVP.No ? 0 : 1 )
+                                .ThenBy(a => a.GroupTypeRoleOrder)
                                 .ThenBy( a => a.ScheduledPerson.LastName )
                                 .ToList();
 
-                            foreach ( var scheduledPerson in scheduledPersonList )
+                            foreach ( var scheduledPerson in attendanceScheduledPersonList )
                             {
                                 ScheduledAttendanceItemStatus status = ScheduledAttendanceItemStatus.Pending;
                                 if ( scheduledPerson.RSVP == RSVP.No )
@@ -275,10 +285,16 @@ namespace RockWeb.Blocks.GroupScheduling
                                     status = ScheduledAttendanceItemStatus.Confirmed;
                                 }
 
-                                sbScheduledListHtml.AppendLine( string.Format( "<li class='slot person {0}' data-status='{0}'><i class='status-icon'></i><span class='person-name'>{1}</span></li>", status.ConvertToString( false ).ToLower(), scheduledPerson.ScheduledPerson ) );
+                                sbScheduledListHtml.AppendLine(
+                                    string.Format(
+                                        "<li class='slot person {0}' data-status='{0}'><i class='status-icon'></i><span class='person-name'>{1}</span><span class='person-group-role pull-right'>{2}</span></li>",
+                                        status.ConvertToString( false ).ToLower(),
+                                        scheduledPerson.ScheduledPerson,
+                                        scheduledPerson.GroupTypeRole
+                                        ) );
                             }
 
-                            scheduledCount = scheduledPersonList.Where( a => a.RSVP != RSVP.No ).Count();
+                            scheduledCount = attendanceScheduledPersonList.Where( a => a.RSVP != RSVP.No ).Count();
                         }
 
                         if ( capacities.DesiredCapacity.HasValue && scheduledCount < capacities.DesiredCapacity.Value )
@@ -319,7 +335,7 @@ namespace RockWeb.Blocks.GroupScheduling
         }
 
         /// <summary>
-        /// Gets the sunday date list.
+        /// Gets the Sunday date list.
         /// </summary>
         /// <param name="numberOfWeeks">The number of weeks.</param>
         /// <returns></returns>
@@ -451,6 +467,71 @@ namespace RockWeb.Blocks.GroupScheduling
             public int? DesiredCapacity { get; set; }
 
             public int? MaximumCapacity { get; set; }
+        }
+
+        private class ScheduledAttendanceInfo
+        {
+            public AttendanceOccurrence Occurrence { get; set; }
+
+            public List<ScheduledPersonInfo> ScheduledAttendees { get; set; }
+        }
+
+        private class ScheduledPersonInfo
+        {
+            public Person ScheduledPerson { get; set; }
+
+            public GroupTypeRoleCache GroupTypeRole { get; private set; }
+
+            public int GroupTypeRoleOrder
+            {
+                get
+                {
+                    if ( GroupTypeRole != null )
+                    {
+                        return GroupTypeRole.Order;
+                    }
+                    else
+                    {
+                        // put non-members after members
+                        return int.MaxValue;
+                    }
+                }
+            }
+
+            public bool? RequestedToAttend { get; set; }
+
+            public bool? ScheduledToAttend { get; set; }
+
+            public void SetPersonGroupRoleInGroup( GroupTypeCache groupType, List<PersonRoleInGroup> personRoleInGroupList )
+            {
+                var personRolesInGroup = personRoleInGroupList.Where( a => a.PersonId == this.ScheduledPerson.Id ).ToArray();
+                var groupTypeRoles = groupType.Roles.ToDictionary( k => k.Id, v => v );
+                this.GroupTypeRole = null;
+
+                if ( personRolesInGroup.Any() )
+                {
+                    if ( personRolesInGroup.Count() == 1 )
+                    {
+                        this.GroupTypeRole = groupTypeRoles.GetValueOrNull( personRolesInGroup[0].GroupRoleId );
+                    }
+                    else
+                    {
+                        PersonRoleInGroup firstRole = personRolesInGroup.OrderBy( a => groupTypeRoles.GetValueOrNull( personRolesInGroup[0].GroupRoleId ).Order ).FirstOrDefault();
+                        if ( firstRole != null )
+                        {
+                            this.GroupTypeRole = groupTypeRoles.GetValueOrNull( firstRole.GroupRoleId );
+                        }
+                    }
+                }
+            }
+
+            public RSVP RSVP { get; set; }
+        }
+
+        private class PersonRoleInGroup
+        {
+            public int PersonId { get; internal set; }
+            public int GroupRoleId { get; internal set; }
         }
     }
 }

@@ -21,6 +21,7 @@
             <div class="scrollable">
                 <Rock:NotificationBox ID="nbGroupsWarning" runat="server" NotificationBoxType="Warning" Text="Please select at least one group." Visible="false" />
                 <div>
+                    <%-- HTML for Status Board --%>
                     <asp:Literal ID="lGroupStatusTableHTML" runat="server" Visible="true" />
                 </div>
             </div>
