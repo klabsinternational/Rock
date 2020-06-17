@@ -1,4 +1,4 @@
-﻿// <copyright>
+// <copyright>
 // Copyright by the Spark Development Network
 //
 // Licensed under the Rock Community License (the "License");
@@ -1778,7 +1778,7 @@ where ISNULL(ValueAsNumeric, 0) != ISNULL((case WHEN LEN([value]) < (100)
 
             // Get the last successful job run date
             var serviceJob = serviceJobService.Get( SystemGuid.ServiceJob.ROCK_CLEANUP.AsGuid() );
-            var minDateKey =  Interaction.GetDateKey( serviceJob?.LastSuccessfulRunDateTime ?? DateTime.MinValue );
+            var minDate =  serviceJob?.LastSuccessfulRunDateTime ?? DateTime.MinValue;
 
             /* 2020-04-21 MDP
              *
@@ -1794,21 +1794,15 @@ where ISNULL(ValueAsNumeric, 0) != ISNULL((case WHEN LEN([value]) < (100)
              */
 
             // Un-comment this out when debugging, and make sure to comment it back out when checking in (see above note)
-            // minDateKey = Interaction.GetDateKey( DateTime.MinValue );
+            // minDate = DateTime.MinValue;
 
             var channelMediumTypeValueId = DefinedValueCache.Get( SystemGuid.DefinedValue.INTERACTIONCHANNELTYPE_WEBSITE ).Id;
             var updateCount = 0;
 
             // Get interaction components to page map - this eliminates some joins for the query within the loop
             var interactionComponentService = new InteractionComponentService( rockContext );
-            var pageIdToComponentIdMap = interactionComponentService.Queryable()
-                .AsNoTracking()
+            var pageIdToComponentIdMap = InteractionComponentCache.All()
                 .Where( ic => ic.InteractionChannel.ChannelTypeMediumValueId == channelMediumTypeValueId )
-                .Select(ic => new {
-                    ic.Id,
-                    ic.EntityId
-                } )
-                .ToList()
                 .Where( ic => ic.EntityId.HasValue )
                 .GroupBy( ic => ic.EntityId.Value )
                 .ToDictionary( g => g.Key, g => g.Select( ic => ic.Id ).ToList() );
@@ -1830,7 +1824,7 @@ where ISNULL(ValueAsNumeric, 0) != ISNULL((case WHEN LEN([value]) < (100)
                 // than one big query to get all pages, which was timing out.
                 var hasViewsSinceMinDate = interactionService.Queryable().AsNoTracking().Any( i =>
                     componentIds.Contains( i.InteractionComponentId ) &&
-                    i.InteractionDateKey >= minDateKey );
+                    i.InteractionDateTime >= minDate );
 
                 if ( !hasViewsSinceMinDate )
                 {
