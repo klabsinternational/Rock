@@ -1800,7 +1800,6 @@ where ISNULL(ValueAsNumeric, 0) != ISNULL((case WHEN LEN([value]) < (100)
             var updateCount = 0;
 
             // Get interaction components to page map - this eliminates some joins for the query within the loop
-            var interactionComponentService = new InteractionComponentService( rockContext );
             var pageIdToComponentIdMap = InteractionComponentCache.All()
                 .Where( ic => ic.InteractionChannel.ChannelTypeMediumValueId == channelMediumTypeValueId )
                 .Where( ic => ic.EntityId.HasValue )
