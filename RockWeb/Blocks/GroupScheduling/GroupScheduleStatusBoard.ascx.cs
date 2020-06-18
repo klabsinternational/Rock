@@ -287,7 +287,6 @@ namespace RockWeb.Blocks.GroupScheduling
                         {
                             foreach ( ScheduledPersonInfo schedulePersonIfno in occurrenceScheduledAttendances.ScheduledAttendees )
                             {
-                                // 1.7 without
                                 schedulePersonIfno.SetPersonGroupRoleInGroup( groupType, groupLocations.PersonRoleMap );
                             }
 
@@ -318,8 +317,7 @@ namespace RockWeb.Blocks.GroupScheduling
                                         "<li class='slot person {0}' data-status='{0}'><i class='status-icon'></i><span class='person-name'>{1}</span><span class='person-group-role pull-right'>{2}</span></li>",
                                         status.ConvertToString( false ).ToLower(),
                                         scheduledPerson.ScheduledPerson,
-                                        scheduledPerson.GroupTypeRole
-                                        ) );
+                                        scheduledPerson.GroupTypeRole ) );
                             }
 
                             scheduledCount = attendanceScheduledPersonList.Where( a => a.RSVP != RSVP.No ).Count();
@@ -583,9 +581,8 @@ namespace RockWeb.Blocks.GroupScheduling
         private class PersonRoleInGroup
         {
             public int PersonId { get; internal set; }
+
             public int GroupRoleId { get; internal set; }
         }
-
-
     }
 }
