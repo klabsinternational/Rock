@@ -7,6 +7,14 @@
                 <h1 class="panel-title"><i class="fa fa-calendar"></i>Schedule Status Board
                 </h1>
                 <div class="panel-labels">
+                    <asp:LinkButton ID="btnRosters" runat="server" CssClass="btn btn-default btn-xs" OnClick="btnRosters_Click">
+                        <i class="fa fa-calendar-check"></i>
+                        Rosters
+                    </asp:LinkButton>
+                    <asp:LinkButton ID="btnSendCommunications" runat="server" CssClass="btn btn-default btn-xs" OnClick="btnSendCommunications_Click">
+                        <i class="fa fa-envelope"></i>
+                        Send Communications
+                    </asp:LinkButton>
                     <asp:LinkButton ID="btnGroups" runat="server" CssClass="btn btn-default btn-xs" OnClick="btnGroups_Click">
                         <i class="fa fa-users"></i>
                         Groups

@@ -52,6 +52,22 @@ namespace RockWeb.Blocks.GroupScheduling
         IsRequired = false,
         Order = 0 )]
 
+    [LinkedPage(
+        "Roster Page",
+        Key = AttributeKey.RostersPage,
+        Description = "The page to use to view and print a rosters.",
+        IsRequired = false,
+        Order = 1
+        )]
+
+    [LinkedPage(
+        "Communications Page",
+        Key = AttributeKey.CommunicationsPage,
+        Description = "The page to use to send group scheduling communications.",
+        IsRequired = false,
+        Order = 2
+        )]
+
     public partial class GroupScheduleStatusBoard : RockBlock
     {
         #region Fields
@@ -60,6 +76,8 @@ namespace RockWeb.Blocks.GroupScheduling
         {
             public const string ParentGroup = "ParentGroup";
             public const string FutureWeeksToShow = "FutureWeeksToShow";
+            public const string RostersPage = "RostersPage";
+            public const string CommunicationsPage = "CommunicationsPage";
         }
 
         private static class UserPreferenceKey
@@ -82,14 +100,24 @@ namespace RockWeb.Blocks.GroupScheduling
 
             if ( !this.IsPostBack )
             {
-                var rootGroupGuid = this.GetAttributeValue( AttributeKey.ParentGroup ).AsGuidOrNull();
-                if ( rootGroupGuid.HasValue )
-                {
-                    gpGroups.RootGroupId = new GroupService( new RockContext() ).GetId( rootGroupGuid.Value );
-                }
-
+                ApplyBlockSettings();
                 BuildStatusBoard();
             }
+        }
+
+        /// <summary>
+        /// Applies the block settings.
+        /// </summary>
+        private void ApplyBlockSettings()
+        {
+            var rootGroupGuid = this.GetAttributeValue( AttributeKey.ParentGroup ).AsGuidOrNull();
+            if ( rootGroupGuid.HasValue )
+            {
+                gpGroups.RootGroupId = new GroupService( new RockContext() ).GetId( rootGroupGuid.Value );
+            }
+
+            btnSendCommunications.Visible = this.GetAttributeValue( AttributeKey.CommunicationsPage ).IsNotNullOrWhiteSpace();
+            btnRosters.Visible = this.GetAttributeValue( AttributeKey.RostersPage ).IsNotNullOrWhiteSpace();
         }
 
         /// <summary>
@@ -269,7 +297,7 @@ namespace RockWeb.Blocks.GroupScheduling
                                 .OrderBy( a => a.RSVP == RSVP.Yes ? 0 : 1 )
                                 .ThenBy( a => ( a.RSVP == RSVP.Maybe || a.RSVP == RSVP.Unknown ) ? 0 : 1 )
                                 .ThenBy( a => a.RSVP == RSVP.No ? 0 : 1 )
-                                .ThenBy(a => a.GroupTypeRoleOrder)
+                                .ThenBy( a => a.GroupTypeRoleOrder )
                                 .ThenBy( a => a.ScheduledPerson.LastName )
                                 .ToList();
 
@@ -456,6 +484,30 @@ namespace RockWeb.Blocks.GroupScheduling
         }
 
         /// <summary>
+        /// Handles the Click event of the btnSendCommunications control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void btnSendCommunications_Click( object sender, EventArgs e )
+        {
+            Dictionary<string, string> queryParams = new Dictionary<string, string>();
+            queryParams.Add( "GroupIds", GetSelectedGroupIds().AsDelimited( "," ) );
+            NavigateToLinkedPage( AttributeKey.CommunicationsPage, queryParams );
+        }
+
+        /// <summary>
+        /// Handles the Click event of the btnRosters control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void btnRosters_Click( object sender, EventArgs e )
+        {
+            Dictionary<string, string> queryParams = new Dictionary<string, string>();
+            queryParams.Add( "GroupIds", GetSelectedGroupIds().AsDelimited( "," ) );
+            NavigateToLinkedPage( AttributeKey.RostersPage, queryParams );
+        }
+
+        /// <summary>
         ///
         /// </summary>
         public class ScheduleCapacities
@@ -533,5 +585,7 @@ namespace RockWeb.Blocks.GroupScheduling
             public int PersonId { get; internal set; }
             public int GroupRoleId { get; internal set; }
         }
+
+
     }
 }
