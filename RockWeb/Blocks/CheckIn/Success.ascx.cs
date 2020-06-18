@@ -189,8 +189,16 @@ namespace RockWeb.Blocks.CheckIn
 
                         if ( printFromClient.Any() )
                         {
-                            // When debugging and using ngrok you will need to change this to the ngrok address (e.g. var urlRoot = "http://developrock.ngrok.io";). Not sure why this isn't using a global attribute.
                             var urlRoot = string.Format( "{0}://{1}", Request.Url.Scheme, Request.Url.Authority );
+#if DEBUG
+                            // This is extremely useful when debugging with ngrok and an iPad on the local network.
+                            // X-Original-Host will contain the name of your ngrok hostname, therefore the labels will
+                            // get a LabelFile url that will actually work with that iPad.
+                            if ( Request.Headers["X-Forwarded-Proto"] != null && Request.Headers["X-Original-Host" ] != null )
+                            {
+                                urlRoot = string.Format( "{0}://{1}", Request.Headers.GetValues( "X-Forwarded-Proto" ).First(), Request.Headers.GetValues( "X-Original-Host" ).First() );
+                            }
+#endif
                             printFromClient
                                 .OrderBy( l => l.PersonId )
                                 .ThenBy( l => l.Order )
@@ -215,9 +223,11 @@ namespace RockWeb.Blocks.CheckIn
                             if ( attendanceSessionGuidsCookie == null )
                             {
                                 attendanceSessionGuidsCookie = new HttpCookie( CheckInCookieKey.AttendanceSessionGuids );
-                                attendanceSessionGuidsCookie.Expires = RockDateTime.Now.AddHours( 8 );
                                 attendanceSessionGuidsCookie.Value = string.Empty;
                             }
+
+                            // set (or reset) the expiration to be 8 hours from the current time)
+                            attendanceSessionGuidsCookie.Expires = RockDateTime.Now.AddHours( 8 );
 
                             var attendanceSessionGuids = attendanceSessionGuidsCookie.Value.Split( ',' ).AsGuidList();
                             if ( CurrentCheckInState.CheckIn.CurrentFamily.AttendanceCheckinSessionGuid.HasValue )
@@ -229,7 +239,7 @@ namespace RockWeb.Blocks.CheckIn
 
                             Response.Cookies.Set( attendanceSessionGuidsCookie );
 
-                            lCheckinQRCodeHtml.Text = string.Format( "<div class='qr-code-container text-center'><img class='img-responsive qr-code' src='{0}' alt=''></div>", GetAttendanceSessionsQrCodeImageUrl() );
+                            lCheckinQRCodeHtml.Text = string.Format( "<div class='qr-code-container text-center'><img class='img-responsive qr-code' src='{0}' alt='Check-in QR Code' width='500' height='500'></div>", GetAttendanceSessionsQrCodeImageUrl( attendanceSessionGuidsCookie ) );
                         }
 
                     }
