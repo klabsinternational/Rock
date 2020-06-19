@@ -274,7 +274,7 @@ namespace RockWeb.Blocks.GroupScheduling
     {0}
 </ul>";
                         StringBuilder sbScheduledListHtml = new StringBuilder();
-                        var occurrenceScheduledAttendances = occurrenceScheduledAttendancesList
+                        ScheduledAttendanceInfo occurrenceScheduledAttendances = occurrenceScheduledAttendancesList
                             .FirstOrDefault( ao =>
                                  ao.Occurrence.OccurrenceDate == scheduleOccurrenceDate.OccurrenceDate
                                  && ao.Occurrence.GroupId == groupLocations.Group.Id
@@ -300,7 +300,7 @@ namespace RockWeb.Blocks.GroupScheduling
                                 .ThenBy( a => a.ScheduledPerson.LastName )
                                 .ToList();
 
-                            foreach ( var scheduledPerson in attendanceScheduledPersonList )
+                            foreach ( ScheduledPersonInfo scheduledPerson in attendanceScheduledPersonList )
                             {
                                 ScheduledAttendanceItemStatus status = ScheduledAttendanceItemStatus.Pending;
                                 if ( scheduledPerson.RSVP == RSVP.No )
