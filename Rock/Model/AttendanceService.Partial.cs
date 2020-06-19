@@ -155,7 +155,7 @@ namespace Rock.Model
             attendance.DidAttend = true;
 
             return attendance;
-            }
+        }
 
         /// <summary>
         /// Adds or updates an attendance record and will create the occurrence if needed
@@ -531,7 +531,7 @@ namespace Rock.Model
             List<int> campusIds, bool? includeNullCampusIds, List<int> scheduleIds, bool? IncludeParentsWithChild, bool? IncludeChildrenWithParents )
         {
             var parameters = GetAttendanceAnalyticsParameters( null, groupIds, start, end, campusIds, includeNullCampusIds, scheduleIds, IncludeParentsWithChild, IncludeChildrenWithParents );
-            return DbService.GetDataSet( "spCheckin_AttendanceAnalyticsQuery_Attendees", System.Data.CommandType.StoredProcedure, parameters, 300 ); 
+            return DbService.GetDataSet( "spCheckin_AttendanceAnalyticsQuery_Attendees", System.Data.CommandType.StoredProcedure, parameters, 300 );
         }
 
         /// <summary>
@@ -1057,21 +1057,42 @@ namespace Rock.Model
                  * - The Sunday schedule for 12 is marked inactive
                  * - Alisha comes to the scheduler block to put Ted in another schedule but she cannot because:
                  *      - Ted is "already scheduled" and doesn't show in the available people panel
-                 *      - Alisha cannot remove Ted's now invalid assignement because she can no longer see the inactive schedule
+                 *      - Alisha cannot remove Ted's now invalid assignment because she can no longer see the inactive schedule
                  */
-                var scheduledAttendanceGroupIdsLookup = attendanceService.Queryable()
-                    .Where( a => ( a.RequestedToAttend == true || a.ScheduledToAttend == true )
-                              && a.Occurrence.ScheduleId == schedulerResourceParameters.AttendanceOccurrenceScheduleId
-                              && scheduleOccurrenceDateList.Contains( a.Occurrence.OccurrenceDate )
-                              && a.Occurrence.GroupId.HasValue )
+
+
+                var scheduledAttendanceGroupIdsLookupQuery = attendanceService.Queryable()
+                   .Where( a => ( a.RequestedToAttend == true || a.ScheduledToAttend == true )
+                             && a.Occurrence.ScheduleId == schedulerResourceParameters.AttendanceOccurrenceScheduleId
+                             && a.Occurrence.GroupId.HasValue );
+
+                /* MP 2020-06-18
+                 * Updated query to use an inner join against PersonAlias/Person to improve performance.
+                 * Also updated personScheduleExclusionLookupByPersonId so that it gets the data from SQL
+                 * but does the GroupBy in C#. This improves the performance quite a bit. For example, in a case where
+                 * there are a large number of people (40,000+) scheduled,
+                 * the query returns in less than a second vs timing out
+                 */
+
+                // Create explicit joins to person alias and person tables so that rendered SQL has an INNER Joins vs OUTER joins on Person and PersonAlias
+                var personAliasQry = new PersonAliasService( rockContext ).Queryable();
+                var personQryForJoin = new PersonService( rockContext ).Queryable();
+
+                // load personId/groupId into a list before doing a GroupBy
+                var scheduledAttendancePersonIdGroupIdsQuery = scheduledAttendanceGroupIdsLookupQuery
                     .WhereDeducedIsActive()
-                    .GroupBy( a => a.PersonAlias.PersonId )
-                    .Select( a => new
+                    .Join( personAliasQry, a => a.PersonAliasId, pa => pa.Id, ( a, pa ) => new
                     {
-                        PersonId = a.Key,
-                        ScheduledOccurrenceGroupIds = a.Select( x => x.Occurrence.GroupId.Value ).ToList()
-                    } )
-                    .ToDictionary( k => k.PersonId, v => v.ScheduledOccurrenceGroupIds );
+                        pa.PersonId,
+                        a.Occurrence.GroupId
+                    } );
+
+                var scheduledAttendancePersonIdGroupIdsList = scheduledAttendancePersonIdGroupIdsQuery.ToList();
+
+                // now that we have a list from the database, use C# to have a dictionary of groupIds for each person
+                var scheduledAttendanceGroupIdsLookup = scheduledAttendancePersonIdGroupIdsList
+                    .GroupBy( a => a.PersonId )
+                    .ToDictionary( k => k.Key, v => v.Select( x => x.GroupId ).ToList() );
 
                 var personScheduleExclusionLookupByPersonId = personScheduleExclusionQueryForOccurrenceDates
                     .Select( s => new { s.PersonAlias.PersonId, s.StartDate, s.EndDate } ).ToList()
@@ -1145,28 +1166,46 @@ namespace Rock.Model
 
             IQueryable<PersonScheduleExclusion> personScheduleExclusionQueryForOccurrence = GetPersonScheduleExclusionQueryForOccurrenceDates( groupId, scheduleOccurrenceDateList );
 
-            var scheduledAttendancesQuery = this.Queryable()
-                .Where( a => a.OccurrenceId == attendanceOccurrenceId
-                 && a.PersonAliasId.HasValue
-                 && ( a.RequestedToAttend == true || a.ScheduledToAttend == true ) )
-                .Select( a => new
+            var rockContext = this.Context as RockContext;
+
+            // Create explicit joins to person alias and person tables so that rendered SQL has an INNER Joins vs OUTER joins on Person and PersonAlias
+            var personAliasQry = new PersonAliasService( rockContext ).Queryable();
+            var personQryForJoin = new PersonService( rockContext ).Queryable();
+
+            var attendancePersonQuery = this.Queryable()
+                .Where( a => a.OccurrenceId == attendanceOccurrenceId )
+                .Where( a => a.PersonAliasId.HasValue )
+                .Where( a => a.RequestedToAttend == true || a.ScheduledToAttend == true )
+                .Join( personAliasQry, a => a.PersonAliasId, pa => pa.Id, ( a, pa ) => new
                 {
-                    a.Id,
-                    a.RSVP,
-                    a.ScheduledToAttend,
-                    a.PersonAlias.PersonId,
-                    a.PersonAlias.Person.NickName,
-                    a.PersonAlias.Person.LastName,
-                    a.PersonAlias.Person.SuffixValueId,
-                    a.PersonAlias.Person.RecordTypeValueId,
-                    // set HasSchedulingConflict = true if the same person is requested/scheduled for another attendance within the same ScheduleId/Date
-                    HasSchedulingConflict = conflictingScheduledAttendancesQuery.Any( c => c.Id != a.Id
-                                                                                    && c.PersonAlias.PersonId == a.PersonAlias.PersonId
-                                                                                    && ( c.RequestedToAttend == true || c.ScheduledToAttend == true )
-                                                                                    && c.Occurrence.ScheduleId == scheduleId
-                                                                                    && c.Occurrence.OccurrenceDate == occurrenceDate ),
-                    BlackoutDateRanges = personScheduleExclusionQueryForOccurrence.Where( e => e.PersonAlias.PersonId == a.PersonAlias.PersonId ).Select( s => new { s.StartDate, s.EndDate } ).ToList()
+                    Attendance = a,
+                    PersonId = pa.PersonId
+                } )
+                .Join( personQryForJoin, j1 => j1.PersonId, p => p.Id, ( j1, p ) => new
+                {
+                    Attendance = j1.Attendance,
+                    Person = p
                 } );
+
+
+            var scheduledAttendancesQuery = attendancePersonQuery.Select( ap => new
+            {
+                AttendanceId = ap.Attendance.Id,
+                ap.Attendance.RSVP,
+                ap.Attendance.ScheduledToAttend,
+                PersonId = ap.Person.Id,
+                NickName = ap.Person.NickName,
+                LastName = ap.Person.LastName,
+                SuffixValueId = ap.Person.SuffixValueId,
+                RecordTypeValueId = ap.Person.RecordTypeValueId,
+                // set HasSchedulingConflict = true if the same person is requested/scheduled for another attendance within the same ScheduleId/Date
+                HasSchedulingConflict = conflictingScheduledAttendancesQuery.Any( c => c.Id != ap.Attendance.Id
+                                                                                && c.PersonAlias.PersonId == ap.Person.Id
+                                                                                && ( c.RequestedToAttend == true || c.ScheduledToAttend == true )
+                                                                                && c.Occurrence.ScheduleId == scheduleId
+                                                                                && c.Occurrence.OccurrenceDate == occurrenceDate ),
+                BlackoutDateRanges = personScheduleExclusionQueryForOccurrence.Where( e => e.PersonAlias.PersonId == ap.Person.Id ).Select( s => new { s.StartDate, s.EndDate } ).ToList()
+            } );
 
             var result = scheduledAttendancesQuery.ToList().Select( a =>
             {
@@ -1189,7 +1228,7 @@ namespace Rock.Model
 
                 return new SchedulerResourceAttend
                 {
-                    AttendanceId = a.Id,
+                    AttendanceId = a.AttendanceId,
                     OccurrenceDate = occurrenceDate,
                     ConfirmationStatus = status.ConvertToString( false ).ToLower(),
                     PersonId = a.PersonId,
@@ -2206,7 +2245,7 @@ namespace Rock.Model
         /// </summary>
         /// <param name="query">The query.</param>
         /// <returns></returns>
-        public static IQueryable<Attendance> WhereHasActiveLocation(this IQueryable<Attendance> query)
+        public static IQueryable<Attendance> WhereHasActiveLocation( this IQueryable<Attendance> query )
         {
             // Null is allowed since the location relationship is not required
             return query.Where( a => a.Occurrence.Location == null || a.Occurrence.Location.IsActive );
