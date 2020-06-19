@@ -855,9 +855,11 @@ namespace RockWeb.Blocks.WorkFlow
 
         private void BindLog()
         {
-            var logEntries = new WorkflowLogService( new RockContext() ).Queryable( "CreatedByPersonAlias.Person" )
+            var rockContext = new RockContext();
+
+            var logEntries = rockContext.WorkflowLogs
                 .Where( l => l.WorkflowId == Workflow.Id )
-                .OrderBy( l => l.Id) // Do not sort by DateTime as many actions can occur in the same millisecond.
+                .OrderBy( l => l.Id ) // Do not sort by DateTime as many actions can occur in the same millisecond.
                 .ToList();
 
             gLog.DataSource = logEntries;
