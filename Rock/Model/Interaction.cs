@@ -36,6 +36,20 @@ namespace Rock.Model
     [DataContract]
     public partial class Interaction : Model<Interaction>
     {
+        /* Custom Indexes:
+         * 
+         * InteractionComponentId, InteractionDateTime
+         *      Includes InteractionTimeToServe, Operation
+         *      This was added for <see cref="Rock.Jobs.RockCleanup.UpdateMedianPageLoadTimes"/>
+         *      
+         *  InteractionDateTime
+         *      Includes InteractionComponentId, PersonAliasId
+         *
+         *  PersonAliasId, InteractionSessionId
+         *      Includes InteractionDateTime, InteractionComponentId
+         *      This was added for RockWeb.Blocks.Reporting.InteractionSessionList
+         */
+
         #region Static Methods
 
         /// <summary>

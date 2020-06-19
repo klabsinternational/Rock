@@ -54,10 +54,6 @@ namespace Rock.Web.Cache
 
         private static ConcurrentDictionary<string, int> _interactionComponentLookupComponentIdByEntityId = new ConcurrentDictionary<string, int>();
 
-        #endregion
-
-        #region Static Fields
-
         private static ConcurrentDictionary<string, int> _interactionComponentIdLookupFromForeignKey = new ConcurrentDictionary<string, int>();
 
         #endregion
