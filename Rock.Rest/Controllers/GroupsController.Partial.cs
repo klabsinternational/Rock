@@ -94,6 +94,13 @@ namespace Rock.Rest.Controllers
             // fetch the parentGroup so that Auth doesn't have do lazy load the ParentGroup for every group
             var parentGroup = groupService.Get( id > 0 ? id : rootGroupId );
 
+            List<int> groupIdsWithSchedulingEnabledWithAncestors = null;
+
+            if ( limitToSchedulingEnabled )
+            {
+                groupIdsWithSchedulingEnabledWithAncestors = groupService.GetGroupIdsWithSchedulingEnabledWithAncestors();
+            }
+
             foreach ( var group in qry.OrderBy( g => g.Order ).ThenBy( g => g.Name ) )
             {
                 // we already have the ParentGroup record, so lets set it for each group to avoid a database round-trip during Auth
@@ -104,7 +111,7 @@ namespace Rock.Rest.Controllers
                     var groupType = GroupTypeCache.Get( group.GroupTypeId );
 
                     bool includeGroup_Scheduling = true;
-                    if ( limitToSchedulingEnabled )
+                    if ( limitToSchedulingEnabled  )
                     {
                         includeGroup_Scheduling = false;
                         if ( groupType?.IsSchedulingEnabled == true )
@@ -114,16 +121,36 @@ namespace Rock.Rest.Controllers
                         else
                         {
                             /*
-                            2020-05-01 BJW
+                            2020-05-01 BJW 
 
-                            This heirarchy query was timing out on some Rock instances with a large amount of groups. I removed the
+                            This hierarchy query was timing out on some Rock instances with a large amount of groups. I removed the
                             limitToSchedulingEnabled=true param from the group scheduling block because of it. This logic will remain here
-                            for backwards compatability, but note that sometimes there are performance issues.
-                            */
+                            for backwards compatibility, but note that sometimes there are performance issues.
+
                             bool hasChildScheduledEnabledGroups = groupService.GetAllDescendentsGroupTypes( group.Id, includeInactiveGroups ).Any( a => a.IsSchedulingEnabled == true );
                             if ( hasChildScheduledEnabledGroups )
                             {
                                 includeGroup_Scheduling = true;
+                            }
+
+                            UPDATE:
+                            2020-06-19 MDP
+
+                            Improved the performance of determining if a group or it's children has scheduling
+                            by using GroupService.GetGroupIdsWithSchedulingEnabledWithAncestors.
+                            GetGroupIdsWithSchedulingEnabledWithAncestors does the CTE from the bottom up instead of
+                            from the top down. This method is much more efficient it only has to be done once
+
+                            This should help avoid any performance issues
+                            */
+
+                            if ( groupIdsWithSchedulingEnabledWithAncestors != null)
+                            {
+                                bool hasChildScheduledEnabledGroups = groupIdsWithSchedulingEnabledWithAncestors.Contains( group.Id );
+                                if ( hasChildScheduledEnabledGroups )
+                                {
+                                    includeGroup_Scheduling = true;
+                                }
                             }
                         }
                     }
