@@ -281,6 +281,11 @@
                         }
                     }
 
+
+                    // temporarily detach $schedulerTargetContainer to speed up adding the resourcedivs
+                    var schedulerTargetContainerParent = $schedulerTargetContainer.parent();
+                    $schedulerTargetContainer.detach();
+
                     $.each(scheduledAttendanceItems, function (i) {
                         var scheduledAttendanceItem = scheduledAttendanceItems[i];
 
@@ -299,6 +304,8 @@
                         self.populateResourceDiv($resourceDiv, scheduledAttendanceItem);
                         $schedulerTargetContainer.append($resourceDiv);
                     });
+
+                    schedulerTargetContainerParent.append($schedulerTargetContainer);
 
                     var $statusLight = $schedulingStatusContainer.find('.js-scheduling-status-light');
 
