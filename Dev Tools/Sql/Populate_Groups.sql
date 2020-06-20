@@ -1,6 +1,7 @@
 declare
   @regionGroupId int = null,
   @areaGroupId int = null,
+  @groupGroupId int = null,
   @regionGroupTypeId int,  
   @areaGroupTypeId int,
   @groupTypeId int,
@@ -11,9 +12,11 @@ declare
   @regionCounter int = 0,
   @maxRegions int = 10,  
   @areaCounter int = 0,
-  @maxAreasPerRegion int = 25,
+  @maxAreasPerRegion int = 20,
   @groupCounter int = 0,
-  @maxGroupsPerArea int = 50,
+  @childGroupCounter int = 0,
+  @maxGroupsPerArea int = 25,
+  @maxGroupsPerGroup int = 30,
   @groupTypeNHRegionGuid nvarchar(36) = 'B31676B5-A004-4A72-AE0D-4D5E1C6BF5DB',
   @groupTypeNHAreaGuid nvarchar(36) = '30F8F34A-5E18-461E-BEFE-5563AA372574',
   @groupTypeNHGroupGuid nvarchar(36) = '4043A5D6-6C2F-49DB-92DD-BD6ED1937DA8'
@@ -215,6 +218,21 @@ while @regionCounter < @maxRegions
         
                         INSERT INTO [dbo].[Group] ([IsSystem],[ParentGroupId],[GroupTypeId],[CampusId],[Name],[Description],[IsSecurityRole],[IsActive],[Order],[Guid])
                                             VALUES (0,@areaGroupId,@groupTypeId,@campusId,@groupName,@groupDescription,0,1,0,@groupGuid);
+
+                        set @groupGroupId = @@IDENTITY
+
+                         select @childGroupCounter = 0
+                         while @childGroupCounter < @maxGroupsPerGroup
+                         begin
+                            select @groupGuid = NEWID();
+                            select @groupName = 'ChildGroup ' + REPLACE(str(@regionCounter, 2), ' ', '0') + REPLACE(str(@areaCounter, 2), ' ', '0') + REPLACE(str(@childGroupCounter, 2), ' ', '0');
+                            select @groupDescription = 'Description of ' + @groupName;
+        
+                            INSERT INTO [dbo].[Group] ([IsSystem],[ParentGroupId],[GroupTypeId],[CampusId],[Name],[Description],[IsSecurityRole],[IsActive],[Order],[Guid])
+                                                VALUES (0,@groupGroupId,@groupTypeId,@campusId,@groupName,@groupDescription,0,1,0,@groupGuid);
+                             set @childGroupCounter += 1
+                         end
+
        
                         set @groupCounter += 1;
                     end;
