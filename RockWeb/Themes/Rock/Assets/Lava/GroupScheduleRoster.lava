@@ -1,9 +1,36 @@
-﻿<style>
+﻿{% comment %}
+  This is the lava template for each occurrence (Group, Date, Schedule, Location)
+   Available Lava Fields
+     + Group
+     + ScheduleDate
+     + Schedule
+     + Location
+     + DisplayRole (boolean on whether the members role should be displayed)
+     + ScheduledIndividuals (list of each scheduled individual), which includes
+          + Person
+          + GroupMember (nullable. This would be the person's role in the Group, if they are member of the group )
+          + CurrentlyCheckedIn (bool. True if the person is checked in)
+{% endcomment %}
+
+
+<style>
   .ToDo {
     display: none;
   }
 </style>
 
-<div class='group-schedule-roster'>
 
+
+<div class='group-schedule-roster'>
+<h1>{{ Group.Name }}</h1>
+<pre>
+
+  Schedule Date = {{ ScheduleDate  }}
+  Schedule = {{ Schedule.Name }}
+  Location = {{ Location.Name }}
+  DisplayRole = {{ DisplayRole}}
+  {% for scheduledIndividual in ScheduledIndividuals %}
+     {{ scheduledIndividual.Person.FirstName }}
+  {% endfor %}
+</pre>
 </div>

@@ -26,6 +26,7 @@ using System.Runtime.Serialization;
 
 using DDay.iCal;
 
+using Rock;
 using Rock.Data;
 using Rock.Web.Cache;
 
@@ -37,7 +38,7 @@ namespace Rock.Model
     [RockDomain( "Core" )]
     [Table( "Schedule" )]
     [DataContract]
-    public partial class Schedule : Model<Schedule>, ICategorized, IHasActiveFlag
+    public partial class Schedule : Model<Schedule>, ICategorized, IHasActiveFlag, IOrdered
     {
         #region Entity Properties
 
@@ -387,12 +388,18 @@ namespace Rock.Model
         [Required]
         [DataMember( IsRequired = true )]
         [Previewable]
-        public bool IsActive
-        {
-            get { return _isActive; }
-            set { _isActive = value; }
-        }
-        private bool _isActive = true;
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the order.
+        /// Use <see cref="ExtensionMethods.OrderByOrderAndNextScheduledDateTime" >List&lt;Schedule&gt;().OrderByOrderAndNextScheduledDateTime</see>
+        /// to get the schedules in the desired order.
+        /// </summary>
+        /// <value>
+        /// The order.
+        /// </value>
+        [DataMember]
+        public int Order { get; set; }
 
         #endregion
 

@@ -1168,7 +1168,7 @@ namespace Rock.Model
 
             var rockContext = this.Context as RockContext;
 
-            // Create explicit joins to person alias and person tables so that rendered SQL has an INNER Joins vs OUTER joins on Person and PersonAlias
+            // Create explicit joins to person alias and person tables so that rendered SQL has INNER Joins vs OUTER joins on Person and PersonAlias
             var personAliasQry = new PersonAliasService( rockContext ).Queryable();
             var personQryForJoin = new PersonService( rockContext ).Queryable();
 
@@ -1198,6 +1198,7 @@ namespace Rock.Model
                 LastName = ap.Person.LastName,
                 SuffixValueId = ap.Person.SuffixValueId,
                 RecordTypeValueId = ap.Person.RecordTypeValueId,
+
                 // set HasSchedulingConflict = true if the same person is requested/scheduled for another attendance within the same ScheduleId/Date
                 HasSchedulingConflict = conflictingScheduledAttendancesQuery.Any( c => c.Id != ap.Attendance.Id
                                                                                 && c.PersonAlias.PersonId == ap.Person.Id
@@ -2284,6 +2285,16 @@ namespace Rock.Model
                 .WhereHasActiveLocation()
                 .WhereHasActiveSchedule()
                 .WhereHasActiveGroup();
+        }
+
+        /// <summary>
+        /// Returns a queryable of Attendance where the scheduled person confirmed, or attended even if they didn't confirm
+        /// </summary>
+        /// <param name="query">The query.</param>
+        /// <returns></returns>
+        public static IQueryable<Attendance> WhereScheduledPersonConfirmed( this IQueryable<Attendance> query )
+        {
+            return query.Where( a => (a.ScheduledToAttend == true && a.RSVP == RSVP.Yes) || a.DidAttend == true );
         }
     }
 }

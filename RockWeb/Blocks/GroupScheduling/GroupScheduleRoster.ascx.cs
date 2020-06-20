@@ -15,18 +15,21 @@
 // </copyright>
 //
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Entity;
 using System.Linq;
 using System.Linq.Dynamic;
+using System.Linq.Expressions;
 using System.Web.UI;
-
+using System.Web.UI.WebControls;
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
 using Rock.Lava;
 using Rock.Model;
+using Rock.Utility;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
@@ -139,7 +142,6 @@ namespace RockWeb.Blocks.GroupScheduling
         {
             base.OnLoad( e );
 
-
             if ( !Page.IsPostBack )
             {
                 PopulateRoster();
@@ -161,6 +163,8 @@ namespace RockWeb.Blocks.GroupScheduling
         }
 
         private bool? _displayRole = null;
+        private string _rosterLavaTemplate = null;
+        private Dictionary<int, List<ScheduledIndividual>> _confirmedScheduledIndividualsForOccurrenceId = null;
 
         /// <summary>
         /// Handles the ItemDataBound event of the rptAttendanceOccurrences control.
@@ -182,48 +186,55 @@ namespace RockWeb.Blocks.GroupScheduling
             mergeFields.Add( "ScheduleDate", attendanceOccurrence.OccurrenceDate );
             mergeFields.Add( "DisplayRole", _displayRole );
 
-        }
+            var scheduledIndividuals = _confirmedScheduledIndividualsForOccurrenceId.GetValueOrNull( attendanceOccurrence.Id );
+            mergeFields.Add( "ScheduledIndividuals", scheduledIndividuals );
 
-        /// <summary>
-        /// Handles the Click event of the btnConfiguration control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
-        protected void btnConfiguration_Click( object sender, EventArgs e )
-        {
+            var lOccurrenceRosterHTML = e.Item.FindControl( "lOccurrenceRosterHTML" ) as Literal;
 
+            var rosterHtml = _rosterLavaTemplate.ResolveMergeFields( mergeFields );
+            lOccurrenceRosterHTML.Text = rosterHtml;
         }
 
         #endregion
 
         #region Methods
 
+        /// <summary>
+        /// Populates the roster.
+        /// </summary>
         private void PopulateRoster()
         {
             RosterConfiguration rosterConfiguration = this.GetBlockUserPreference( UserPreferenceKey.RosterConfigurationJSON )
                 .FromJsonOrNull<RosterConfiguration>();
 
-            rosterConfiguration = rosterConfiguration ?? new RosterConfiguration();
+            if ( rosterConfiguration == null || !rosterConfiguration.IsConfigured() )
+            {
+                ShowConfigurationDialog();
+                return;
+            }
 
             int[] scheduleIds = rosterConfiguration.ScheduleIds;
             int[] locationIds = rosterConfiguration.LocationIds;
-            List<int> groupIds = rosterConfiguration.GroupIds.ToList();
+            List<int> parentGroupIds = rosterConfiguration.GroupIds.ToList();
 
             this._displayRole = rosterConfiguration.DisplayRole;
+            this._rosterLavaTemplate = this.GetAttributeValue( AttributeKey.RosterLavaTemplate );
+
+            var allGroupIds = new List<int>();
 
             var rockContext = new RockContext();
-            
+
             if ( rosterConfiguration.IncludeChildGroups )
             {
                 var groupService = new GroupService( rockContext );
-                foreach ( var groupId in groupIds )
+                foreach ( var groupId in parentGroupIds )
                 {
                     var childGroupIds = groupService.GetAllDescendentGroupIds( groupId, false );
-                    groupIds.AddRange( childGroupIds );
+                    allGroupIds.AddRange( childGroupIds );
                 }
             }
 
-            groupIds = groupIds.Distinct().ToList();
+            allGroupIds = allGroupIds.Distinct().ToList();
 
             var attendanceOccurrenceService = new AttendanceOccurrenceService( rockContext );
 
@@ -234,12 +245,27 @@ namespace RockWeb.Blocks.GroupScheduling
                 .Queryable()
                 .Where( a => a.ScheduleId.HasValue && a.LocationId.HasValue && a.GroupId.HasValue )
                 .WhereDeducedIsActive()
-                .Where( a => groupIds.Contains( a.GroupId.Value ) )
+                .Where( a => allGroupIds.Contains( a.GroupId.Value ) )
                 .Where( a => locationIds.Contains( a.LocationId.Value ) )
                 .Where( a => scheduleIds.Contains( a.ScheduleId.Value ) )
                 .Where( a => a.OccurrenceDate >= currentDate && a.OccurrenceDate <= maxDate );
 
-            // TODO: Order by Schedule.Order then NextStartDateTime?
+            var confirmedAttendancesForOccurrenceQuery = attendanceOccurrenceQuery.SelectMany( a => a.Attendees ).Include( a => a.PersonAlias.Person );//.WhereScheduledPersonConfirmed();
+            _confirmedScheduledIndividualsForOccurrenceId = confirmedAttendancesForOccurrenceQuery
+                .AsNoTracking()
+                .ToList()
+                .GroupBy( a => a.OccurrenceId )
+                .ToDictionary(
+                    k => k.Key,
+                    v => v.Select( a => new ScheduledIndividual
+                    {
+                        Attendance = a,
+                        Person = a.PersonAlias.Person,
+                        CurrentlyCheckedIn = a.DidAttend == true
+                    } )
+                    .ToList() );
+
+
             var attendanceOccurrenceList = attendanceOccurrenceQuery
                 .Include( a => a.Schedule )
                 .Include( a => a.Attendees )
@@ -248,7 +274,8 @@ namespace RockWeb.Blocks.GroupScheduling
                 .AsNoTracking()
                 .ToList()
                 .OrderBy( a => a.OccurrenceDate )
-                .OrderBy( a => a.Schedule.GetNextStartDateTime( currentDate ) )
+                .ThenBy( a => a.Schedule.Order )
+                .ThenBy( a => a.Schedule.GetNextStartDateTime( currentDate ) )
                 .ToList();
 
             rptAttendanceOccurrences.DataSource = attendanceOccurrenceList;
@@ -257,15 +284,292 @@ namespace RockWeb.Blocks.GroupScheduling
 
         #endregion
 
+        #region Configuration Related
+
+        /// <summary>
+        /// Handles the Click event of the btnConfiguration control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void btnConfiguration_Click( object sender, EventArgs e )
+        {
+            ShowConfigurationDialog();
+        }
+
+        /// <summary>
+        /// Shows the configuration dialog.
+        /// </summary>
+        private void ShowConfigurationDialog()
+        {
+            RosterConfiguration rosterConfiguration = this.GetBlockUserPreference( UserPreferenceKey.RosterConfigurationJSON )
+                            .FromJsonOrNull<RosterConfiguration>();
+
+            if ( rosterConfiguration == null )
+            {
+                rosterConfiguration = new RosterConfiguration();
+            }
+
+            gpGroups.SetValues( rosterConfiguration.GroupIds ?? new int[0] );
+            cbIncludeChildGroups.Checked = rosterConfiguration.IncludeChildGroups;
+
+            // 
+            UpdateScheduleList();
+            lbSchedules.SetValues( rosterConfiguration.ScheduleIds ?? new int[0] );
+
+            UpdateLocationListFromSelectedSchedules();
+            cblLocations.SetValues( rosterConfiguration.LocationIds ?? new int[0] );
+
+            cbDisplayRole.Checked = rosterConfiguration.DisplayRole;
+            
+
+
+            mdRosterConfiguration.Show();
+        }
+
+        private void UpdateListsForSelectedGroups()
+        {
+            UpdateScheduleList();
+            UpdateLocationListFromSelectedSchedules();
+        }
+
+        /// <summary>
+        /// Updates the list of schedules for the selected groups
+        /// </summary>
+        private void UpdateScheduleList()
+        {
+            var rockContext = new RockContext();
+            var includedGroupsQuery = GetSelectedGroupsQuery( rockContext );
+
+            nbGroupWarning.Visible = false;
+            nbLocationsWarning.Visible = false;
+
+            if ( !includedGroupsQuery.Any() )
+            {
+                nbGroupWarning.Text = "Select at least one group.";
+                nbGroupWarning.Visible = true;
+                return;
+            }
+
+            var groupLocationService = new GroupLocationService( rockContext );
+            var groupLocationsQuery = groupLocationService.Queryable()
+                .Where( a => includedGroupsQuery.Any( x => x.Id == a.GroupId ) )
+                .Where( a => a.Group.GroupType.IsSchedulingEnabled == true && a.Group.DisableScheduling == false )
+                .Distinct();
+
+            var groupSchedulesQuery = groupLocationsQuery
+                .Where( gl => gl.Location.IsActive )
+                .SelectMany( gl => gl.Schedules )
+                .Where( s => s.IsActive );
+
+            var groupSchedulesList = groupSchedulesQuery.AsNoTracking()
+                .AsEnumerable()
+                .DistinctBy( a => a.Guid )
+                .ToList();
+
+            lbSchedules.Visible = true;
+            if ( !groupSchedulesList.Any() )
+            {
+                lbSchedules.Visible = false;
+                nbGroupWarning.Text = "The selected groups do not have any locations or schedules";
+                nbGroupWarning.Visible = true;
+                return;
+            }
+
+            nbGroupWarning.Visible = false;
+
+            // get any of the currently schedule ids, and reselect them if they still exist
+            var selectedScheduleIds = lbSchedules.SelectedValues.AsIntegerList();
+
+            lbSchedules.Items.Clear();
+
+            List<Schedule> sortedScheduleList = groupSchedulesList.OrderByOrderAndNextScheduledDateTime();
+
+            foreach ( var schedule in sortedScheduleList )
+            {
+                var listItem = new ListItem();
+                if ( schedule.Name.IsNotNullOrWhiteSpace() )
+                {
+                    listItem.Text = schedule.Name;
+                }
+                else
+                {
+                    listItem.Text = schedule.FriendlyScheduleText;
+                }
+
+                listItem.Value = schedule.Id.ToString();
+                listItem.Selected = selectedScheduleIds.Contains( schedule.Id );
+                lbSchedules.Items.Add( listItem );
+            }
+
+            // update selectedSchedules to ones that are still selected after updating schedule list
+            selectedScheduleIds = lbSchedules.SelectedValues.AsIntegerList();
+        }
+
+        /// <summary>
+        /// Returns a queryable of the selected groups
+        /// </summary>
+        /// <returns></returns>
+        private IQueryable<Group> GetSelectedGroupsQuery( RockContext rockContext )
+        {
+            GroupService groupService;
+            int[] selectedGroupIds = gpGroups.SelectedValues.AsIntegerList().ToArray();
+            bool includeChildGroups = cbIncludeChildGroups.Checked;
+
+            groupService = new GroupService( rockContext );
+            var includedGroupIds = ( selectedGroupIds ?? new int[0] ).ToList();
+            if ( includeChildGroups )
+            {
+                foreach ( var selectedGroupId in selectedGroupIds )
+                {
+                    var childGroupIds = groupService.GetAllDescendentGroupIds( selectedGroupId, false );
+
+                    includedGroupIds.AddRange( childGroupIds );
+                }
+            }
+
+            var groupsQuery = groupService.GetByIds( includedGroupIds.Distinct().ToList() );
+            groupsQuery = groupsQuery.HasSchedulingEnabled();
+
+            return groupsQuery;
+        }
+
+        /// <summary>
+        /// Updates the location list from selected schedules.
+        /// </summary>
+        private void UpdateLocationListFromSelectedSchedules()
+        {
+            int[] selectedScheduleIds = lbSchedules.SelectedValues.AsIntegerList().ToArray();
+
+            cblLocations.Visible = true;
+            nbLocationsWarning.Visible = false;
+
+            if ( !selectedScheduleIds.Any() )
+            {
+                cblLocations.Visible = false;
+                nbLocationsWarning.Text = "Select at least one schedule to see available locations";
+                nbLocationsWarning.Visible = true;
+                return;
+            }
+
+            var rockContext = new RockContext();
+            var includedGroupsQuery = GetSelectedGroupsQuery( rockContext );
+
+            var groupLocationService = new GroupLocationService( rockContext );
+
+            var groupLocationsQuery = groupLocationService.Queryable()
+                .Where( a => includedGroupsQuery.Any( x => x.Id == a.GroupId ) )
+                .Where( a => a.Group.GroupType.IsSchedulingEnabled == true && a.Group.DisableScheduling == false )
+                .Distinct();
+
+            // narrow down group locations that ones for the selected schedules
+            groupLocationsQuery = groupLocationsQuery.Where( a => a.Schedules.Any( s => selectedScheduleIds.Contains( s.Id ) ) );
+
+            var locationList = groupLocationsQuery.Select( a => a.Location )
+                .AsNoTracking()
+                .ToList()
+                .DistinctBy( a => a.Id )
+                .OrderBy( a => a.ToString() ).ToList();
+
+            // get any of the currently location ids, and reselect them if they still exist
+            var selectedLocationIds = cblLocations.SelectedValues.AsIntegerList();
+            cblLocations.Items.Clear();
+
+            foreach ( var location in locationList )
+            {
+                var locationListItem = new ListItem( location.ToString(), location.Id.ToString() );
+                locationListItem.Selected = selectedLocationIds.Contains( location.Id );
+                cblLocations.Items.Add( locationListItem );
+            }
+
+            if ( !locationList.Any() )
+            {
+                cblLocations.Visible = false;
+                nbLocationsWarning.Text = "The selected groups do not have any locations for the selected schedules";
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Handles the SaveClick event of the mdRosterConfiguration control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void mdRosterConfiguration_SaveClick( object sender, EventArgs e )
+        {
+            RosterConfiguration rosterConfiguration = this.GetBlockUserPreference( UserPreferenceKey.RosterConfigurationJSON )
+                .FromJsonOrNull<RosterConfiguration>();
+
+            if ( rosterConfiguration == null )
+            {
+                rosterConfiguration = new RosterConfiguration();
+            }
+
+            rosterConfiguration.GroupIds = gpGroups.SelectedValuesAsInt().ToArray();
+            rosterConfiguration.IncludeChildGroups = cbIncludeChildGroups.Checked;
+            rosterConfiguration.LocationIds = cblLocations.SelectedValuesAsInt.ToArray();
+            rosterConfiguration.ScheduleIds = lbSchedules.SelectedValuesAsInt.ToArray();
+            rosterConfiguration.DisplayRole = cbDisplayRole.Checked;
+
+            this.SetBlockUserPreference( UserPreferenceKey.RosterConfigurationJSON, rosterConfiguration.ToJson() );
+            mdRosterConfiguration.Hide();
+
+            PopulateRoster();
+        }
+
+        /// <summary>
+        /// Handles the SelectItem event of the gpGroups control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void gpGroups_SelectItem( object sender, EventArgs e )
+        {
+            UpdateListsForSelectedGroups();
+        }
+
+        /// <summary>
+        /// Handles the CheckedChanged event of the cbIncludeChildGroups control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void cbIncludeChildGroups_CheckedChanged( object sender, EventArgs e )
+        {
+            UpdateListsForSelectedGroups();
+        }
+
+        /// <summary>
+        /// Handles the SelectedIndexChanged event of the lbSchedules control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void lbSchedules_SelectedIndexChanged( object sender, EventArgs e )
+        {
+            UpdateLocationListFromSelectedSchedules();
+        }
+
+        #endregion
+
         #region Classes
 
-        public class RosterConfiguration
+        public class RosterConfiguration: RockDynamic
         {
             public int[] GroupIds { get; set; }
             public bool IncludeChildGroups { get; set; }
             public int[] LocationIds { get; set; }
             public int[] ScheduleIds { get; set; }
             public bool DisplayRole { get; set; }
+
+            public bool IsConfigured()
+            {
+                return GroupIds != null && LocationIds != null && ScheduleIds != null;
+            }
+        }
+
+        public class ScheduledIndividual: RockDynamic
+        {
+            public Attendance Attendance { get; set; }
+            public Person Person { get; set; }
+            public GroupMember GroupMember { get; set; }
+            public bool CurrentlyCheckedIn { get; set; }
         }
 
         #endregion

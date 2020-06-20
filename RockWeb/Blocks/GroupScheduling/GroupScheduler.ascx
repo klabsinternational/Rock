@@ -46,8 +46,8 @@
                         <%--
                             2020-05-01 BJW
                             LimitToSchedulingEnabledGroups="true" was removed from this group picker because it was causing performance issues.
-                            The performance issue was a result of querying the heirarchy for groups that have group types with scheduling enabled.
-                            This heirarchy query was timing out on some Rock instances with a large amount of groups. Talked with JME to verify
+                            The performance issue was a result of querying the hierarchy for groups that have group types with scheduling enabled.
+                            This hierarchy query was timing out on some Rock instances with a large amount of groups. Talked with JME to verify
                             this was okay to remove.
                         --%>
                         <Rock:GroupPicker ID="gpGroup" runat="server" Label="Group" OnValueChanged="gpGroup_ValueChanged" />

@@ -209,56 +209,57 @@ btnCopyToClipboard.ClientID );
             pnlGroupScheduleLocations.Visible = false;
             pnlScheduler.Visible = false;
 
-            if ( group != null )
+            if ( group == null )
             {
-                var groupLocations = group.GroupLocations.ToList();
+                return;
+            }
 
-                var groupSchedules = groupLocations
-                    .Where( gl => gl.Location.IsActive )
-                    .SelectMany( gl => gl.Schedules )
-                    .Where( s => s.IsActive )
-                    .DistinctBy( a => a.Guid )
-                    .ToList();
+            var groupLocations = group.GroupLocations.ToList();
 
-                if ( !groupSchedules.Any() )
+            var groupSchedules = groupLocations
+                .Where( gl => gl.Location.IsActive )
+                .SelectMany( gl => gl.Schedules )
+                .Where( s => s.IsActive )
+                .DistinctBy( a => a.Guid )
+                .ToList();
+
+            if ( !groupSchedules.Any() )
+            {
+                nbGroupWarning.Text = "Group does not have any locations or schedules";
+                nbGroupWarning.Visible = true;
+                return;
+            }
+
+            pnlGroupScheduleLocations.Visible = true;
+            pnlScheduler.Visible = true;
+
+            // if a schedule is already selected, set it as the selected schedule (if it still exists for this group)
+            var selectedScheduleId = rblSchedule.SelectedValue.AsIntegerOrNull();
+
+            rblSchedule.Items.Clear();
+
+            List<Schedule> sortedScheduleList = groupSchedules.OrderByOrderAndNextScheduledDateTime();
+
+            foreach ( var schedule in sortedScheduleList )
+            {
+                var listItem = new ListItem();
+                if ( schedule.Name.IsNotNullOrWhiteSpace() )
                 {
-                    nbGroupWarning.Text = "Group does not have any locations or schedules";
-                    nbGroupWarning.Visible = true;
+                    listItem.Text = schedule.Name;
                 }
                 else
                 {
-                    pnlGroupScheduleLocations.Visible = true;
-                    pnlScheduler.Visible = true;
-
-                    // if a schedule is already selected, set it as the selected schedule (if it still exists for this group)
-                    var selectedScheduleId = rblSchedule.SelectedValue.AsIntegerOrNull();
-
-                    rblSchedule.Items.Clear();
-
-                    List<Schedule> sortedScheduleList = groupSchedules.OrderByNextScheduledDateTime();
-
-                    foreach ( var schedule in sortedScheduleList )
-                    {
-                        var listItem = new ListItem();
-                        if ( schedule.Name.IsNotNullOrWhiteSpace() )
-                        {
-                            listItem.Text = schedule.Name;
-                        }
-                        else
-                        {
-                            listItem.Text = schedule.FriendlyScheduleText;
-                        }
-
-                        listItem.Value = schedule.Id.ToString();
-                        listItem.Selected = selectedScheduleId.HasValue && selectedScheduleId.Value == schedule.Id;
-                        rblSchedule.Items.Add( listItem );
-                    }
-
-                    if ( rblSchedule.SelectedItem == null )
-                    {
-                        rblSchedule.SetValue( sortedScheduleList.FirstOrDefault() );
-                    }
+                    listItem.Text = schedule.FriendlyScheduleText;
                 }
+
+                listItem.Value = schedule.Id.ToString();
+                listItem.Selected = selectedScheduleId.HasValue && selectedScheduleId.Value == schedule.Id;
+                rblSchedule.Items.Add( listItem );
+            }
+
+            if ( rblSchedule.SelectedItem == null )
+            {
+                rblSchedule.SetValue( sortedScheduleList.FirstOrDefault() );
             }
         }
 
