@@ -320,6 +320,17 @@
                             </div>
                         </div>
                         <div class="row">
+                            <div class="col-md-4">
+                                <Rock:RockCheckBoxList ID="cblStatusFilter" runat="server" Label="Status" DataValueField="Value" DataTextField="Text" /> 
+                            </div>
+                            <div class="col-md-4">
+                                <Rock:RockCheckBoxList ID="cblStateFilter" runat="server" Label="State" DataValueField="Value" DataTextField="Text" /> 
+                            </div>
+                            <div class="col-md-4">
+                                <Rock:RockCheckBoxList ID="cblLastActivityFilter" runat="server" Label="Last Activity" DataValueField="Value" DataTextField="Text" /> 
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-sm-12">
                                 <asp:LinkButton runat="server" ID="lbApplyFilter" CssClass="btn btn-primary btn-xs" OnClick="lbApplyFilter_Click">
                                     Apply

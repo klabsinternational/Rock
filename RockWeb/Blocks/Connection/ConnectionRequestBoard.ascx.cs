@@ -141,6 +141,21 @@ namespace RockWeb.Blocks.Connection
             /// Requester
             /// </summary>
             public const string Requester = "Requester";
+
+            /// <summary>
+            /// The statuses
+            /// </summary>
+            public const string Statuses = "Statuses";
+
+            /// <summary>
+            /// The states
+            /// </summary>
+            public const string States = "States";
+
+            /// <summary>
+            /// The last activities
+            /// </summary>
+            public const string LastActivities = "LastActivities";
         }
 
         #endregion Keys
@@ -665,6 +680,9 @@ namespace RockWeb.Blocks.Connection
         {
             SaveSettingByConnectionType( FilterKey.DateRange, string.Empty );
             SaveSettingByConnectionType( FilterKey.Requester, string.Empty );
+            SaveSettingByConnectionType( FilterKey.Statuses, string.Empty );
+            SaveSettingByConnectionType( FilterKey.States, string.Empty );
+            SaveSettingByConnectionType( FilterKey.LastActivities, string.Empty );
 
             BindUI();
         }
@@ -754,8 +772,32 @@ namespace RockWeb.Blocks.Connection
         /// </summary>
         private void BindFilterControls()
         {
+            // Bind options
+            cblStatusFilter.DataSource = GetConnectionStatusQuery().Select( cs => new {
+                Value = cs.Id,
+                Text = cs.Name
+            } ).ToList();
+            cblStatusFilter.DataBind();
+
+            cblStateFilter.DataSource = Enum.GetValues( typeof( ConnectionState ) ).Cast<ConnectionState>().Select( cs => new {
+                Value = cs.ToString(),
+                Text = cs.ToString().SplitCase()
+            } );
+            cblStateFilter.DataBind();
+
+            cblLastActivityFilter.DataSource = GetConnectionActivityTypes().Select( cat => new
+            {
+                Value = cat.Id,
+                Text = cat.Name
+            } );
+            cblLastActivityFilter.DataBind();
+
+            // Bind selected values
             sdrpLastActivityDateRange.DelimitedValues = LoadSettingByConnectionType( FilterKey.DateRange );
             ppRequester.PersonId = LoadSettingByConnectionType( FilterKey.Requester ).AsIntegerOrNull();
+            cblStatusFilter.SetValues( LoadSettingByConnectionType( FilterKey.Statuses ).SplitDelimitedValues() );
+            cblStateFilter.SetValues( LoadSettingByConnectionType( FilterKey.States ).SplitDelimitedValues() );
+            cblLastActivityFilter.SetValues( LoadSettingByConnectionType( FilterKey.LastActivities ).SplitDelimitedValues() );
         }
 
         /// <summary>
@@ -920,6 +962,7 @@ namespace RockWeb.Blocks.Connection
             gRequests.EntityIdField = "Id";
             gRequests.PersonIdField = "PersonId";
             gRequests.EntityTypeId = connectionRequestEntityId;
+            gRequests.RowItemText = "Connection Request";
             gRequests.DataKeyNames = new string[] { "Id" };
 
             gRequests.GridRebind += gRequests_GridRebind;
@@ -939,7 +982,8 @@ namespace RockWeb.Blocks.Connection
             };
 
             // Bind the data
-            gRequests.SetLinqDataSource( GetConnectionRequestViewModelQuery() );
+            var viewModelQuery = GetConnectionRequestViewModelQuery();
+            gRequests.SetLinqDataSource( viewModelQuery );
             gRequests.DataBind();
         }
 
@@ -1385,27 +1429,76 @@ namespace RockWeb.Blocks.Connection
         }
 
         /// <summary>
-        /// Gets the connection status view models.
+        /// Gets the connection activity types.
         /// </summary>
         /// <returns></returns>
-        private List<ConnectionStatusViewModel> GetConnectionStatusViewModels()
+        private List<ConnectionActivityType> GetConnectionActivityTypes()
+        {
+            var connectionOpportunity = GetConnectionOpportunity();
+
+            if ( connectionOpportunity == null )
+            {
+                _connectionActivityTypes = null;
+                return null;
+            }
+
+            if ( _connectionActivityTypes != null &&
+                _connectionActivityTypes.Any() &&
+                _connectionActivityTypes.FirstOrDefault().ConnectionTypeId == connectionOpportunity.ConnectionTypeId )
+            {
+                return _connectionActivityTypes;
+            }
+
+            var rockContext = new RockContext();
+            var connectionActivityTypeService = new ConnectionActivityTypeService( rockContext );
+            _connectionActivityTypes = connectionActivityTypeService.Queryable()
+                .AsNoTracking()
+                .Where( cat =>
+                    cat.ConnectionTypeId == connectionOpportunity.ConnectionTypeId &&
+                    cat.IsActive )
+                .OrderBy( cat => cat.Name )
+                .ThenBy( cat => cat.Id )
+                .ToList();
+
+            return _connectionActivityTypes;
+        }
+        private List<ConnectionActivityType> _connectionActivityTypes = null;
+
+        /// <summary>
+        /// Gets the connection status query.
+        /// </summary>
+        /// <returns></returns>
+        private IOrderedQueryable<ConnectionStatus> GetConnectionStatusQuery()
         {
             var rockContext = new RockContext();
             var connectionOpportunityService = new ConnectionOpportunityService( rockContext );
-            var connectionRequestViewModelQuery = GetConnectionRequestViewModelQuery();
 
-            var connectionRequestsByStatus = connectionRequestViewModelQuery
-                .ToList()
-                .GroupBy( cr => cr.StatusId )
-                .ToDictionary( g => g.Key, g => g.ToList() );
-
-            var viewModels = connectionOpportunityService.Queryable()
+            return connectionOpportunityService.Queryable()
                 .AsNoTracking()
                 .Where( co => co.Id == ConnectionOpportunityId )
                 .SelectMany( co => co.ConnectionType.ConnectionStatuses )
                 .Where( cs => cs.IsActive )
                 .OrderBy( cs => cs.Order )
-                .ThenBy( cs => cs.Name )
+                .ThenBy( cs => cs.Name );
+        }
+
+        /// <summary>
+        /// Gets the connection status view models.
+        /// </summary>
+        /// <returns></returns>
+        private List<ConnectionStatusViewModel> GetConnectionStatusViewModels()
+        {
+            if ( _connectionStatusViewModels != null )
+            {
+                return _connectionStatusViewModels;
+            }
+
+            var connectionRequestsByStatus = GetConnectionRequestViewModelQuery()
+                .ToList()
+                .GroupBy( cr => cr.StatusId )
+                .ToDictionary( g => g.Key, g => g.ToList() );
+
+            _connectionStatusViewModels = GetConnectionStatusQuery()
                 .Select( cs => new ConnectionStatusViewModel
                 {
                     Id = cs.Id,
@@ -1414,18 +1507,19 @@ namespace RockWeb.Blocks.Connection
                 } )
                 .ToList();
 
-            foreach ( var viewModel in viewModels )
+            foreach ( var viewModel in _connectionStatusViewModels )
             {
                 viewModel.Requests = connectionRequestsByStatus.GetValueOrDefault( viewModel.Id, new List<ConnectionRequestViewModel>() );
 
-                if (viewModel.HighlightColor.IsNullOrWhiteSpace())
+                if ( viewModel.HighlightColor.IsNullOrWhiteSpace() )
                 {
                     viewModel.HighlightColor = ConnectionStatus.DefaultHighlightColor;
                 }
             }
 
-            return viewModels;
+            return _connectionStatusViewModels;
         }
+        private List<ConnectionStatusViewModel> _connectionStatusViewModels = null;
 
         /// <summary>
         /// Gets the campus view models.
@@ -1447,7 +1541,7 @@ namespace RockWeb.Blocks.Connection
                 .ToList();
         }
 
-        #endregion
+        #endregion Data Access
 
         #region View Models
 
