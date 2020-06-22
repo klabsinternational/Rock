@@ -1,4 +1,4 @@
-﻿// <copyright>
+// <copyright>
 // Copyright by the Spark Development Network
 //
 // Licensed under the Rock Community License (the "License");
@@ -42,6 +42,15 @@ namespace Rock.Model
     [JsonConverter( typeof( Rock.Utility.AttributeValueJsonConverter ) )]
     public partial class AttributeValue : Model<AttributeValue>, ICacheable
     {
+        /*
+         * Custom Indexes:
+         *
+         * AttributeId, EntityId
+         *      Includes: ValueAsNumeric, ValueAsDateTime, ValueAsBoolean
+         *
+         * EntityId, AttributeId
+         */
+
         #region Entity Properties
 
         /// <summary>

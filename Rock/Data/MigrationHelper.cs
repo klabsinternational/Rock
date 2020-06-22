@@ -7680,6 +7680,21 @@ BEGIN
 END" );
         }
 
+        /// <summary>
+        /// Renames the index if exists.
+        /// </summary>
+        /// <param name="tableName">Name of the table.</param>
+        /// <param name="oldIndexName">Old name of the index.</param>
+        /// <param name="newIndexName">New name of the index.</param>
+        public void RenameIndexIfExists( string tableName, string oldIndexName, string newIndexName )
+        {
+            Migration.Sql(
+$@"IF EXISTS( SELECT * FROM sys.indexes WHERE NAME = '{oldIndexName}' AND object_id = OBJECT_ID( '{tableName}' ) )
+BEGIN
+    EXEC sp_rename '{tableName}.{oldIndexName}', '{newIndexName}', N'INDEX';
+END" );
+        }
+
         #endregion Index Helpers
     }
 }
