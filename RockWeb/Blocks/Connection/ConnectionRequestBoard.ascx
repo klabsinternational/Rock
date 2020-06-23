@@ -9,9 +9,9 @@
         box-shadow: 0 1px 3px 0 rgba(21, 27, 38, 0.15);
     }
 
-    .panel-collapsable .panel-drawer {
-        border-bottom: 1px solid #dbdbdb;
-    }
+        .panel-collapsable .panel-drawer {
+            border-bottom: 1px solid #dbdbdb;
+        }
 
     .panel-toolbar {
         border-bottom: 1px solid #dbdbdb;
@@ -19,18 +19,18 @@
         font-size: 12px;
     }
 
-    .panel-toolbar .btn {
-        color: #6f7782;
-        font-size: 12px;
-        font-weight: 600;
-        background: transparent;
-    }
+        .panel-toolbar .btn {
+            color: #6f7782;
+            font-size: 12px;
+            font-weight: 600;
+            background: transparent;
+        }
 
-    .panel-toolbar .btn:hover,
-    .panel-toolbar .btn:active,
-    .open .panel-toolbar .btn {
-        background: #E9ECEE;
-    }
+            .panel-toolbar .btn:hover,
+            .panel-toolbar .btn:active,
+            .open .panel-toolbar .btn {
+                background: #E9ECEE;
+            }
 
     .overflow-scroll {
         overflow-x: auto;
@@ -92,9 +92,9 @@
         margin-bottom: 12px;
     }
 
-    .board-card:hover {
-        box-shadow: 0 3px 5px 0 rgba(0, 0, 0, 0.1);
-    }
+        .board-card:hover {
+            box-shadow: 0 3px 5px 0 rgba(0, 0, 0, 0.1);
+        }
 
     .board-card-photo {
         width: 24px;
@@ -144,22 +144,22 @@
         overflow-y: scroll;
     }
 
-    .dropdown-menu-mega li {
-        position: relative;
-    }
+        .dropdown-menu-mega li {
+            position: relative;
+        }
 
-    .dropdown-menu-mega .dropdown-header {
-        margin: 24px 16px 4px;
-        padding: 8px 0;
-        font-size: 16px;
-        color: #484848;
-        border-bottom: 1px solid #E4E4E4;
-        font-weight: 700;
-    }
+        .dropdown-menu-mega .dropdown-header {
+            margin: 24px 16px 4px;
+            padding: 8px 0;
+            font-size: 16px;
+            color: #484848;
+            border-bottom: 1px solid #E4E4E4;
+            font-weight: 700;
+        }
 
-    .dropdown-menu-mega .dropdown-header:first-child {
-        margin-top: 0;
-    }
+            .dropdown-menu-mega .dropdown-header:first-child {
+                margin-top: 0;
+            }
 
     .styled-scroll ::-webkit-scrollbar {
         width: 8px;
@@ -169,6 +169,13 @@
     .styled-scroll ::-webkit-scrollbar-thumb {
         width: 8px;
         width: 8px;
+    }
+
+    .request-modal-photo {
+        width: 100px;
+        height: 100px;
+        background: center/cover #cbd4db;
+        border-radius: 50%;
     }
 </style>
 
@@ -190,7 +197,7 @@
         <Rock:NotificationBox runat="server" ID="nbNotificationBox" Visible="false" />
 
         <asp:Panel ID="pnlView" runat="server" CssClass="panel panel-block">
-        
+
             <div class="panel-heading">
                 <h2 class="panel-title">
                     <asp:Literal ID="lTitle" runat="server" />
@@ -203,7 +210,7 @@
                         <div class="d-inline-block btn-group-mega">
                             <button type="button" class="btn btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fa fa-plug"></i>Opportunities</button>
                             <ul class="dropdown-menu dropdown-menu-mega">
-                                <li class="dropdown-header"><i class="fa fa-star"></i> Favorites</li>
+                                <li class="dropdown-header"><i class="fa fa-star"></i>Favorites</li>
                                 <li>
                                     <a href="#">
                                         <i class="fa fa-child"></i>
@@ -321,13 +328,13 @@
                         </div>
                         <div class="row">
                             <div class="col-md-4">
-                                <Rock:RockCheckBoxList ID="cblStatusFilter" runat="server" Label="Status" DataValueField="Value" DataTextField="Text" /> 
+                                <Rock:RockCheckBoxList ID="cblStatusFilter" runat="server" Label="Status" DataValueField="Value" DataTextField="Text" />
                             </div>
                             <div class="col-md-4">
-                                <Rock:RockCheckBoxList ID="cblStateFilter" runat="server" Label="State" DataValueField="Value" DataTextField="Text" /> 
+                                <Rock:RockCheckBoxList ID="cblStateFilter" runat="server" Label="State" DataValueField="Value" DataTextField="Text" />
                             </div>
                             <div class="col-md-4">
-                                <Rock:RockCheckBoxList ID="cblLastActivityFilter" runat="server" Label="Last Activity" DataValueField="Value" DataTextField="Text" /> 
+                                <Rock:RockCheckBoxList ID="cblLastActivityFilter" runat="server" Label="Last Activity" DataValueField="Value" DataTextField="Text" />
                             </div>
                         </div>
                         <div class="row">
@@ -354,7 +361,7 @@
                         <Rock:RockBoundField DataField="GroupName" HeaderText="Group" SortExpression="Group" />
                         <Rock:RockBoundField DataField="ConnectorPersonFullname" HeaderText="Connector" SortExpression="Connector" />
                         <Rock:RockBoundField DataField="LastActivityText" HeaderText="Last Activity" SortExpression="LastActivity" HtmlEncode="false" />
-                        <asp:TemplateField HeaderText="State" SortExpression="ConnectionState" >
+                        <asp:TemplateField HeaderText="State" SortExpression="ConnectionState">
                             <ItemTemplate>
                                 <%# Eval("StateLabel") %>
                             </ItemTemplate>
@@ -439,20 +446,45 @@
 
                 </div>
             </div>
-        
+
         </asp:Panel>
 
         <Rock:ModalDialog ID="mdDetail" runat="server" ValidationGroup="vgDetail" Title="Connection Request" Visible="false">
             <Content>
-                <div class="board-card-main d-flex">
-                    <div class="flex-grow-1 mb-2">
-                        <div id="divModalPhoto" runat="server" class="board-card-photo mb-1"></div>
-                        <div class="board-card-name">
+                <div class="row">
+                    <div class="col-md-2">
+                        <div id="divModalPhoto" runat="server" class="request-modal-photo mb-1"></div>
+                    </div>
+                    <div class="col-md-7">
+                        <asp:Literal runat="server" ID="lModalStatusIcons" />
+                        <h3>
                             <asp:Literal ID="lModalPersonFullName" runat="server" />
+                        </h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Contact Information</h6>
+                                <div class="personcontact">
+                                    <ul class="list-unstyled phonenumbers">
+                                        <asp:Repeater ID="rModalPhones" runat="server">
+                                            <ItemTemplate>
+                                                <li><%# Eval("FormattedPhoneNumber") %> <small><%# Eval("PhoneType") %></small></li>
+                                            </ItemTemplate>
+                                        </asp:Repeater>
+                                    </ul>
+                                    <div class="email">
+                                        <asp:Literal ID="lModalEmail" runat="server" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Connector</h6>
+                                <asp:Literal runat="server" ID="lConnectorProfilePhoto" />
+                                <asp:Literal ID="lModalConnectorFullName" runat="server" />
+                            </div>
                         </div>
-                        <span class="board-card-assigned d-block text-muted">
-                            <asp:Literal ID="lModalConnectorFullName" runat="server" />
-                        </span>
+                    </div>
+                    <div class="col-md-3 text-right">
+                        RIGHT
                     </div>
                 </div>
             </Content>

@@ -26,8 +26,10 @@ using DocumentFormat.OpenXml.Office2013.PowerPoint.Roaming;
 using OpenXmlPowerTools;
 using Rock;
 using Rock.Attribute;
+using Rock.Communication;
 using Rock.Data;
 using Rock.Model;
+using Rock.Search.Person;
 using Rock.Security;
 using Rock.Web.Cache;
 using Rock.Web.UI;
@@ -318,6 +320,22 @@ namespace RockWeb.Blocks.Connection
         #region Helper Methods
 
         /// <summary>
+        /// Gets the email link markup.
+        /// </summary>
+        /// <param name="personId">The person identifier.</param>
+        /// <param name="emailAddress">The email address.</param>
+        /// <returns></returns>
+        private string GetEmailLinkMarkup( int? personId, string emailAddress )
+        {
+            if ( !personId.HasValue || emailAddress.IsNullOrWhiteSpace() )
+            {
+                return string.Empty;
+            }
+
+            return string.Format( @"<a href=""/Communication?person={0}"">{1}</a>", personId, emailAddress );
+        }
+
+        /// <summary>
         /// Gets the status icon HTML.
         /// </summary>
         /// <returns></returns>
@@ -363,6 +381,14 @@ namespace RockWeb.Blocks.Connection
             divModalPhoto.Style["background-image"] = string.Format( "url( '{0}' );", viewModel.PersonPhotoUrl );
             lModalConnectorFullName.Text = viewModel.ConnectorPersonFullname;
             lModalPersonFullName.Text = viewModel.PersonFullname;
+            lModalStatusIcons.Text = GetStatusIconHtml( viewModel );
+            lModalEmail.Text = GetEmailLinkMarkup(viewModel.PersonId, viewModel.PersonEmail );
+            lConnectorProfilePhoto.Text = string.Format( @"<div class=""board-card-photo mb-1"" style=""background-image: url( '{0}' );"" title=""{1} Profile Photo""></div>",
+                viewModel.ConnectorPhotoUrl,
+                viewModel.ConnectorPersonFullname );
+
+            rModalPhones.DataSource = viewModel.PersonPhones;
+            rModalPhones.DataBind();
 
             mdDetail.Show();
         }
@@ -1256,14 +1282,20 @@ namespace RockWeb.Blocks.Connection
                     Id = cr.Id,
                     StatusId = cr.ConnectionStatusId,
                     PersonId = cr.PersonAlias.PersonId,
+                    PersonEmail = cr.PersonAlias.Person.Email,
                     PersonNickName = cr.PersonAlias.Person.NickName,
                     PersonLastName = cr.PersonAlias.Person.LastName,
                     PersonPhotoId = cr.PersonAlias.Person.PhotoId,
+                    PersonPhones = cr.PersonAlias.Person.PhoneNumbers.Select( pn => new PhoneViewModel {
+                        PhoneType = pn.NumberTypeValue.Value,
+                        FormattedPhoneNumber = pn.NumberFormatted
+                    } ).ToList(),
                     CampusName = cr.Campus.Name,
                     CampusCode = cr.Campus.ShortCode,
                     ConnectorPersonNickName = cr.ConnectorPersonAlias.Person.NickName,
                     ConnectorPersonLastName = cr.ConnectorPersonAlias.Person.LastName,
                     ConnectorPersonId = cr.ConnectorPersonAlias.PersonId,
+                    ConnectorPhotoId = cr.ConnectorPersonAlias.Person.PhotoId,
                     ConnectorPersonAliasId = cr.ConnectorPersonAliasId,
                     ActivityCount = cr.ConnectionRequestActivities.Count,
                     DateOpened = cr.CreatedDateTime,
@@ -1661,6 +1693,11 @@ namespace RockWeb.Blocks.Connection
             public int? PersonId { get; set; }
 
             /// <summary>
+            /// Gets or sets the person email.
+            /// </summary>
+            public string PersonEmail { get; set; }
+
+            /// <summary>
             /// Gets or sets the name of the person.
             /// </summary>
             /// <value>
@@ -1679,6 +1716,11 @@ namespace RockWeb.Blocks.Connection
             public int? PersonPhotoId { get; set; }
 
             /// <summary>
+            /// Gets or sets the person phones.
+            /// </summary>
+            public List<PhoneViewModel> PersonPhones { get; set; }
+
+            /// <summary>
             /// Campus Name
             /// </summary>
             public string CampusName { get; set; }
@@ -1687,6 +1729,11 @@ namespace RockWeb.Blocks.Connection
             /// Campus Code
             /// </summary>
             public string CampusCode { get; set; }
+
+            /// <summary>
+            /// Gets or sets the connector photo identifier.
+            /// </summary>
+            public int? ConnectorPhotoId { get; set; }
 
             /// <summary>
             /// Gets or sets the name of the connector person.
@@ -1915,6 +1962,19 @@ namespace RockWeb.Blocks.Connection
                 {
                     return PersonPhotoId.HasValue ?
                         string.Format( "/GetImage.ashx?id={0}", PersonPhotoId.Value ) :
+                        "/Assets/Images/person-no-photo-unknown.svg";
+                }
+            }
+
+            /// <summary>
+            /// Gets the connector photo URL.
+            /// </summary>
+            public string ConnectorPhotoUrl
+            {
+                get
+                {
+                    return ConnectorPhotoId.HasValue ?
+                        string.Format( "/GetImage.ashx?id={0}", ConnectorPhotoId.Value ) :
                         "/Assets/Images/person-no-photo-unknown.svg";
                 }
             }
@@ -2153,6 +2213,22 @@ namespace RockWeb.Blocks.Connection
             /// Name
             /// </summary>
             public string Name { get; set; }
+        }
+
+        /// <summary>
+        /// Phone View Model
+        /// </summary>
+        private class PhoneViewModel
+        {
+            /// <summary>
+            /// Gets or sets the type of the phone.
+            /// </summary>
+            public string PhoneType { get; set; }
+
+            /// <summary>
+            /// Gets or sets the formatted phone number.
+            /// </summary>
+            public string FormattedPhoneNumber { get; set; }
         }
 
         #endregion View Models
