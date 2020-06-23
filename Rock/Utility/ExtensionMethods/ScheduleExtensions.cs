@@ -46,7 +46,7 @@ namespace Rock
         }
 
         /// <summary>
-        /// Orders the schedules by <seealso cref="Schedule.Order" /> and then sorts the list of Schedules by the day/time they are scheduled.
+        /// Orders the schedules by <seealso cref="Schedule.Order" /> and then sorts the list of Schedules by the day/time they are scheduled for the current Sunday week
         /// For example: Saturday 4pm, Saturday 6pm, Sunday 9am, Sunday 11am, Sunday 1pm
         /// </summary>
         /// <param name="scheduleList">The schedule list.</param>
@@ -55,9 +55,10 @@ namespace Rock
         {
             // Calculate the Next Start Date Time based on the start of the week so that schedule columns are in the correct order
             var occurrenceDate = RockDateTime.Now.SundayDate().AddDays( 1 );
+            var maxDate = occurrenceDate.AddDays( 7 );
             List<Schedule> sortedScheduleList = scheduleList
                 .OrderBy(a => a.Order)
-                .ThenBy( a => a.GetNextStartDateTime( occurrenceDate ) )
+                .ThenBy( a => a.GetNextStartDateTime( occurrenceDate, maxDate ) )
                 .ThenBy( a => a.Name )
                 .ThenBy( a => a.Id )
                 .ToList();

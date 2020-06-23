@@ -281,6 +281,20 @@ namespace Rock.Model
             }
         }
 
+        public DateTime? GetNextStartDateTime( DateTime currentDateTime, DateTime endDateTime )
+        {
+            if ( this.IsActive )
+            {
+                var occurrences = GetScheduledStartTimes( currentDateTime, endDateTime );
+                return occurrences.Min( o => ( DateTime? ) o );
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+
         /// <summary>
         /// Gets the first start date time.
         /// </summary>
