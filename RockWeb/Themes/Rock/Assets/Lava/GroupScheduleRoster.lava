@@ -18,8 +18,13 @@
     padding: 10px;
   }
 
-  .group-name {
+  .location .panel .panel-heading .group-name {
 
+  }
+
+  .name-column-header {
+    margin-left: 24px;
+    font-style:
   }
 
   .location .panel small
@@ -28,29 +33,61 @@
     opacity: .5;
   }
 </style>
-
+{% assign scheduledIndividualCount = ScheduledIndividuals | Size %}
 
 <div class='location'>
   <div class="panel panel-block">
     <div class="panel-heading">
-      <h1 class='panel-title'>
-              {{ Group.Name }}
-
+      <h1 class='panel-title margin-l-lg margin-r-lg group-name'>
+        {{ Group.Name }}
       </h1>
-      <small class='margin-l-lg'>
-        <i class='fa fa-calendar-alt'></i>
-        {{ ScheduleDate | Date:'dddd MMMM d, yyyy ' }}
-      </small>
 
-      <small class='text-center'>
-        <i class='fa fa-clock-o'></i>
-        {{ ScheduleDate | Date:'st' }}
-      </small>
+      {% if ScheduleDate %}
+        <small class=''>
+          <i class='fa fa-calendar-alt'></i>
+          {{ ScheduleDate | Date:'dddd MMMM d, yyyy ' }}
+        </small>
 
-      <small class='text-right'>
+        <small class='text-center'>
+          <i class='fa fa-clock-o'></i>
+          {{ ScheduleDate | Date:'st' }}
+        </small>
+      {% else %}
+          <small class=''>
+              Schedule not active for this occurrence
+          </small>
+      {% endif %}
+
+      <small class='pull-right'>
         <i class='fa fa-building-o'></i>
         {{ Location.Name }}
       </small>
+    </div>
+
+    <div class='panel-body'>
+      <div class='scheduled-individuals margin-all-lg'>
+        {% if scheduledIndividualCount == 0 %}
+          <span class='label label-warning'>No individuals scheduled for this occurrence</span>
+        {% else %}
+          {% if scheduledIndividualCount == 1 %}
+            <div class='row margin-b-md'><div class='col-md-6'><strong class='name-column-header'>Name</strong></div></div>
+          {% else %}
+            <div class='row margin-b-md'><div class='col-md-6'><strong class='name-column-header'>Name</strong></div><div class='col-md-6'><strong class='name-column-header'>Name</strong></div></div>
+          {% endif %}
+          <div class='row'>
+            {% for scheduledIndividual in ScheduledIndividuals %}
+                <div class='col-md-6 scheduled-individual margin-b-md'>
+                  {% if scheduledIndividual.CurrentlyCheckedIn %}
+                    <i class='fa fa-check-square-o fa-fw'></i>
+                  {% else %}
+                    <i class='fa fa-square-o fa-fw'></i>
+                  {% endif %}
+                {{ scheduledIndividual.Person | Property:'FullName' }}
+                </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
     </div>
 
   </div>

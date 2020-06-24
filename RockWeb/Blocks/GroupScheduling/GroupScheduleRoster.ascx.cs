@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Entity;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Dynamic;
 using System.Web.UI;
@@ -53,7 +54,7 @@ namespace RockWeb.Blocks.GroupScheduling
 
     [RangeSlider(
         "Refresh Interval (seconds)",
-        Key = AttributeKey.RefreshInterval,
+        Key = AttributeKey.RefreshIntervalSeconds,
         IsRequired = true,
         Description = "The number of seconds to refresh the page. Note that setting this option too low could put a strain on the server if loaded on several clients at once.",
         DefaultIntegerValue = 30,
@@ -83,7 +84,7 @@ namespace RockWeb.Blocks.GroupScheduling
         private static class AttributeKey
         {
             public const string EnableLiveRefresh = "EnableLiveRefresh";
-            public const string RefreshInterval = "RefreshInterval";
+            public const string RefreshIntervalSeconds = "RefreshIntervalSeconds";
             public const string RosterLavaTemplate = "RosterLavaTemplate";
         }
 
@@ -143,15 +144,47 @@ namespace RockWeb.Blocks.GroupScheduling
 
             RockPage.AddCSSLink( "~/Themes/Rock/Styles/group-scheduler.css", true );
 
-            if ( !Page.IsPostBack )
+            Debug.WriteLine( "IsPostBack:{0}, IsInAsyncPostBack:{1} {2}", this.IsPostBack, ScriptManager.GetCurrent( this.Page ).IsInAsyncPostBack, RockDateTime.Now );
+
+            if ( !this.IsPostBack )
             {
+                UpdateLiveRefreshConfiguration( this.GetAttributeValue( AttributeKey.EnableLiveRefresh ).AsBoolean() );
                 PopulateRoster();
             }
+        }
+
+        /// <summary>
+        /// Updates the live refresh configuration.
+        /// </summary>
+        /// <param name="enableLiveRefresh">if set to <c>true</c> [enable live refresh].</param>
+        private void UpdateLiveRefreshConfiguration( bool enableLiveRefresh )
+        {
+            if ( enableLiveRefresh )
+            {
+                hfRefreshTimerSeconds.Value = this.GetAttributeValue( AttributeKey.RefreshIntervalSeconds );
+            }
+            else
+            {
+                hfRefreshTimerSeconds.Value = string.Empty;
+            }
+
+            lLiveUpdateEnabled.Visible = enableLiveRefresh;
+            lLiveUpdateDisabled.Visible = !enableLiveRefresh;
         }
 
         #endregion
 
         #region Events
+
+        /// <summary>
+        /// Handles the Click event of the lbRefresh control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void lbRefresh_Click( object sender, EventArgs e )
+        {
+            PopulateRoster();
+        }
 
         /// <summary>
         /// Handles the BlockUpdated event of the control.
@@ -160,7 +193,8 @@ namespace RockWeb.Blocks.GroupScheduling
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void Block_BlockUpdated( object sender, EventArgs e )
         {
-            //
+            UpdateLiveRefreshConfiguration( this.GetAttributeValue( AttributeKey.EnableLiveRefresh ).AsBoolean() );
+            PopulateRoster();
         }
 
         private bool? _displayRole = null;
@@ -180,19 +214,42 @@ namespace RockWeb.Blocks.GroupScheduling
                 return;
             }
 
+            var lOccurrenceRosterHTML = e.Item.FindControl( "lOccurrenceRosterHTML" ) as Literal;
+            var scheduleDate = attendanceOccurrence.Schedule.GetNextStartDateTime( attendanceOccurrence.OccurrenceDate );
+            var scheduledIndividuals = _confirmedScheduledIndividualsForOccurrenceId.GetValueOrNull( attendanceOccurrence.Id );
+            if ( ( scheduleDate == null || scheduleDate.Value.Date != attendanceOccurrence.OccurrenceDate ) )
+            {
+                // scheduleDate can be later than the OccurrenceDate (or null) if there are exclusions that cause the schedule
+                // to not occur on the occurrence date. In this case, don't show the roster unless there are somehow individuals
+                // scheduled for this occurrence.
+                if ( scheduledIndividuals == null || !scheduledIndividuals.Any() )
+                {
+                    lOccurrenceRosterHTML.Text = string.Empty;
+                }
+                else
+                {
+                    // lava will get a null scheduleDate which can indicate that it isn't scheduled
+                }
+            }
+
             var mergeFields = LavaHelper.GetCommonMergeFields( this.RockPage );
             mergeFields.Add( "Group", attendanceOccurrence.Group );
             mergeFields.Add( "Location", attendanceOccurrence.Location );
             mergeFields.Add( "Schedule", attendanceOccurrence.Schedule );
-            mergeFields.Add( "ScheduleDate", attendanceOccurrence.Schedule.GetNextStartDateTime(attendanceOccurrence.OccurrenceDate) );
+            mergeFields.Add( "ScheduleDate", scheduleDate );
             mergeFields.Add( "DisplayRole", _displayRole );
 
-            var scheduledIndividuals = _confirmedScheduledIndividualsForOccurrenceId.GetValueOrNull( attendanceOccurrence.Id );
+
             mergeFields.Add( "ScheduledIndividuals", scheduledIndividuals );
 
-            var lOccurrenceRosterHTML = e.Item.FindControl( "lOccurrenceRosterHTML" ) as Literal;
+
+
+
 
             var rosterHtml = _rosterLavaTemplate.ResolveMergeFields( mergeFields );
+
+            // we don't need view state
+            lOccurrenceRosterHTML.ViewStateMode = ViewStateMode.Disabled;
             lOccurrenceRosterHTML.Text = rosterHtml;
         }
 
@@ -225,7 +282,6 @@ namespace RockWeb.Blocks.GroupScheduling
             allGroupIds.AddRange( parentGroupIds );
 
             var rockContext = new RockContext();
-            rockContext.SqlLogging( true );
 
             if ( rosterConfiguration.IncludeChildGroups )
             {
@@ -242,7 +298,6 @@ namespace RockWeb.Blocks.GroupScheduling
             var attendanceOccurrenceService = new AttendanceOccurrenceService( rockContext );
 
             var currentDate = RockDateTime.Today;
-            var debugEndDate = RockDateTime.Today.AddDays( 7 );
 
             // only show occurrences for the current day
             var attendanceOccurrenceQuery = attendanceOccurrenceService
@@ -252,8 +307,7 @@ namespace RockWeb.Blocks.GroupScheduling
                 .Where( a => allGroupIds.Contains( a.GroupId.Value ) )
                 .Where( a => locationIds.Contains( a.LocationId.Value ) )
                 .Where( a => scheduleIds.Contains( a.ScheduleId.Value ) )
-                //.Where( a => a.OccurrenceDate == currentDate );
-                .Where( a => a.OccurrenceDate >= currentDate && a.OccurrenceDate <= debugEndDate );
+                .Where( a => a.OccurrenceDate == currentDate );
 
             // limit attendees to ones that confirmed (or are checked-in regardless of confirmation status)
             var confirmedAttendancesForOccurrenceQuery = attendanceOccurrenceQuery
@@ -285,6 +339,7 @@ namespace RockWeb.Blocks.GroupScheduling
                 .OrderBy( a => a.OccurrenceDate )
                 .ThenBy( a => a.Schedule.Order )
                 .ThenBy( a => a.Schedule.GetNextStartDateTime( a.OccurrenceDate ) )
+                .ThenBy( a => a.Location.Name )
                 .ToList();
 
             rptAttendanceOccurrences.DataSource = attendanceOccurrenceList;
@@ -310,6 +365,9 @@ namespace RockWeb.Blocks.GroupScheduling
         /// </summary>
         private void ShowConfigurationDialog()
         {
+            // don't do the live refresh when the configuration dialog is showing
+            UpdateLiveRefreshConfiguration( false );
+
             RosterConfiguration rosterConfiguration = this.GetBlockUserPreference( UserPreferenceKey.RosterConfigurationJSON )
                             .FromJsonOrNull<RosterConfiguration>();
 
@@ -329,12 +387,15 @@ namespace RockWeb.Blocks.GroupScheduling
             cblLocations.SetValues( rosterConfiguration.LocationIds ?? new int[0] );
 
             cbDisplayRole.Checked = rosterConfiguration.DisplayRole;
-            
+
 
 
             mdRosterConfiguration.Show();
         }
 
+        /// <summary>
+        /// Updates the lists for selected groups.
+        /// </summary>
         private void UpdateListsForSelectedGroups()
         {
             UpdateScheduleList();
@@ -522,6 +583,7 @@ namespace RockWeb.Blocks.GroupScheduling
             this.SetBlockUserPreference( UserPreferenceKey.RosterConfigurationJSON, rosterConfiguration.ToJson() );
             mdRosterConfiguration.Hide();
 
+            UpdateLiveRefreshConfiguration( this.GetAttributeValue( AttributeKey.EnableLiveRefresh ).AsBoolean() );
             PopulateRoster();
         }
 
@@ -559,7 +621,7 @@ namespace RockWeb.Blocks.GroupScheduling
 
         #region Classes
 
-        public class RosterConfiguration: RockDynamic
+        public class RosterConfiguration : RockDynamic
         {
             public int[] GroupIds { get; set; }
             public bool IncludeChildGroups { get; set; }
@@ -573,7 +635,7 @@ namespace RockWeb.Blocks.GroupScheduling
             }
         }
 
-        public class ScheduledIndividual: RockDynamic
+        public class ScheduledIndividual : RockDynamic
         {
             public Attendance Attendance { get; set; }
             public Person Person { get; set; }
@@ -582,5 +644,7 @@ namespace RockWeb.Blocks.GroupScheduling
         }
 
         #endregion
+
+        
     }
 }

@@ -3,10 +3,38 @@
 <asp:UpdatePanel ID="upnlContent" runat="server">
     <ContentTemplate>
 
+        <script>
 
+            var rosterTimeoutHandle = null;
 
-        <asp:Panel ID="pnlView" runat="server" CssClass="panel panel-block">
+            Sys.Application.add_load(function () {
 
+                var $timerSeconds = $('.js-refresh-timer-seconds');
+
+                function refreshRoster() {
+                    console.log("refreshing:" + new Date());
+                    window.clearTimeout(rosterTimeoutHandle);
+                    window.location = "javascript:__doPostBack('<%=lbRefresh.ClientID %>','')";
+                }
+
+                if (rosterTimeoutHandle) {
+                    console.log("clearTimeout:" + new Date());
+                    window.clearTimeout(rosterTimeoutHandle);
+                }
+
+                var timeoutSeconds = $timerSeconds.val();
+                if (timeoutSeconds) {
+                    rosterTimeoutHandle = window.setTimeout(refreshRoster, timeoutSeconds * 1000);
+                }
+
+            });
+        </script>
+
+        <asp:Panel ID="pnlView" runat="server" CssClass="panel panel-block js-roster-view">
+            <Rock:HiddenFieldWithClass ID="hfRefreshTimerSeconds" runat="server" CssClass="js-refresh-timer-seconds" />
+            <span style="display: none">
+                <asp:LinkButton ID="lbRefresh" runat="server" OnClick="lbRefresh_Click" />
+            </span>
             <div class="panel-heading">
                 <h1 class="panel-title">
                     <i class="fa fa-calendar-check-o"></i>
@@ -38,12 +66,12 @@
                         <div class="col-md-6">
                             <Rock:GroupPicker ID="gpGroups" runat="server" AllowMultiSelect="true" Label="Groups" Required="true" OnSelectItem="gpGroups_SelectItem" ValidationGroup="vgRosterConfiguration" LimitToSchedulingEnabledGroups="true" />
                             <Rock:NotificationBox ID="nbGroupWarning" runat="server" NotificationBoxType="Warning" />
-                            <Rock:RockListBox ID="lbSchedules" runat="server" Label="Schedules" ValidationGroup="vgRosterConfiguration" AutoPostBack="true" OnSelectedIndexChanged="lbSchedules_SelectedIndexChanged"/>
-                            <Rock:RockCheckBox ID="cbDisplayRole" runat="server" Label="Display Role" ValidationGroup="vgRosterConfiguration"/>
+                            <Rock:RockListBox ID="lbSchedules" runat="server" Label="Schedules" ValidationGroup="vgRosterConfiguration" AutoPostBack="true" OnSelectedIndexChanged="lbSchedules_SelectedIndexChanged" />
+                            <Rock:RockCheckBox ID="cbDisplayRole" runat="server" Label="Display Role" ValidationGroup="vgRosterConfiguration" />
                         </div>
                         <div class="col-md-6">
-                            <Rock:RockCheckBox ID="cbIncludeChildGroups" runat="server" Label="Include Child Groups" AutoPostBack="true" OnCheckedChanged="cbIncludeChildGroups_CheckedChanged" ValidationGroup="vgRosterConfiguration"/>
-                            <Rock:RockCheckBoxList ID="cblLocations" runat="server" Label="Locations" ValidationGroup="vgRosterConfiguration"/>
+                            <Rock:RockCheckBox ID="cbIncludeChildGroups" runat="server" Label="Include Child Groups" AutoPostBack="true" OnCheckedChanged="cbIncludeChildGroups_CheckedChanged" ValidationGroup="vgRosterConfiguration" />
+                            <Rock:RockCheckBoxList ID="cblLocations" runat="server" Label="Locations" ValidationGroup="vgRosterConfiguration" />
                             <Rock:NotificationBox ID="nbLocationsWarning" runat="server" NotificationBoxType="Warning" />
                         </div>
                     </div>

@@ -276,7 +276,10 @@ namespace Rock.Model
 
                 var rrule = this.GetRecurrenceRule();
 
-                /* To improve performance, only go out a week (or so) if this is a weekly or daily schedule */
+                /* 2020-06-24 MP
+                 * To improve performance, only go out a week (or so) if this is a weekly or daily schedule.
+                 * If this optimization fails to find a next scheduled date, fall back to looking out a full year
+                 */
 
                 if ( rrule?.Frequency == FrequencyType.Weekly )
                 {
@@ -293,7 +296,8 @@ namespace Rock.Model
                 var nextOccurrence = occurrences.Min( o => ( DateTime? ) o );
                 if ( nextOccurrence == null && endDate < currentDateTime.AddYears( 1 ) )
                 {
-                    // if tried an earlier end date, but didn't get a next datetime, see if there is a next schedule date within the next year
+                    // if tried an earlier end date, but didn't get a next datetime,
+                    // use the regular way and see if there is a next schedule date within the next year
                     endDate = currentDateTime.AddYears( 1 );
                     occurrences = GetScheduledStartTimes( currentDateTime, endDate );
                     nextOccurrence = occurrences.Min( o => ( DateTime? ) o );
