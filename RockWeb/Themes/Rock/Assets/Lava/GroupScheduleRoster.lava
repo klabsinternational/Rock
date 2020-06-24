@@ -14,23 +14,44 @@
 
 
 <style>
-  .ToDo {
-    display: none;
+  .group-schedule-roster-occurrence {
+    padding: 10px;
+  }
+
+  .group-name {
+
+  }
+
+  .location .panel small
+  {
+    width:33%;
+    opacity: .5;
   }
 </style>
 
 
+<div class='location'>
+  <div class="panel panel-block">
+    <div class="panel-heading">
+      <h1 class='panel-title'>
+              {{ Group.Name }}
 
-<div class='group-schedule-roster'>
-<h1>{{ Group.Name }}</h1>
-<pre>
+      </h1>
+      <small class='margin-l-lg'>
+        <i class='fa fa-calendar-alt'></i>
+        {{ ScheduleDate | Date:'dddd MMMM d, yyyy ' }}
+      </small>
 
-  Schedule Date = {{ ScheduleDate  }}
-  Schedule = {{ Schedule.Name }}
-  Location = {{ Location.Name }}
-  DisplayRole = {{ DisplayRole}}
-  {% for scheduledIndividual in ScheduledIndividuals %}
-     {{ scheduledIndividual.Person.FirstName }}
-  {% endfor %}
-</pre>
+      <small class='text-center'>
+        <i class='fa fa-clock-o'></i>
+        {{ ScheduleDate | Date:'st' }}
+      </small>
+
+      <small class='text-right'>
+        <i class='fa fa-building-o'></i>
+        {{ Location.Name }}
+      </small>
+    </div>
+
+  </div>
 </div>

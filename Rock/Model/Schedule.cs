@@ -272,28 +272,40 @@ namespace Rock.Model
         {
             if ( this.IsActive )
             {
-                var occurrences = GetScheduledStartTimes( currentDateTime, currentDateTime.AddYears( 1 ) );
-                return occurrences.Min( o => ( DateTime? ) o );
+                var endDate = currentDateTime.AddYears( 1 );
+
+                var rrule = this.GetRecurrenceRule();
+
+                /* To improve performance, only go out a week (or so) if this is a weekly or daily schedule */
+
+                if ( rrule?.Frequency == FrequencyType.Weekly )
+                {
+                    var everyXWeeks = rrule.Interval;
+                    endDate = currentDateTime.AddDays( everyXWeeks * 7 );
+                }
+                else if ( rrule?.Frequency == FrequencyType.Daily )
+                {
+                    var everyXDays = rrule.Interval;
+                    endDate = currentDateTime.AddDays( everyXDays );
+                }
+
+                var occurrences = GetScheduledStartTimes( currentDateTime, endDate );
+                var nextOccurrence = occurrences.Min( o => ( DateTime? ) o );
+                if ( nextOccurrence == null && endDate < currentDateTime.AddYears( 1 ) )
+                {
+                    // if tried an earlier end date, but didn't get a next datetime, see if there is a next schedule date within the next year
+                    endDate = currentDateTime.AddYears( 1 );
+                    occurrences = GetScheduledStartTimes( currentDateTime, endDate );
+                    nextOccurrence = occurrences.Min( o => ( DateTime? ) o );
+                }
+
+                return nextOccurrence;
             }
             else
             {
                 return null;
             }
         }
-
-        public DateTime? GetNextStartDateTime( DateTime currentDateTime, DateTime endDateTime )
-        {
-            if ( this.IsActive )
-            {
-                var occurrences = GetScheduledStartTimes( currentDateTime, endDateTime );
-                return occurrences.Min( o => ( DateTime? ) o );
-            }
-            else
-            {
-                return null;
-            }
-        }
-
 
         /// <summary>
         /// Gets the first start date time.
@@ -720,6 +732,25 @@ namespace Rock.Model
         }
 
         /// <summary>
+        /// Gets the recurrence rule.
+        /// </summary>
+        /// <returns></returns>
+        private IRecurrencePattern GetRecurrenceRule()
+        {
+            DDay.iCal.Event calEvent = GetCalendarEvent();
+            if ( calEvent != null && calEvent.DTStart != null )
+            {
+                if ( calEvent.RecurrenceRules.Any() )
+                {
+                    IRecurrencePattern rrule = calEvent.RecurrenceRules[0];
+                    return rrule;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// returns true if there is a blank schedule or a schedule that is incomplete
         /// </summary>
         /// <returns></returns>
@@ -728,9 +759,9 @@ namespace Rock.Model
             DDay.iCal.Event calEvent = GetCalendarEvent();
             if ( calEvent != null && calEvent.DTStart != null )
             {
-                if ( calEvent.RecurrenceRules.Any() )
+                IRecurrencePattern rrule = this.GetRecurrenceRule();
+                if ( rrule != null )
                 {
-                    IRecurrencePattern rrule = calEvent.RecurrenceRules[0];
                     if ( rrule.Frequency == FrequencyType.Weekly )
                     {
                         // if it has a Weekly schedule, but no days are selected, return true that is has a warning
@@ -786,11 +817,10 @@ namespace Rock.Model
             if ( calendarEvent != null && calendarEvent.DTStart != null )
             {
                 string startTimeText = calendarEvent.DTStart.Value.TimeOfDay.ToTimeString();
-                if ( calendarEvent.RecurrenceRules.Any() )
+                IRecurrencePattern rrule = this.GetRecurrenceRule();
+                if ( rrule != null )
                 {
                     // some type of recurring schedule
-
-                    IRecurrencePattern rrule = calendarEvent.RecurrenceRules[0];
                     switch ( rrule.Frequency )
                     {
                         case FrequencyType.Daily:
@@ -850,7 +880,7 @@ namespace Rock.Model
                                 // The Nth <DayOfWeekName>.  We only support one *day* in the ByDay list, but multiple *offsets*.
                                 // So, it can be the "The first and third Monday" of every month.
                                 IWeekDay bydate = rrule.ByDay[0];
-                                var offsetNames = NthNamesAbbreviated.Where( a => rrule.ByDay.Select( o=>o.Offset ).Contains( a.Key ) ).Select( a => a.Value );
+                                var offsetNames = NthNamesAbbreviated.Where( a => rrule.ByDay.Select( o => o.Offset ).Contains( a.Key ) ).Select( a => a.Value );
                                 if ( offsetNames != null )
                                 {
                                     result = string.Format( "The {0} {1} of every month", offsetNames.JoinStringsWithCommaAnd(), bydate.DayOfWeek.ConvertToString() );

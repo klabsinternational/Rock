@@ -2294,7 +2294,7 @@ namespace Rock.Model
         /// <returns></returns>
         public static IQueryable<Attendance> WhereScheduledPersonConfirmed( this IQueryable<Attendance> query )
         {
-            return query.Where( a => (a.ScheduledToAttend == true && a.RSVP == RSVP.Yes) || a.DidAttend == true );
+            return query.Where( a => ( a.ScheduledToAttend == true && a.RSVP == RSVP.Yes ) || a.DidAttend == true );
         }
     }
 }

@@ -15,15 +15,14 @@
 // </copyright>
 //
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Entity;
 using System.Linq;
 using System.Linq.Dynamic;
-using System.Linq.Expressions;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
@@ -142,6 +141,8 @@ namespace RockWeb.Blocks.GroupScheduling
         {
             base.OnLoad( e );
 
+            RockPage.AddCSSLink( "~/Themes/Rock/Styles/group-scheduler.css", true );
+
             if ( !Page.IsPostBack )
             {
                 PopulateRoster();
@@ -183,7 +184,7 @@ namespace RockWeb.Blocks.GroupScheduling
             mergeFields.Add( "Group", attendanceOccurrence.Group );
             mergeFields.Add( "Location", attendanceOccurrence.Location );
             mergeFields.Add( "Schedule", attendanceOccurrence.Schedule );
-            mergeFields.Add( "ScheduleDate", attendanceOccurrence.OccurrenceDate );
+            mergeFields.Add( "ScheduleDate", attendanceOccurrence.Schedule.GetNextStartDateTime(attendanceOccurrence.OccurrenceDate) );
             mergeFields.Add( "DisplayRole", _displayRole );
 
             var scheduledIndividuals = _confirmedScheduledIndividualsForOccurrenceId.GetValueOrNull( attendanceOccurrence.Id );
@@ -221,8 +222,10 @@ namespace RockWeb.Blocks.GroupScheduling
             this._rosterLavaTemplate = this.GetAttributeValue( AttributeKey.RosterLavaTemplate );
 
             var allGroupIds = new List<int>();
+            allGroupIds.AddRange( parentGroupIds );
 
             var rockContext = new RockContext();
+            rockContext.SqlLogging( true );
 
             if ( rosterConfiguration.IncludeChildGroups )
             {
@@ -239,8 +242,9 @@ namespace RockWeb.Blocks.GroupScheduling
             var attendanceOccurrenceService = new AttendanceOccurrenceService( rockContext );
 
             var currentDate = RockDateTime.Today;
-            var maxDate = currentDate.AddDays( 6 );
+            var debugEndDate = RockDateTime.Today.AddDays( 7 );
 
+            // only show occurrences for the current day
             var attendanceOccurrenceQuery = attendanceOccurrenceService
                 .Queryable()
                 .Where( a => a.ScheduleId.HasValue && a.LocationId.HasValue && a.GroupId.HasValue )
@@ -248,9 +252,14 @@ namespace RockWeb.Blocks.GroupScheduling
                 .Where( a => allGroupIds.Contains( a.GroupId.Value ) )
                 .Where( a => locationIds.Contains( a.LocationId.Value ) )
                 .Where( a => scheduleIds.Contains( a.ScheduleId.Value ) )
-                .Where( a => a.OccurrenceDate >= currentDate && a.OccurrenceDate <= maxDate );
+                //.Where( a => a.OccurrenceDate == currentDate );
+                .Where( a => a.OccurrenceDate >= currentDate && a.OccurrenceDate <= debugEndDate );
 
-            var confirmedAttendancesForOccurrenceQuery = attendanceOccurrenceQuery.SelectMany( a => a.Attendees ).Include( a => a.PersonAlias.Person );//.WhereScheduledPersonConfirmed();
+            // limit attendees to ones that confirmed (or are checked-in regardless of confirmation status)
+            var confirmedAttendancesForOccurrenceQuery = attendanceOccurrenceQuery
+                    .SelectMany( a => a.Attendees )
+                    .Include( a => a.PersonAlias.Person ).WhereScheduledPersonConfirmed();
+
             _confirmedScheduledIndividualsForOccurrenceId = confirmedAttendancesForOccurrenceQuery
                 .AsNoTracking()
                 .ToList()
@@ -266,7 +275,7 @@ namespace RockWeb.Blocks.GroupScheduling
                     .ToList() );
 
 
-            var attendanceOccurrenceList = attendanceOccurrenceQuery
+            List<AttendanceOccurrence> attendanceOccurrenceList = attendanceOccurrenceQuery
                 .Include( a => a.Schedule )
                 .Include( a => a.Attendees )
                 .Include( a => a.Group )
@@ -275,7 +284,7 @@ namespace RockWeb.Blocks.GroupScheduling
                 .ToList()
                 .OrderBy( a => a.OccurrenceDate )
                 .ThenBy( a => a.Schedule.Order )
-                .ThenBy( a => a.Schedule.GetNextStartDateTime( currentDate ) )
+                .ThenBy( a => a.Schedule.GetNextStartDateTime( a.OccurrenceDate ) )
                 .ToList();
 
             rptAttendanceOccurrences.DataSource = attendanceOccurrenceList;

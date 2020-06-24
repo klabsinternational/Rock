@@ -55,10 +55,9 @@ namespace Rock
         {
             // Calculate the Next Start Date Time based on the start of the week so that schedule columns are in the correct order
             var occurrenceDate = RockDateTime.Now.SundayDate().AddDays( 1 );
-            var maxDate = occurrenceDate.AddDays( 7 );
             List<Schedule> sortedScheduleList = scheduleList
                 .OrderBy(a => a.Order)
-                .ThenBy( a => a.GetNextStartDateTime( occurrenceDate, maxDate ) )
+                .ThenBy( a => a.GetNextStartDateTime( occurrenceDate ) )
                 .ThenBy( a => a.Name )
                 .ThenBy( a => a.Id )
                 .ToList();
