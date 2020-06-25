@@ -129,6 +129,8 @@ namespace RockWeb.Blocks.GroupScheduling
         {
             base.OnInit( e );
 
+            RockPage.AddScriptLink( "~/Scripts/idle-timer.min.js" );
+
             // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
@@ -144,12 +146,34 @@ namespace RockWeb.Blocks.GroupScheduling
 
             RockPage.AddCSSLink( "~/Themes/Rock/Styles/group-scheduler.css", true );
 
-            Debug.WriteLine( "IsPostBack:{0}, IsInAsyncPostBack:{1} {2}", this.IsPostBack, ScriptManager.GetCurrent( this.Page ).IsInAsyncPostBack, RockDateTime.Now );
-
             if ( !this.IsPostBack )
             {
                 UpdateLiveRefreshConfiguration( this.GetAttributeValue( AttributeKey.EnableLiveRefresh ).AsBoolean() );
                 PopulateRoster();
+            }
+            else
+            {
+                HandleCustomPostbackEvents();
+            }
+        }
+
+        /// <summary>
+        /// Handles the custom postback events.
+        /// </summary>
+        private void HandleCustomPostbackEvents()
+        {
+            string postbackArgs = Request.Params["__EVENTARGUMENT"];
+            if ( !string.IsNullOrWhiteSpace( postbackArgs ) )
+            {
+                if ( postbackArgs == "select-all-locations" )
+                {
+                    var locationItems = cblLocations.Items.OfType<ListItem>().ToList();
+                    bool selected = locationItems.All( a => !a.Selected );
+                    foreach ( var cbLocation in locationItems )
+                    {
+                        cbLocation.Selected = selected;
+                    }
+                }
             }
         }
 
@@ -341,6 +365,8 @@ namespace RockWeb.Blocks.GroupScheduling
                 .ThenBy( a => a.Schedule.GetNextStartDateTime( a.OccurrenceDate ) )
                 .ThenBy( a => a.Location.Name )
                 .ToList();
+
+            nbNoOccurrences.Visible = !attendanceOccurrenceList.Any();
 
             rptAttendanceOccurrences.DataSource = attendanceOccurrenceList;
             rptAttendanceOccurrences.DataBind();

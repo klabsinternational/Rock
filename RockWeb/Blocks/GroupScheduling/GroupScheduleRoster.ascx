@@ -5,27 +5,31 @@
 
         <script>
 
-            var rosterTimeoutHandle = null;
-
             Sys.Application.add_load(function () {
+                var $rosterView = $(".js-roster-view")
+                var $refreshButton = $('.js-refresh-button', $rosterView);
+                var $liveUpdateLabel = $('.js-live-update-label', $rosterView)
+                $.idleTimer('destroy');
 
-                var $timerSeconds = $('.js-refresh-timer-seconds');
+                var $timerSeconds = $('.js-refresh-timer-seconds', $rosterView);
+                var timeoutMilliSeconds = $timerSeconds.val() * 1000;
 
-                function refreshRoster() {
-                    console.log("refreshing:" + new Date());
-                    window.clearTimeout(rosterTimeoutHandle);
-                    window.location = "javascript:__doPostBack('<%=lbRefresh.ClientID %>','')";
+                if (timeoutMilliSeconds) {
+
+                    $.idleTimer(timeoutMilliSeconds);
+                    $(document).bind('idle.idleTimer', function () {
+                        $.idleTimer('destroy');
+                        $liveUpdateLabel.text('Updating...');
+                        window.location = $refreshButton.prop('href');
+                    });
                 }
 
-                if (rosterTimeoutHandle) {
-                    console.log("clearTimeout:" + new Date());
-                    window.clearTimeout(rosterTimeoutHandle);
-                }
+                var $rosterConfiguration = $(".js-roster-configuration");
 
-                var timeoutSeconds = $timerSeconds.val();
-                if (timeoutSeconds) {
-                    rosterTimeoutHandle = window.setTimeout(refreshRoster, timeoutSeconds * 1000);
-                }
+                $('.js-locations-picker .control-label', $rosterConfiguration).on('click', function () {
+                    // NOTE: this is doing a postback because it gets applied automatically (there isn't a Apply Filter button)
+                    window.location = "javascript:__doPostBack('<%=upnlContent.ClientID %>', 'select-all-locations')";
+                })
 
             });
         </script>
@@ -33,7 +37,7 @@
         <asp:Panel ID="pnlView" runat="server" CssClass="panel panel-block js-roster-view">
             <Rock:HiddenFieldWithClass ID="hfRefreshTimerSeconds" runat="server" CssClass="js-refresh-timer-seconds" />
             <span style="display: none">
-                <asp:LinkButton ID="lbRefresh" runat="server" OnClick="lbRefresh_Click" />
+                <asp:LinkButton ID="lbRefresh" CssClass="js-refresh-button" runat="server" OnClick="lbRefresh_Click" />
             </span>
             <div class="panel-heading">
                 <h1 class="panel-title">
@@ -44,11 +48,14 @@
                 <div class="panel-labels">
                     <asp:Literal ID="lLiveUpdateEnabled" runat="server" Visible="false"><i class='fa fa-check-square-o'></i></asp:Literal>
                     <asp:Literal ID="lLiveUpdateDisabled" runat="server" Visible="true"><i class='fa fa-square-o'></i></asp:Literal>
-                    <asp:Literal ID="lLiveUpdateLabel" runat="server" Text="Live Update" />
+                    <span class="js-live-update-label">
+                        <asp:Literal ID="lLiveUpdateLabel" runat="server" Text="Live Update" />
+                    </span>
                     <asp:LinkButton ID="btnConfiguration" runat="server" CssClass="btn btn-default btn-square btn-xs" CausesValidation="false" OnClick="btnConfiguration_Click"><i class="fa fa-gear"></i></asp:LinkButton>
                 </div>
             </div>
             <div class="locations js-scheduled-occurrences">
+                <Rock:NotificationBox ID="nbNoOccurrences" runat="server" Visible="false" Text="No Occurrences for the selected group options." NotificationBoxType="Warning" />
                 <asp:Repeater ID="rptAttendanceOccurrences" runat="server" OnItemDataBound="rptAttendanceOccurrences_ItemDataBound">
                     <ItemTemplate>
                         <asp:Literal ID="lOccurrenceRosterHTML" runat="server" />
@@ -59,7 +66,7 @@
         </asp:Panel>
 
         <%-- Roster Configuration (User preferences) --%>
-        <asp:Panel ID="pnlConfiguration" runat="server">
+        <asp:Panel ID="pnlConfiguration" runat="server" CssClass="js-roster-configuration">
             <Rock:ModalDialog ID="mdRosterConfiguration" runat="server" Title="Configuration" CssClass=".js-configuration-modal" ValidationGroup="vgRosterConfiguration" OnSaveClick="mdRosterConfiguration_SaveClick">
                 <Content>
                     <div class="row">
@@ -71,7 +78,7 @@
                         </div>
                         <div class="col-md-6">
                             <Rock:RockCheckBox ID="cbIncludeChildGroups" runat="server" Label="Include Child Groups" AutoPostBack="true" OnCheckedChanged="cbIncludeChildGroups_CheckedChanged" ValidationGroup="vgRosterConfiguration" />
-                            <Rock:RockCheckBoxList ID="cblLocations" runat="server" Label="Locations" ValidationGroup="vgRosterConfiguration" />
+                            <Rock:RockCheckBoxList ID="cblLocations" runat="server" Label="Locations" ValidationGroup="vgRosterConfiguration" FormGroupCssClass="js-locations-picker" />
                             <Rock:NotificationBox ID="nbLocationsWarning" runat="server" NotificationBoxType="Warning" />
                         </div>
                     </div>
