@@ -493,8 +493,10 @@
     <Compile Include="Bulk\BulkImport\InteractionsImport.cs" />
     <Compile Include="Bulk\BulkImport\InteractionImport.cs" />
     <Compile Include="CheckIn\LocalDeviceConfiguration.cs" />
+    <Compile Include="Communication\CommunicationHelper.cs" />
     <Compile Include="Communication\IRockMobilePush.cs" />
     <Compile Include="Communication\PushData.cs" />
+    <Compile Include="Communication\CreateMessageResult.cs" />
     <Compile Include="Communication\Transport\EmailSendResponse.cs" />
     <Compile Include="Communication\EmailTransportComponent.cs" />
     <Compile Include="Communication\Transport\SafeSenderResult.cs" />
@@ -508,7 +510,7 @@
     <Compile Include="Jobs\RockJobWarningException.cs" />
     <Compile Include="Jobs\CampaignManager.cs" />
     <Compile Include="Jobs\SendGroupAttendanceDigest.cs" />
-    <Compile Include="Jobs\SendMessageResults.cs" />
+    <Compile Include="Communication\SendMessageResult.cs" />
     <Compile Include="Jobs\PostV110DataMigrationsUpdateDateKeyValues.cs" />
     <Compile Include="Jobs\PostV103DataMigrationsSpiritualGifts.cs" />
     <Compile Include="Lava\LavaFileSystem.cs" />
@@ -549,6 +551,7 @@
     <Compile Include="Transactions\PageRenameTransaction.cs" />
     <Compile Include="Logging\RockLogLevel.cs" />
     <Compile Include="Plugin\HotFixes\114_MigrationRollupsFor10_3_3.cs" />
+    <Compile Include="Plugin\HotFixes\128_MigrationRollupsFor10_4_1.cs" />
     <Compile Include="Plugin\HotFixes\127_MigrationRollupsFor10_4_0.cs" />
     <Compile Include="Plugin\HotFixes\126_MigrationRollupsFor10_3_7.cs" />
     <Compile Include="Plugin\HotFixes\125_MobileTemplateUpdatesPostAlpha.cs" />
@@ -2701,6 +2704,7 @@
     <Compile Include="Workflow\Action\People\PersonPropertyUpdate.cs" />
     <Compile Include="Workflow\Action\People\PersonTagAdd.cs" />
     <Compile Include="Workflow\Action\People\PersonTagRemove.cs" />
+    <Compile Include="Workflow\Action\People\PrayerRequestAdd.cs" />
     <Compile Include="Workflow\Action\People\SetPersonAttribute.cs" />
     <Compile Include="Workflow\Action\Registrations\GenerateDiscountCode.cs" />
     <Compile Include="Workflow\Action\Registrations\UpdateDiscountCode.cs" />
