@@ -27,7 +27,6 @@
                 var $rosterConfiguration = $(".js-roster-configuration");
 
                 $('.js-locations-picker .control-label', $rosterConfiguration).on('click', function () {
-                    // NOTE: this is doing a postback because it gets applied automatically (there isn't a Apply Filter button)
                     window.location = "javascript:__doPostBack('<%=upnlContent.ClientID %>', 'select-all-locations')";
                 })
 

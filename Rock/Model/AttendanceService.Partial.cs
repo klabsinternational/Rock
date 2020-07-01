@@ -21,7 +21,8 @@ using System.Data;
 using System.Data.Entity;
 using System.Data.Entity.SqlServer;
 using System.Linq;
-using System.Text;
+using System.Linq.Expressions;
+
 using Rock.BulkImport;
 using Rock.Chart;
 using Rock.Communication;
@@ -2309,6 +2310,54 @@ namespace Rock.Model
         public static IQueryable<Attendance> WhereScheduledOrCheckedIn( this IQueryable<Attendance> query )
         {
             return query.Where( a => ( a.RequestedToAttend == true || a.ScheduledToAttend == true ) || a.DidAttend == true );
+        }
+
+        /// <summary>
+        /// Returns a queryable of Attendance where the person is scheduled (RequestedToAttend), limited to scheduled persons with the specified <see cref="ScheduledAttendanceItemStatus">scheduledAttendanceItemStatuses</see> 
+        /// </summary>
+        /// <param name="query">The query.</param>
+        /// <param name="scheduledAttendanceItemStatuses">The scheduled attendance item statuses.</param>
+        /// <returns></returns>
+        public static IQueryable<Attendance> WhereHasScheduledAttendanceItemStatus( this IQueryable<Attendance> query, ScheduledAttendanceItemStatus[] scheduledAttendanceItemStatuses )
+        {
+            Expression whereExpression = null;
+            var parameterExpression = Expression.Parameter( typeof( Attendance ), "a" );
+            var requestedToAttendProperty = Expression.Property( parameterExpression, "RequestedToAttend" );
+            var scheduledToAttendProperty = Expression.Property( parameterExpression, "ScheduledToAttend" );
+            var rsvpProperty = Expression.Property( parameterExpression, "RSVP" );
+            var trueConstant = Expression.Constant( true, typeof( bool? ) );
+
+            foreach ( var scheduledAttendanceItemStatus in scheduledAttendanceItemStatuses )
+            {
+                Expression statusExpression = null;
+                if ( scheduledAttendanceItemStatus == ScheduledAttendanceItemStatus.Pending )
+                {
+                    statusExpression = Expression.Equal( requestedToAttendProperty, trueConstant );
+                    statusExpression = Expression.AndAlso( statusExpression, Expression.Equal( rsvpProperty, Expression.Constant( RSVP.Maybe ) ) );
+                }
+                else if ( scheduledAttendanceItemStatus == ScheduledAttendanceItemStatus.Declined )
+                {
+                    statusExpression = Expression.Equal( requestedToAttendProperty, trueConstant );
+                    statusExpression = Expression.AndAlso( statusExpression, Expression.Equal( rsvpProperty, Expression.Constant( RSVP.No ) ) );
+                }
+                else
+                {
+                    statusExpression = Expression.Equal( scheduledToAttendProperty, trueConstant );
+                }
+
+                if ( whereExpression == null )
+                {
+                    whereExpression = statusExpression;
+                }
+                else
+                {
+                    whereExpression = Expression.OrElse( whereExpression, statusExpression );
+                }
+            }
+
+            var scheduledAttendanceQuery = query.Where( parameterExpression, whereExpression );
+
+            return scheduledAttendanceQuery;
         }
     }
 }

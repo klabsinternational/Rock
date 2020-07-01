@@ -1444,6 +1444,47 @@ namespace Rock.Model
             return groupQuery
                     .Where( g => g.GroupType.IsSchedulingEnabled && g.DisableScheduling == false );
         }
+
+        /// <summary>
+        /// Returns a queryable of group scheduling <see cref="Schedule">Schedules</see> associated with group scheduling for the specified groupQuery.
+        /// Only schedules for groups that have group scheduling enabled, and have active group locations will be returned.
+        /// </summary>
+        /// <param name="groupQuery">The group query.</param>
+        /// <returns></returns>
+        public static IQueryable<Schedule> GetGroupSchedulingSchedules( this IQueryable<Group> groupQuery )
+        {
+            var groupsWithSchedulingEnabledQuery = groupQuery.HasSchedulingEnabled();
+
+            var groupLocationsQuery = groupsWithSchedulingEnabledQuery.SelectMany( a => a.GroupLocations );
+
+            var schedulesQuery = groupLocationsQuery
+                .Where( gl => gl.Location.IsActive )
+                .SelectMany( gl => gl.Schedules )
+                .Distinct()
+                .Where( s => s.IsActive );
+
+            return schedulesQuery;
+        }
+
+        /// <summary>
+        /// Returns a queryable of group scheduling <see cref="GroupLocation">group locations</see> associated with group scheduling for the specified groupQuery.
+        /// Only group locations for groups that have group scheduling enabled, and have active group locations will be returned.
+        /// </summary>
+        /// <param name="groupQuery">The group query.</param>
+        /// <returns></returns>
+        public static IQueryable<GroupLocation> GetGroupSchedulingGroupLocations( this IQueryable<Group> groupQuery )
+        {
+            var groupsWithSchedulingEnabledQuery = groupQuery.HasSchedulingEnabled();
+            var groupLocationsQuery = groupsWithSchedulingEnabledQuery.SelectMany( a => a.GroupLocations );
+
+            groupLocationsQuery = groupLocationsQuery
+                .Where( a => groupQuery.Any( x => x.Id == a.GroupId ) )
+                .Where( a => a.Group.GroupType.IsSchedulingEnabled == true && a.Group.DisableScheduling == false )
+                .Where( gl => gl.Location.IsActive )
+                .Distinct();
+
+            return groupLocationsQuery;
+        }
     }
 
     #endregion

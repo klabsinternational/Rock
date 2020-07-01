@@ -18,7 +18,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Entity;
-using System.Diagnostics;
 using System.Linq;
 using System.Linq.Dynamic;
 using System.Web.UI;
@@ -261,8 +260,6 @@ namespace RockWeb.Blocks.GroupScheduling
 
             allGroupIds = allGroupIds.Distinct().ToList();
 
-            rockContext.SqlLogging( true );
-
             var attendanceOccurrenceService = new AttendanceOccurrenceService( rockContext );
 
             var currentDate = RockDateTime.Today;
@@ -432,21 +429,8 @@ namespace RockWeb.Blocks.GroupScheduling
                 return;
             }
 
-            var groupLocationService = new GroupLocationService( rockContext );
-            var groupLocationsQuery = groupLocationService.Queryable()
-                .Where( a => includedGroupsQuery.Any( x => x.Id == a.GroupId ) )
-                .Where( a => a.Group.GroupType.IsSchedulingEnabled == true && a.Group.DisableScheduling == false )
-                .Distinct();
-
-            var groupSchedulesQuery = groupLocationsQuery
-                .Where( gl => gl.Location.IsActive )
-                .SelectMany( gl => gl.Schedules )
-                .Where( s => s.IsActive );
-
-            var groupSchedulesList = groupSchedulesQuery.AsNoTracking()
-                .AsEnumerable()
-                .DistinctBy( a => a.Guid )
-                .ToList();
+            var groupSchedulesQuery = includedGroupsQuery.GetGroupSchedulingSchedules();
+            var groupSchedulesList = groupSchedulesQuery.AsNoTracking().ToList();
 
             lbSchedules.Visible = true;
             if ( !groupSchedulesList.Any() )
@@ -482,9 +466,6 @@ namespace RockWeb.Blocks.GroupScheduling
                 listItem.Selected = selectedScheduleIds.Contains( schedule.Id );
                 lbSchedules.Items.Add( listItem );
             }
-
-            // update selectedSchedules to ones that are still selected after updating schedule list
-            selectedScheduleIds = lbSchedules.SelectedValues.AsIntegerList();
         }
 
         /// <summary>
@@ -503,7 +484,7 @@ namespace RockWeb.Blocks.GroupScheduling
             {
                 foreach ( var selectedGroupId in selectedGroupIds )
                 {
-                    var childGroupIds = groupService.GetAllDescendentGroupIds( selectedGroupId, false );
+                    var childGroupIds = groupService.Queryable().Where( a => a.ParentGroupId == selectedGroupId ).Select( a => a.Id ).ToList();
 
                     includedGroupIds.AddRange( childGroupIds );
                 }
@@ -538,18 +519,15 @@ namespace RockWeb.Blocks.GroupScheduling
 
             var groupLocationService = new GroupLocationService( rockContext );
 
-            var groupLocationsQuery = groupLocationService.Queryable()
-                .Where( a => includedGroupsQuery.Any( x => x.Id == a.GroupId ) )
-                .Where( a => a.Group.GroupType.IsSchedulingEnabled == true && a.Group.DisableScheduling == false )
-                .Distinct();
+            var groupLocationsQuery = includedGroupsQuery.GetGroupSchedulingGroupLocations();
 
-            // narrow down group locations that ones for the selected schedules
+            // narrow down group locations to ones for the selected schedules
             groupLocationsQuery = groupLocationsQuery.Where( a => a.Schedules.Any( s => selectedScheduleIds.Contains( s.Id ) ) );
 
             var locationList = groupLocationsQuery.Select( a => a.Location )
                 .AsNoTracking()
                 .ToList()
-                .DistinctBy( a => a.Id )
+                .Distinct()
                 .OrderBy( a => a.ToString() ).ToList();
 
             // get any of the currently location ids, and reselect them if they still exist
@@ -566,7 +544,7 @@ namespace RockWeb.Blocks.GroupScheduling
             if ( !locationList.Any() )
             {
                 cblLocations.Visible = false;
-                nbLocationsWarning.Text = "The selected groups do not have any locations for the selected schedules";
+                nbLocationsWarning.Text = "The selected groups do not have any active locations for the selected schedules";
                 return;
             }
         }
