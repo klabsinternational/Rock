@@ -221,62 +221,6 @@ namespace RockWeb.Blocks.GroupScheduling
             PopulateRoster();
         }
 
-        private bool? _displayRole = null;
-        private string _rosterLavaTemplate = null;
-        private Dictionary<int, List<ScheduledIndividual>> _confirmedScheduledIndividualsForOccurrenceId = null;
-
-        /// <summary>
-        /// Handles the ItemDataBound event of the rptAttendanceOccurrences control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="System.Web.UI.WebControls.RepeaterItemEventArgs"/> instance containing the event data.</param>
-        protected void rptAttendanceOccurrences_ItemDataBound( object sender, System.Web.UI.WebControls.RepeaterItemEventArgs e )
-        {
-            var attendanceOccurrence = e.Item.DataItem as AttendanceOccurrence;
-            if ( attendanceOccurrence == null )
-            {
-                return;
-            }
-
-            var lOccurrenceRosterHTML = e.Item.FindControl( "lOccurrenceRosterHTML" ) as Literal;
-            var scheduleDate = attendanceOccurrence.Schedule.GetNextStartDateTime( attendanceOccurrence.OccurrenceDate );
-            var scheduledIndividuals = _confirmedScheduledIndividualsForOccurrenceId.GetValueOrNull( attendanceOccurrence.Id );
-            if ( ( scheduleDate == null || scheduleDate.Value.Date != attendanceOccurrence.OccurrenceDate ) )
-            {
-                // scheduleDate can be later than the OccurrenceDate (or null) if there are exclusions that cause the schedule
-                // to not occur on the occurrence date. In this case, don't show the roster unless there are somehow individuals
-                // scheduled for this occurrence.
-                if ( scheduledIndividuals == null || !scheduledIndividuals.Any() )
-                {
-                    lOccurrenceRosterHTML.Text = string.Empty;
-                }
-                else
-                {
-                    // lava will get a null scheduleDate which can indicate that it isn't scheduled
-                }
-            }
-
-            var mergeFields = LavaHelper.GetCommonMergeFields( this.RockPage );
-            mergeFields.Add( "Group", attendanceOccurrence.Group );
-            mergeFields.Add( "Location", attendanceOccurrence.Location );
-            mergeFields.Add( "Schedule", attendanceOccurrence.Schedule );
-            mergeFields.Add( "ScheduleDate", scheduleDate );
-            mergeFields.Add( "DisplayRole", _displayRole );
-
-
-            mergeFields.Add( "ScheduledIndividuals", scheduledIndividuals );
-
-
-
-
-
-            var rosterHtml = _rosterLavaTemplate.ResolveMergeFields( mergeFields );
-
-            // we don't need view state
-            lOccurrenceRosterHTML.ViewStateMode = ViewStateMode.Disabled;
-            lOccurrenceRosterHTML.Text = rosterHtml;
-        }
-
         #endregion
 
         #region Methods
@@ -284,7 +228,7 @@ namespace RockWeb.Blocks.GroupScheduling
         /// <summary>
         /// Populates the roster.
         /// </summary>
-        private void PopulateRoster()
+        private void PopulateRoster( ViewStateMode viewStateMode = ViewStateMode.Disabled )
         {
             RosterConfiguration rosterConfiguration = this.GetBlockUserPreference( UserPreferenceKey.RosterConfigurationJSON )
                 .FromJsonOrNull<RosterConfiguration>();
@@ -299,9 +243,6 @@ namespace RockWeb.Blocks.GroupScheduling
             int[] locationIds = rosterConfiguration.LocationIds;
             List<int> parentGroupIds = rosterConfiguration.GroupIds.ToList();
 
-            this._displayRole = rosterConfiguration.DisplayRole;
-            this._rosterLavaTemplate = this.GetAttributeValue( AttributeKey.RosterLavaTemplate );
-
             var allGroupIds = new List<int>();
             allGroupIds.AddRange( parentGroupIds );
 
@@ -312,12 +253,15 @@ namespace RockWeb.Blocks.GroupScheduling
                 var groupService = new GroupService( rockContext );
                 foreach ( var groupId in parentGroupIds )
                 {
-                    var childGroupIds = groupService.GetAllDescendentGroupIds( groupId, false );
+                    // just the first level of child groups, not all decendants
+                    var childGroupIds = groupService.Queryable().Where( a => a.ParentGroupId == groupId ).Select( a => a.Id ).ToList();
                     allGroupIds.AddRange( childGroupIds );
                 }
             }
 
             allGroupIds = allGroupIds.Distinct().ToList();
+
+            rockContext.SqlLogging( true );
 
             var attendanceOccurrenceService = new AttendanceOccurrenceService( rockContext );
 
@@ -333,12 +277,14 @@ namespace RockWeb.Blocks.GroupScheduling
                 .Where( a => scheduleIds.Contains( a.ScheduleId.Value ) )
                 .Where( a => a.OccurrenceDate == currentDate );
 
-            // limit attendees to ones that confirmed (or are checked-in regardless of confirmation status)
+            // limit attendees to ones that schedules (or are checked-in regardless of being scheduled)
             var confirmedAttendancesForOccurrenceQuery = attendanceOccurrenceQuery
                     .SelectMany( a => a.Attendees )
-                    .Include( a => a.PersonAlias.Person ).WhereScheduledPersonConfirmed();
+                    .Include( a => a.PersonAlias.Person )
+                    .Include( a => a.Occurrence.Group.Members )
+                    .WhereScheduledOrCheckedIn();
 
-            _confirmedScheduledIndividualsForOccurrenceId = confirmedAttendancesForOccurrenceQuery
+            var confirmedScheduledIndividualsForOccurrenceId = confirmedAttendancesForOccurrenceQuery
                 .AsNoTracking()
                 .ToList()
                 .GroupBy( a => a.OccurrenceId )
@@ -346,12 +292,12 @@ namespace RockWeb.Blocks.GroupScheduling
                     k => k.Key,
                     v => v.Select( a => new ScheduledIndividual
                     {
-                        Attendance = a,
+                        ScheduledAttendanceItemStatus = Attendance.GetScheduledAttendanceItemStatus( a.RSVP, a.ScheduledToAttend ),
                         Person = a.PersonAlias.Person,
+                        GroupMember = a.Occurrence.Group.Members.FirstOrDefault( gm => gm.PersonId == a.PersonAlias.PersonId ),
                         CurrentlyCheckedIn = a.DidAttend == true
                     } )
                     .ToList() );
-
 
             List<AttendanceOccurrence> attendanceOccurrenceList = attendanceOccurrenceQuery
                 .Include( a => a.Schedule )
@@ -366,10 +312,46 @@ namespace RockWeb.Blocks.GroupScheduling
                 .ThenBy( a => a.Location.Name )
                 .ToList();
 
-            nbNoOccurrences.Visible = !attendanceOccurrenceList.Any();
+            var occurrenceRosterInfoList = new List<OccurrenceRosterInfo>();
+            foreach ( var attendanceOccurrence in attendanceOccurrenceList )
+            {
+                var scheduleDate = attendanceOccurrence.Schedule.GetNextStartDateTime( attendanceOccurrence.OccurrenceDate );
+                var scheduledIndividuals = confirmedScheduledIndividualsForOccurrenceId.GetValueOrNull( attendanceOccurrence.Id );
 
-            rptAttendanceOccurrences.DataSource = attendanceOccurrenceList;
-            rptAttendanceOccurrences.DataBind();
+                if ( ( scheduleDate == null || scheduleDate.Value.Date != attendanceOccurrence.OccurrenceDate ) )
+                {
+                    // scheduleDate can be later than the OccurrenceDate (or null) if there are exclusions that cause the schedule
+                    // to not occur on the occurrence date. In this case, don't show the roster unless there are somehow individuals
+                    // scheduled for this occurrence.
+                    if ( scheduledIndividuals == null || !scheduledIndividuals.Any() )
+                    {
+                        // no scheduleDate and no scheduled individuals, so continue on to the next attendanceOccurrence
+                        continue;
+                    }
+                }
+
+                var occurrenceRosterInfo = new OccurrenceRosterInfo
+                {
+                    Group = attendanceOccurrence.Group,
+                    Location = attendanceOccurrence.Location,
+                    Schedule = attendanceOccurrence.Schedule,
+                    ScheduleDate = scheduleDate,
+                    ScheduledIndividuals = scheduledIndividuals
+                };
+
+                occurrenceRosterInfoList.Add( occurrenceRosterInfo );
+            }
+
+            var mergeFields = LavaHelper.GetCommonMergeFields( this.RockPage );
+            mergeFields.Add( "OccurrenceList", occurrenceRosterInfoList );
+            mergeFields.Add( "DisplayRole", rosterConfiguration.DisplayRole );
+            var rosterLavaTemplate = this.GetAttributeValue( AttributeKey.RosterLavaTemplate );
+
+            var rosterHtml = rosterLavaTemplate.ResolveMergeFields( mergeFields );
+
+            // by default, let's disable viewstate (except for when the configuration dialog is showing)
+            lOccurrenceRosterHTML.ViewStateMode = viewStateMode;
+            lOccurrenceRosterHTML.Text = rosterHtml;
         }
 
         #endregion
@@ -391,6 +373,10 @@ namespace RockWeb.Blocks.GroupScheduling
         /// </summary>
         private void ShowConfigurationDialog()
         {
+            // even though it'll be in the background, show the roster (so it doesn't look like it disappeared)
+            // also, since there will be postbacks, let's enable viewstate when the configuration dialog is showing
+            PopulateRoster( ViewStateMode.Enabled );
+
             // don't do the live refresh when the configuration dialog is showing
             UpdateLiveRefreshConfiguration( false );
 
@@ -650,9 +636,14 @@ namespace RockWeb.Blocks.GroupScheduling
         public class RosterConfiguration : RockDynamic
         {
             public int[] GroupIds { get; set; }
+
+            // just the first level of child groups (not all descendants)
             public bool IncludeChildGroups { get; set; }
+
             public int[] LocationIds { get; set; }
+
             public int[] ScheduleIds { get; set; }
+
             public bool DisplayRole { get; set; }
 
             public bool IsConfigured()
@@ -663,14 +654,21 @@ namespace RockWeb.Blocks.GroupScheduling
 
         public class ScheduledIndividual : RockDynamic
         {
-            public Attendance Attendance { get; set; }
+            public ScheduledAttendanceItemStatus ScheduledAttendanceItemStatus { get; set; }
             public Person Person { get; set; }
             public GroupMember GroupMember { get; set; }
             public bool CurrentlyCheckedIn { get; set; }
         }
 
-        #endregion
+        private class OccurrenceRosterInfo : RockDynamic
+        {
+            public Group Group { get; set; }
+            public Location Location { get; set; }
+            public Schedule Schedule { get; set; }
+            public DateTime? ScheduleDate { get; set; }
+            public List<ScheduledIndividual> ScheduledIndividuals { get; set; }
+        }
 
-        
+        #endregion
     }
 }

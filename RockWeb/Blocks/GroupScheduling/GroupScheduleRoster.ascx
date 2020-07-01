@@ -55,31 +55,28 @@
                 </div>
             </div>
             <div class="locations js-scheduled-occurrences">
-                <Rock:NotificationBox ID="nbNoOccurrences" runat="server" Visible="false" Text="No Occurrences for the selected group options." NotificationBoxType="Warning" />
-                <asp:Repeater ID="rptAttendanceOccurrences" runat="server" OnItemDataBound="rptAttendanceOccurrences_ItemDataBound">
-                    <ItemTemplate>
-                        <asp:Literal ID="lOccurrenceRosterHTML" runat="server" />
-                    </ItemTemplate>
-                </asp:Repeater>
+                <asp:Literal ID="lOccurrenceRosterHTML" runat="server" />
             </div>
 
         </asp:Panel>
 
         <%-- Roster Configuration (User preferences) --%>
-        <asp:Panel ID="pnlConfiguration" runat="server" CssClass="js-roster-configuration">
+        <asp:Panel ID="pnlConfiguration" runat="server">
             <Rock:ModalDialog ID="mdRosterConfiguration" runat="server" Title="Configuration" CssClass=".js-configuration-modal" ValidationGroup="vgRosterConfiguration" OnSaveClick="mdRosterConfiguration_SaveClick">
                 <Content>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <Rock:GroupPicker ID="gpGroups" runat="server" AllowMultiSelect="true" Label="Groups" Required="true" OnSelectItem="gpGroups_SelectItem" ValidationGroup="vgRosterConfiguration" LimitToSchedulingEnabledGroups="true" />
-                            <Rock:NotificationBox ID="nbGroupWarning" runat="server" NotificationBoxType="Warning" />
-                            <Rock:RockListBox ID="lbSchedules" runat="server" Label="Schedules" ValidationGroup="vgRosterConfiguration" AutoPostBack="true" OnSelectedIndexChanged="lbSchedules_SelectedIndexChanged" />
-                            <Rock:RockCheckBox ID="cbDisplayRole" runat="server" Label="Display Role" ValidationGroup="vgRosterConfiguration" />
-                        </div>
-                        <div class="col-md-6">
-                            <Rock:RockCheckBox ID="cbIncludeChildGroups" runat="server" Label="Include Child Groups" AutoPostBack="true" OnCheckedChanged="cbIncludeChildGroups_CheckedChanged" ValidationGroup="vgRosterConfiguration" />
-                            <Rock:RockCheckBoxList ID="cblLocations" runat="server" Label="Locations" ValidationGroup="vgRosterConfiguration" FormGroupCssClass="js-locations-picker" />
-                            <Rock:NotificationBox ID="nbLocationsWarning" runat="server" NotificationBoxType="Warning" />
+                    <div class="js-roster-configuration">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <Rock:GroupPicker ID="gpGroups" runat="server" AllowMultiSelect="true" Label="Groups" Required="true" OnSelectItem="gpGroups_SelectItem" ValidationGroup="vgRosterConfiguration" LimitToSchedulingEnabledGroups="true" />
+                                <Rock:NotificationBox ID="nbGroupWarning" runat="server" NotificationBoxType="Warning" />
+                                <Rock:RockListBox ID="lbSchedules" runat="server" Label="Schedules" ValidationGroup="vgRosterConfiguration" AutoPostBack="true" OnSelectedIndexChanged="lbSchedules_SelectedIndexChanged" />
+                                <Rock:RockCheckBox ID="cbDisplayRole" runat="server" Label="Display Role" ValidationGroup="vgRosterConfiguration" />
+                            </div>
+                            <div class="col-md-6">
+                                <Rock:RockCheckBox ID="cbIncludeChildGroups" runat="server" Label="Include Child Groups" AutoPostBack="true" OnCheckedChanged="cbIncludeChildGroups_CheckedChanged" ValidationGroup="vgRosterConfiguration" />
+                                <Rock:RockCheckBoxList ID="cblLocations" runat="server" Label="Locations" ValidationGroup="vgRosterConfiguration" FormGroupCssClass="js-locations-picker" />
+                                <Rock:NotificationBox ID="nbLocationsWarning" runat="server" NotificationBoxType="Warning" />
+                            </div>
                         </div>
                     </div>
                 </Content>

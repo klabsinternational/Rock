@@ -1060,11 +1060,12 @@ namespace Rock.Model
                  *      - Alisha cannot remove Ted's now invalid assignment because she can no longer see the inactive schedule
                  */
 
-
                 var scheduledAttendanceGroupIdsLookupQuery = attendanceService.Queryable()
                    .Where( a => ( a.RequestedToAttend == true || a.ScheduledToAttend == true )
                              && a.Occurrence.ScheduleId == schedulerResourceParameters.AttendanceOccurrenceScheduleId
-                             && a.Occurrence.GroupId.HasValue );
+                             && scheduleOccurrenceDateList.Contains( a.Occurrence.OccurrenceDate )
+                             && a.Occurrence.GroupId.HasValue )
+                   .WhereDeducedIsActive();
 
                 /* MP 2020-06-18
                  * Updated query to use an inner join against PersonAlias/Person to improve performance.
@@ -1080,7 +1081,6 @@ namespace Rock.Model
 
                 // load personId/groupId into a list before doing a GroupBy
                 var scheduledAttendancePersonIdGroupIdsQuery = scheduledAttendanceGroupIdsLookupQuery
-                    .WhereDeducedIsActive()
                     .Join( personAliasQry, a => a.PersonAliasId, pa => pa.Id, ( a, pa ) => new
                     {
                         pa.PersonId,
@@ -1210,15 +1210,7 @@ namespace Rock.Model
 
             var result = scheduledAttendancesQuery.ToList().Select( a =>
             {
-                ScheduledAttendanceItemStatus status = ScheduledAttendanceItemStatus.Pending;
-                if ( a.RSVP == RSVP.No )
-                {
-                    status = ScheduledAttendanceItemStatus.Declined;
-                }
-                else if ( a.ScheduledToAttend == true )
-                {
-                    status = ScheduledAttendanceItemStatus.Confirmed;
-                }
+                ScheduledAttendanceItemStatus status = Attendance.GetScheduledAttendanceItemStatus( a.RSVP, a.ScheduledToAttend );
 
                 List<DateTime> personBlackoutDates = null;
                 if ( a.BlackoutDateRanges.Any() )
@@ -2069,6 +2061,17 @@ namespace Rock.Model
         ///   <c>true</c> if this instance has scheduling conflict; otherwise, <c>false</c>.
         /// </value>
         public bool? IsAlreadyScheduledForGroup { get; set; }
+
+        /// <summary>
+        /// Converts to string.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="System.String" /> that represents this instance.
+        /// </returns>
+        public override string ToString()
+        {
+            return this.PersonName;
+        }
     }
 
     /// <summary>
@@ -2299,13 +2302,13 @@ namespace Rock.Model
         }
 
         /// <summary>
-        /// Returns a queryable of Attendance where the scheduled person confirmed, or attended even if they didn't confirm
+        /// Returns a queryable of Attendance where the person is scheduled, or attended even if they weren't scheduled
         /// </summary>
         /// <param name="query">The query.</param>
         /// <returns></returns>
-        public static IQueryable<Attendance> WhereScheduledPersonConfirmed( this IQueryable<Attendance> query )
+        public static IQueryable<Attendance> WhereScheduledOrCheckedIn( this IQueryable<Attendance> query )
         {
-            return query.Where( a => ( a.ScheduledToAttend == true && a.RSVP == RSVP.Yes ) || a.DidAttend == true );
+            return query.Where( a => ( a.RequestedToAttend == true || a.ScheduledToAttend == true ) || a.DidAttend == true );
         }
     }
 }

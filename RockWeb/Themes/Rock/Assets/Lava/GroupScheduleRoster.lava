@@ -1,17 +1,22 @@
 ﻿{% comment %}
-  This is the lava template for each occurrence (Group, Date, Schedule, Location)
-   Available Lava Fields
+  This is the lava template for all of occurrences for the GroupScheduleRoster block
+   Available Lava Fields:
+
+   + DisplayRole (boolean on whether the members role should be displayed)
+   + OccurrenceList
      + Group
      + ScheduleDate
      + Schedule
      + Location
-     + DisplayRole (boolean on whether the members role should be displayed)
+
      + ScheduledIndividuals (list of each scheduled individual), which includes
           + Person
-          + GroupMember (nullable. This would be the person's role in the Group, if they are member of the group )
+          + GroupMember (nullable. This would be the person's member record in the Group, if they are member of the group )
+              + GroupRole (the Role)
           + CurrentlyCheckedIn (bool. True if the person is checked in)
+          + ScheduledAttendanceItemStatus (Pending, Confirmed, or Declined).
+              Note: Only scheduled individuals (or ones that have checked in) will be included in the list of ScheduledIndividuals
 {% endcomment %}
-
 
 <style>
   .group-schedule-roster-occurrence {
@@ -29,62 +34,89 @@
     opacity: .5;
   }
 </style>
-{% assign scheduledIndividualCount = ScheduledIndividuals | Size %}
 
-<div class='location'>
-  <div class="panel panel-block">
-    <div class="panel-heading">
-      <h1 class='panel-title margin-l-lg margin-r-lg group-name'>
-        {{ Group.Name }}
-      </h1>
-
-      {% if ScheduleDate %}
-        <small class=''>
-          <i class='fa fa-calendar-alt'></i>
-          {{ ScheduleDate | Date:'dddd MMMM d, yyyy ' }}
-        </small>
-
-        <small class='text-center'>
-          <i class='fa fa-clock-o'></i>
-          {{ ScheduleDate | Date:'st' }}
-        </small>
-      {% else %}
-          <small class=''>
-              Schedule not active for this occurrence
-          </small>
-      {% endif %}
-
-      <small class='pull-right'>
-        <i class='fa fa-building-o'></i>
-        {{ Location.Name }}
-      </small>
-    </div>
-
-    <div class='panel-body'>
-      <div class='scheduled-individuals margin-all-lg'>
-        {% if scheduledIndividualCount == 0 %}
-          <span class='label label-warning'>No individuals scheduled for this occurrence</span>
-        {% else %}
-          {% if scheduledIndividualCount == 1 %}
-            <div class='row margin-b-md'><div class='col-md-6'><strong class='name-column-header'>Name</strong></div></div>
-          {% else %}
-            <div class='row margin-b-md'><div class='col-md-6'><strong class='name-column-header'>Name</strong></div><div class='col-md-6'><strong class='name-column-header'>Name</strong></div></div>
-          {% endif %}
-          <div class='row'>
-            {% for scheduledIndividual in ScheduledIndividuals %}
-                <div class='col-md-6 scheduled-individual margin-b-md'>
-                  {% if scheduledIndividual.CurrentlyCheckedIn %}
-                    <i class='fa fa-check-square-o fa-fw'></i>
-                  {% else %}
-                    <i class='fa fa-square-o fa-fw'></i>
-                  {% endif %}
-                {{ scheduledIndividual.Person | Property:'FullName' }}
-                </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      </div>
-    </div>
-
+{% assign occurrenceCount = OccurrenceList | Size %}
+{% if occurrenceCount == 0 %}
+  <div class='alert alert-warning'>
+      No occurrences for the selected group options.
   </div>
-</div>
+{% endif %}
+
+{% for occurrence in OccurrenceList %}
+  {% assign Group = occurrence.Group %}
+  {% assign ScheduleDate = occurrence.ScheduleDate %}
+  {% assign Schedule = occurrence.Schedule %}
+  {% assign Location = occurrence.Location %}
+  {% assign ScheduledIndividuals = occurrence.ScheduledIndividuals %}
+  {% assign scheduledIndividualCount = 0 %}
+{% comment %}get a count of confirmed or checked-in individuals since that is all we are going to show{% endcomment %}
+  {% for scheduledIndividual in ScheduledIndividuals %}
+        {% if scheduledIndividual.ScheduledAttendanceItemStatus == 'Confirmed' or  scheduledIndividual.CurrentlyCheckedIn  %}
+          {% assign scheduledIndividualCount = scheduledIndividualCount | Plus:1 %}
+        {% endif %}
+  {% endfor %}
+
+  <div class='location'>
+    <div class="panel panel-block">
+      <div class="panel-heading">
+        <h1 class='panel-title margin-l-lg margin-r-lg group-name'>
+          {{ Group.Name }}
+        </h1>
+
+        {% if ScheduleDate %}
+          <small class=''>
+            <i class='fa fa-calendar-alt'></i>
+            {{ ScheduleDate | Date:'dddd MMMM d, yyyy ' }}
+          </small>
+
+          <small class='text-center'>
+            <i class='fa fa-clock-o'></i>
+            {{ ScheduleDate | Date:'st' }}
+          </small>
+        {% else %}
+            <small class=''>
+                Schedule not active for this occurrence
+            </small>
+        {% endif %}
+
+        <small class='pull-right'>
+          <i class='fa fa-building-o'></i>
+          {{ Location.Name }}
+        </small>
+      </div>
+
+      <div class='panel-body'>
+        <div class='scheduled-individuals margin-all-lg'>
+          {% if scheduledIndividualCount == 0 %}
+            <span class='label label-warning'>No individuals scheduled for this occurrence</span>
+          {% else %}
+            {% if scheduledIndividualCount == 1 %}
+              <div class='row margin-b-md'><div class='col-md-6'><strong class='name-column-header'>Name</strong></div></div>
+            {% else %}
+              <div class='row margin-b-md'><div class='col-md-6'><strong class='name-column-header'>Name</strong></div><div class='col-md-6'><strong class='name-column-header'>Name</strong></div></div>
+            {% endif %}
+            <div class='row'>
+              {% for scheduledIndividual in ScheduledIndividuals %}
+                  {% if scheduledIndividual.ScheduledAttendanceItemStatus == 'Confirmed' or  scheduledIndividual.CurrentlyCheckedIn  %}
+                    <div class='col-md-6 scheduled-individual margin-b-md'>
+                      {% if scheduledIndividual.CurrentlyCheckedIn %}
+                        <i class='fa fa-check-square-o fa-fw'></i>
+                      {% else %}
+                        <i class='fa fa-square-o fa-fw'></i>
+                      {% endif %}
+                    {{ scheduledIndividual.Person | Property:'FullName' }}
+                    {% if DisplayRole %}
+                      ({{ scheduledIndividual.GroupMember | Property:'GroupRole' | Property:'Name' }})
+                    {% endif %}
+                    </div>
+                  {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+{% endfor %}
