@@ -159,9 +159,6 @@ namespace RockWeb.Blocks.GroupScheduling
             // save communication to get Id
             rockContext.SaveChanges();
 
-            DebugHelper.TraceListener = new WebPageTraceListener();
-            rockContext.SqlLogging( true );
-
             int[] scheduleIds = lbSchedules.SelectedValuesAsInt.ToArray();
             int[] locationIds = cblLocations.SelectedValuesAsInt.ToArray();
             List<int> parentGroupIds = gpGroups.SelectedValuesAsInt().ToList();

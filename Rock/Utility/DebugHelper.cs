@@ -43,14 +43,6 @@ namespace Rock
         public static double _callMSTotal = 0.00;
 
         /// <summary>
-        /// Gets or sets the trace listener. Set this to have the output go to whatever tracelistener you want
-        /// </summary>
-        /// <value>
-        /// The trace listener.
-        /// </value>
-        public static TraceListener TraceListener { get; set; } = null;
-
-        /// <summary>
         /// 
         /// </summary>
         private class DebugHelperUserState
@@ -302,7 +294,6 @@ namespace Rock
 
         private static void DebugOutputWrite( string message )
         {
-            TraceListener?.Write( message );
             Debug.Write( message );
         }
 
