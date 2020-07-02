@@ -203,6 +203,13 @@ namespace RockWeb.Blocks.GroupScheduling
                     .WhereHasScheduledAttendanceItemStatus( selectedInviteStatus );
 
             var personIds = scheduledAttendancesForOccurrenceQuery.Select( a => a.PersonAlias.PersonId ).Distinct().ToList();
+            if (!personIds.Any())
+            {
+                nbCommunicationWarning.Text = "No people found to send communication to.";
+                nbCommunicationWarning.Visible = true;
+            }
+
+            nbCommunicationWarning.Visible = false;
 
             var personAliasService = new Rock.Model.PersonAliasService( new Rock.Data.RockContext() );
 

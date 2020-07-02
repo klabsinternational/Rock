@@ -40,9 +40,8 @@
                     </div>
 
                     <div class="actions">
-                        <asp:LinkButton ID="btnCreateCommunication" runat="server" CssClass="btn btn-primary"
-                            CausesValidation="false"
-                            Text="Create Communication" OnClick="btnCreateCommunication_Click" />
+                        <Rock:NotificationBox ID="nbCommunicationWarning" runat="server" NotificationBoxType="Warning" Visible="false" />
+                        <asp:LinkButton ID="btnCreateCommunication" runat="server" CssClass="btn btn-primary" Text="Create Communication" OnClick="btnCreateCommunication_Click" />
                     </div>
                 </div>
             </div>
