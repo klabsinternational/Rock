@@ -160,20 +160,16 @@
                                             <asp:Literal runat="server" ID="lGroupPreferenceAssignmentHelp" Text="Please select a time and optional location that you would like to be scheduled for." />
                                         </p>
 
-                                        <asp:Repeater ID="rptGroupPreferenceAssignments" runat="server" OnItemDataBound="rptGroupPreferenceAssignments_ItemDataBound">
-                                            <ItemTemplate>
-                                                <div class="row js-person-schedule-preferences-row margin-b-sm">
-                                                    <asp:HiddenField ID="hfGroupMemberId" runat="server" />
-                                                    <asp:HiddenField ID="hfScheduleId" runat="server" />
-                                                    <div class="col-md-4">
-                                                        <Rock:RockCheckBox ID="cbGroupPreferenceAssignmentScheduleTime" runat="server" AutoPostBack="true" OnCheckedChanged="cbGroupPreferenceAssignmentScheduleTime_CheckedChanged" />
-                                                    </div>
-                                                    <div class="col-md-8">
-                                                        <Rock:RockDropDownList ID="ddlGroupPreferenceAssignmentLocation" runat="server" OnSelectedIndexChanged="ddlGroupPreferenceAssignmentLocation_SelectedIndexChanged" AutoPostBack="true" />
-                                                    </div>
-                                                </div>
-                                            </ItemTemplate>
-                                        </asp:Repeater>
+
+                                        <Rock:Grid ID="gGroupPreferenceAssignments" runat="server" DisplayType="Light" OnRowDataBound="gGroupPreferenceAssignments_RowDataBound">
+                                            <Columns>
+                                                <Rock:RockLiteralField ID="lScheduleName" HeaderText="Schedule" />
+                                                <Rock:RockLiteralField ID="lLocationName" HeaderText="Location" />
+                                                <Rock:LinkButtonField ID="btnEditGroupPreferenceAssignment" CssClass="btn btn-default btn-sm" Text="<i class='fa fa-pencil'></i>" OnClick="btnEditGroupPreferenceAssignment_Click" />
+
+                                            </Columns>
+                                        </Rock:Grid>
+                                        
                                         <br />
                                     </asp:Panel>
                                 </ItemTemplate>
@@ -183,29 +179,29 @@
                         <%-- Blackout Dates --%>
                         <asp:Panel ID="pnlBlackoutDates" runat="server" CssClass="col-md-6">
                             <div class="well">
-                                    <h3>
-                                        <asp:Literal runat="server" ID="lBlackoutDates" Text="Blackout Dates" />
-                                    </h3>
-                                    <hr class="margin-t-sm margin-b-sm" />
-                                    <p>
-                                        Please provide any dates <%= ( CurrentPersonId == null || CurrentPersonId != SelectedPersonId ? "they" : "you") %> will not be able to attend.
-                                    </p>
+                                <h3>
+                                    <asp:Literal runat="server" ID="lBlackoutDates" Text="Blackout Dates" />
+                                </h3>
+                                <hr class="margin-t-sm margin-b-sm" />
+                                <p>
+                                    Please provide any dates <%= ( CurrentPersonId == null || CurrentPersonId != SelectedPersonId ? "they" : "you") %> will not be able to attend.
+                                </p>
 
-                                    <Rock:Grid ID="gBlackoutDates" runat="server" EmptyDataText="No black out dates have been set." DataKeyNames="ExclusionId" ShowHeader="false" DisplayType="Light">
-                                        <Columns>
-                                            <Rock:RockBoundField DataField="ExclusionId" Visible="false"></Rock:RockBoundField>
-                                            <Rock:RockBoundField DataField="PersonAliasId" Visible="false"></Rock:RockBoundField>
-                                            <Rock:RockTemplateField>
-                                                <ItemTemplate>
-                                                    <asp:Literal ID="litExclusionDateRange" runat="server" Text='<%# Eval("DateRange")%>'></asp:Literal><span> - </span>
-                                                    <asp:Literal ID="litExclusionFullName" runat="server" Text='<%# Eval("FullName") %>'></asp:Literal><span> - </span>
-                                                    <asp:Literal ID="litExclusionGroupName" runat="server" Text='<%# Eval("GroupName") %>'></asp:Literal>
-                                                </ItemTemplate>
-                                            </Rock:RockTemplateField>
-                                            <Rock:DeleteField ID="gBlackoutDatesDelete" runat="server" OnClick="gBlackoutDatesDelete_Click"></Rock:DeleteField>
-                                        </Columns>
-                                    </Rock:Grid>
-                                </div>
+                                <Rock:Grid ID="gBlackoutDates" runat="server" EmptyDataText="No black out dates have been set." DataKeyNames="ExclusionId" ShowHeader="false" DisplayType="Light">
+                                    <Columns>
+                                        <Rock:RockBoundField DataField="ExclusionId" Visible="false"></Rock:RockBoundField>
+                                        <Rock:RockBoundField DataField="PersonAliasId" Visible="false"></Rock:RockBoundField>
+                                        <Rock:RockTemplateField>
+                                            <ItemTemplate>
+                                                <asp:Literal ID="litExclusionDateRange" runat="server" Text='<%# Eval("DateRange")%>'></asp:Literal><span> - </span>
+                                                <asp:Literal ID="litExclusionFullName" runat="server" Text='<%# Eval("FullName") %>'></asp:Literal><span> - </span>
+                                                <asp:Literal ID="litExclusionGroupName" runat="server" Text='<%# Eval("GroupName") %>'></asp:Literal>
+                                            </ItemTemplate>
+                                        </Rock:RockTemplateField>
+                                        <Rock:DeleteField ID="gBlackoutDatesDelete" runat="server" OnClick="gBlackoutDatesDelete_Click"></Rock:DeleteField>
+                                    </Columns>
+                                </Rock:Grid>
+                            </div>
                         </asp:Panel>
                     </div>
                 </asp:Panel>

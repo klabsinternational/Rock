@@ -713,7 +713,7 @@ $('#{0}').tooltip();
 
             var lGroupPreferencesGroupNameHtml = ( Literal ) e.Item.FindControl( "lGroupPreferencesGroupNameHtml" );
             var hfPreferencesGroupId = ( HiddenField ) e.Item.FindControl( "hfPreferencesGroupId" );
-            var rptGroupPreferenceAssignments = ( Repeater ) e.Item.FindControl( "rptGroupPreferenceAssignments" );
+            var gGroupPreferenceAssignments = ( Grid ) e.Item.FindControl( "gGroupPreferenceAssignments" );
 
             var groupType = GroupTypeCache.Get( group.GroupTypeId );
             if ( groupType != null && groupType.IconCssClass.IsNotNullOrWhiteSpace() )
@@ -730,87 +730,72 @@ $('#{0}').tooltip();
 
             rptGroupPreferencesBindDropDowns( group, e );
 
-            // bind repeater rptGroupPreferenceAssignments
+            // bind grid gGroupPreferenceAssignments
             using ( var rockContext = new RockContext() )
             {
+                // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
+                int? groupMemberId = new GroupMemberService( rockContext )
+                    .GetByGroupIdAndPersonId( hfPreferencesGroupId.ValueAsInt(), this.SelectedPersonId )
+                    .AsNoTracking()
+                    .OrderBy( a => a.GroupRole.IsLeader )
+                    .Select( gm => ( int? ) gm.Id )
+                    .FirstOrDefault();
+
                 var groupLocationService = new GroupLocationService( rockContext );
-                var scheduleList = groupLocationService
+
+                var qryGroupLocations = groupLocationService
+                    .Queryable()
+                    .Where( g => g.GroupId == group.Id );
+
+                var groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
+                var groupMemberAssignmentQuery = groupMemberAssignmentService
                     .Queryable()
                     .AsNoTracking()
-                    .Where( g => g.GroupId == group.Id )
-                    .SelectMany( g => g.Schedules )
-                    .Distinct()
+                    .Where( x =>
+                        x.GroupMemberId == groupMemberId
+                        && qryGroupLocations.Any( gl => gl.LocationId == x.LocationId && gl.Schedules.Any( s => s.Id == x.ScheduleId )
+                        )
+                        );
+
+                // Calculate the Next Start Date Time based on the start of the week so that schedule columns are in the correct order
+                var occurrenceDate = RockDateTime.Now.SundayDate().AddDays( 1 );
+
+                var groupMemberAssignmentList = groupMemberAssignmentQuery
+                    .Include( a => a.Schedule )
+                    .Include( a => a.Location )
+                    .AsNoTracking()
+                    .ToList()
+                    .OrderBy( a => a.Schedule.Order )
+                    .ThenBy( a => a.Schedule.GetNextStartDateTime( occurrenceDate ) )
+                    .ThenBy( a => a.Schedule.Name )
+                    .ThenBy( a => a.Schedule.Id )
+                    .ThenBy( a => a.Location.ToString() )
                     .ToList();
 
-                List<Schedule> sortedScheduleList = scheduleList.OrderByNextScheduledDateTime();
-
-                rptGroupPreferenceAssignments.DataSource = sortedScheduleList;
-                rptGroupPreferenceAssignments.DataBind();
+                gGroupPreferenceAssignments.DataKeyNames = new string[1] { "Id" };
+                gGroupPreferenceAssignments.DataSource = groupMemberAssignmentList;
+                gGroupPreferenceAssignments.DataBind();
             }
         }
 
-        /// <summary>
-        /// Handles the ItemDataBound event of the rptGroupPreferenceAssignments control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="RepeaterItemEventArgs"/> instance containing the event data.</param>
-        protected void rptGroupPreferenceAssignments_ItemDataBound( object sender, RepeaterItemEventArgs e )
+        protected void gGroupPreferenceAssignments_RowDataBound( object sender, GridViewRowEventArgs e )
         {
-            var schedule = e.Item.DataItem as Schedule;
-            if ( schedule == null )
+            GroupMemberAssignment groupMemberAssignment = e.Row.DataItem as GroupMemberAssignment;
+            if (groupMemberAssignment == null)
             {
                 return;
             }
 
-            var hfScheduleId = ( HiddenField ) e.Item.FindControl( "hfScheduleId" );
-            hfScheduleId.Value = schedule.Id.ToString();
+            var lScheduleName = e.Row.FindControl( "lScheduleName" ) as Literal;
+            var lLocationName = e.Row.FindControl( "lLocationName" ) as Literal;
+            lScheduleName.Text = groupMemberAssignment.Schedule.ToString();
+            lLocationName.Text = groupMemberAssignment.Location.ToString();
+        }
 
-            var cbGroupPreferenceAssignmentScheduleTime = ( CheckBox ) e.Item.FindControl( "cbGroupPreferenceAssignmentScheduleTime" );
-
-            var repeaterItemGroup = ( ( Repeater ) sender ).BindingContainer as RepeaterItem;
-            var hfPreferencesGroupId = ( HiddenField ) repeaterItemGroup.FindControl( "hfPreferencesGroupId" );
-
-            var rockContext = new RockContext();
-
-            // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-            int? groupMemberId = new GroupMemberService( rockContext )
-                .GetByGroupIdAndPersonId( hfPreferencesGroupId.ValueAsInt(), this.SelectedPersonId )
-                .AsNoTracking()
-                .OrderBy( a => a.GroupRole.IsLeader )
-                .Select( gm => ( int? ) gm.Id )
-                .FirstOrDefault();
-
-            var groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
-            GroupMemberAssignment groupmemberAssignment = groupMemberAssignmentService
-                .Queryable()
-                .AsNoTracking()
-                .Where( x => x.GroupMemberId == groupMemberId )
-                .Where( x => x.ScheduleId == schedule.Id )
-                .FirstOrDefault();
-
-            cbGroupPreferenceAssignmentScheduleTime.Text = schedule.Name;
-            cbGroupPreferenceAssignmentScheduleTime.Checked = groupmemberAssignment != null;
-
-            var ddlGroupPreferenceAssignmentLocation = ( DropDownList ) e.Item.FindControl( "ddlGroupPreferenceAssignmentLocation" );
-            var locations = new LocationService( rockContext ).GetByGroupSchedule( schedule.Id, hfPreferencesGroupId.ValueAsInt() )
-                .Select( a => new
-                {
-                    a.Id,
-                    a.Name
-                } ).ToList();
-
-            ddlGroupPreferenceAssignmentLocation.DataSource = locations;
-            ddlGroupPreferenceAssignmentLocation.DataValueField = "Id";
-            ddlGroupPreferenceAssignmentLocation.DataTextField = "Name";
-            ddlGroupPreferenceAssignmentLocation.DataBind();
-            ddlGroupPreferenceAssignmentLocation.Items.Insert( 0, new ListItem( string.Empty, string.Empty ) );
-            ddlGroupPreferenceAssignmentLocation.Visible = cbGroupPreferenceAssignmentScheduleTime.Checked;
-
-            if ( groupmemberAssignment != null )
-            {
-                ddlGroupPreferenceAssignmentLocation.SelectedValue = groupmemberAssignment.LocationId.ToStringSafe();
-                ddlGroupPreferenceAssignmentLocation.Items[0].Text = "No Location Preference";
-            }
+        protected void btnEditGroupPreferenceAssignment_Click( object sender, RowEventArgs e )
+        {
+            int groupMemberAssignmentId = e.RowKeyId;
+            // todo
         }
 
         /// <summary>
@@ -1578,5 +1563,8 @@ $('#{0}').tooltip();
 
 
         #endregion Sign-up Tab
+
+
+        
     }
 }
