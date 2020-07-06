@@ -160,13 +160,13 @@
                                             <asp:Literal runat="server" ID="lGroupPreferenceAssignmentHelp" Text="Please select a time and optional location that you would like to be scheduled for." />
                                         </p>
 
-
-                                        <Rock:Grid ID="gGroupPreferenceAssignments" runat="server" DisplayType="Light" OnRowDataBound="gGroupPreferenceAssignments_RowDataBound">
+                                        <%-- NOTE: This gGroupPreferenceAssignments (and these other controls in the ItemTemplate) is in a repeater and is configured in rptGroupPreferences_ItemDataBound--%>
+                                        <Rock:Grid ID="gGroupPreferenceAssignments" runat="server" DisplayType="Light" OnRowDataBound="gGroupPreferenceAssignments_RowDataBound" RowItemText="Group Preference Assignment" AllowPaging="false">
                                             <Columns>
                                                 <Rock:RockLiteralField ID="lScheduleName" HeaderText="Schedule" />
                                                 <Rock:RockLiteralField ID="lLocationName" HeaderText="Location" />
                                                 <Rock:LinkButtonField ID="btnEditGroupPreferenceAssignment" CssClass="btn btn-default btn-sm" Text="<i class='fa fa-pencil'></i>" OnClick="btnEditGroupPreferenceAssignment_Click" />
-
+                                                <Rock:DeleteField OnClick="btnDeleteGroupPreferenceAssignment_Click" />
                                             </Columns>
                                         </Rock:Grid>
                                         
@@ -205,6 +205,16 @@
                         </asp:Panel>
                     </div>
                 </asp:Panel>
+
+                <%-- Preferences Add/Edit GroupScheduleAssignment modal --%>
+                <Rock:ModalDialog ID="mdGroupScheduleAssignment" runat="server" OnSaveClick="mdGroupScheduleAssignment_SaveClick" Title="Add/Edit Assignment" >
+                    <Content>
+                        <asp:HiddenField ID="hfGroupScheduleAssignmentGroupId" runat="server" />
+                        <asp:HiddenField ID="hfGroupScheduleAssignmentId" runat="server" />
+                        <Rock:RockDropDownList ID="ddlGroupScheduleAssignmentSchedule" runat="server" AutoPostBack="true" OnSelectedIndexChanged="ddlGroupScheduleAssignmentSchedule_SelectedIndexChanged" Label="Schedule" Required="true" />
+                        <Rock:RockDropDownList ID="ddlGroupScheduleAssignmentLocation" runat="server" Label="Location" />
+                    </Content>
+                </Rock:ModalDialog>
 
                 <%-- Sign-up --%>
                 <asp:Panel ID="pnlSignup" CssClass="row" runat="server">
