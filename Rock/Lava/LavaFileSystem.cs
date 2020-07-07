@@ -117,7 +117,7 @@ namespace Rock.Lava
                 most likely be null. We shouldn't be relying on HttpContext.Current for information here unless we know it will not be null.
 	
 	            Reason: Update Persisted Datasets Job with Lava includes.
-	        */
+            */
 
             if ( HttpContext.Current != null )
             {
