@@ -16,14 +16,11 @@
 //
 using System;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Web;
 
 using DotLiquid;
 using DotLiquid.Exceptions;
 using DotLiquid.FileSystems;
-
-using Rock;
 using Rock.Web.Cache;
 
 namespace Rock.Lava
