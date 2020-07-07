@@ -106,7 +106,9 @@
                       {% endif %}
                     {{ scheduledIndividual.Person | Property:'FullName' }}
                     {% if DisplayRole %}
-                      ({{ scheduledIndividual.GroupMember | Property:'GroupRole' | Property:'Name' }})
+                      {% if scheduledIndividual.GroupMember %}
+                        ({{ scheduledIndividual.GroupMember | Property:'GroupRole' | Property:'Name' }})
+                      {%endif%}
                     {% endif %}
                     </div>
                   {% endif %}

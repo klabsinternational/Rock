@@ -46,6 +46,8 @@ namespace RockWeb.Blocks.Core
         /// <param name="e">The <see cref="T:System.EventArgs" /> object that contains the event data.</param>
         protected override void OnLoad( EventArgs e )
         {
+            this.Page.Trace.IsEnabled = true;
+
             base.OnLoad( e );
 
             if ( !Page.IsPostBack )
@@ -495,6 +497,7 @@ namespace RockWeb.Blocks.Core
         {
             pnlEditDetails.Visible = editable;
             pnlViewDetails.Visible = !editable;
+            HideSecondaryBlocks( editable );
         }
 
         #endregion

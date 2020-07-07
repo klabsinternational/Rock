@@ -13,14 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // </copyright>
-//
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data.Entity;
 using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
@@ -36,14 +35,31 @@ namespace RockWeb.Blocks.Administration
     [Category( "Core" )]
     [Description( "Lists all the schedules." )]
 
-    [LinkedPage( "Detail Page",
-        Key = AttributeKey.DetailPage )]
+    [LinkedPage(
+        "Detail Page",
+        Key = AttributeKey.DetailPage,
+        IsRequired = false,
+        Order = 0 )]
 
-    public partial class ScheduleList : RockBlock, ICustomGridColumns
+    [BooleanField(
+        "Filter Category From Query String",
+        Key = AttributeKey.FilterCategoryFromQueryString,
+        DefaultBooleanValue = false,
+        Order = 1
+        )]
+
+    public partial class ScheduleList : RockBlock, ICustomGridColumns, ISecondaryBlock
     {
-        public static class AttributeKey
+        private static class AttributeKey
         {
             public const string DetailPage = "DetailPage";
+            public const string FilterCategoryFromQueryString = "FilterCategoryFromQueryString";
+        }
+
+        private static class PageParameterKey
+        {
+            public const string CategoryId = "CategoryId";
+            public const string CategoryGuid = "CategoryGuid";
         }
 
         #region properties
@@ -63,14 +79,17 @@ namespace RockWeb.Blocks.Administration
             base.OnInit( e );
 
             gSchedules.DataKeyNames = new string[] { "Id" };
-            gSchedules.Actions.ShowAdd = true;
+
             gSchedules.Actions.AddClick += gSchedules_Add;
             gSchedules.GridRebind += gSchedules_GridRebind;
+            gSchedules.GridReorder += gSchedules_GridReorder;
             gSchedules.RowDataBound += gSchedules_RowDataBound;
 
             // Block Security and special attributes (RockPage takes care of View)
             bool canAddEditDelete = IsUserAuthorized( Authorization.EDIT );
-            gSchedules.Actions.ShowAdd = canAddEditDelete;
+            var hasDetailPage = this.GetAttributeValue( AttributeKey.DetailPage ).IsNotNullOrWhiteSpace();
+
+            gSchedules.Actions.ShowAdd = canAddEditDelete && hasDetailPage;
             gSchedules.IsDeleteEnabled = canAddEditDelete;
 
             // make a custom delete confirmation dialog
@@ -99,6 +118,24 @@ namespace RockWeb.Blocks.Administration
         }
 
         /// <summary>
+        /// Handles the GridReorder event of the gSchedules control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="GridReorderEventArgs"/> instance containing the event data.</param>
+        private void gSchedules_GridReorder( object sender, GridReorderEventArgs e )
+        {
+            var rockContext = new RockContext();
+            var scheduleList = GetSortedScheduleList( rockContext );
+            if ( scheduleList != null )
+            {
+                new ScheduleService( rockContext ).Reorder( scheduleList, e.OldIndex, e.NewIndex );
+                rockContext.SaveChanges();
+            }
+
+            BindGrid();
+        }
+
+        /// <summary>
         /// Handles the RowDataBound event of the gSchedules control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
@@ -107,11 +144,11 @@ namespace RockWeb.Blocks.Administration
         {
             if ( e.Row.RowType == DataControlRowType.DataRow )
             {
-                var scheduleRow = e.Row.DataItem as object;
+                var schedule = e.Row.DataItem as Schedule;
 
-                if ( scheduleRow != null )
+                if ( schedule != null )
                 {
-                    var scheduleId = ( int ) scheduleRow.GetPropertyValue( "Id" );
+                    var scheduleId = schedule.Id;
 
                     if ( _schedulesWithAttendance.Contains( scheduleId ) )
                     {
@@ -129,6 +166,33 @@ namespace RockWeb.Blocks.Administration
         {
             if ( !Page.IsPostBack )
             {
+                int? categoryId = null;
+
+                if ( this.GetAttributeValue( AttributeKey.FilterCategoryFromQueryString ).AsBoolean() )
+                {
+                    categoryId = this.PageParameter( PageParameterKey.CategoryId ).AsIntegerOrNull();
+
+                    if ( !categoryId.HasValue )
+                    {
+                        var categoryGuid = this.PageParameter( PageParameterKey.CategoryGuid ).AsGuidOrNull();
+                        if ( categoryGuid.HasValue )
+                        {
+                            categoryId = CategoryCache.GetId( this.PageParameter( PageParameterKey.CategoryGuid ).AsGuid() );
+                        }
+                    }
+
+                    if ( !categoryId.HasValue )
+                    {
+                        // TODO: Double check if this is what we want to do
+
+                        // if we are in FilterCategoryFromQueryString mode, only show if there is a CategoryId in the URL
+                        pnlScheduleList.Visible = false;
+                        return;
+                    }
+                }
+
+                hfCategoryId.Value = categoryId.ToString();
+
                 BindGrid();
             }
 
@@ -204,32 +268,54 @@ namespace RockWeb.Blocks.Administration
         /// </summary>
         private void BindGrid()
         {
-            var rockContext = new RockContext();
-            ScheduleService scheduleService = new ScheduleService( rockContext );
-            SortProperty sortProperty = gSchedules.SortProperty;
-            var qry = scheduleService.Queryable().Select( a =>
-                new
-                {
-                    a.Id,
-                    a.Name,
-                    CategoryName = a.Category.Name
-                } );
+            List<Schedule> sortedScheduleList = GetSortedScheduleList( new RockContext() );
+            gSchedules.DataSource = sortedScheduleList;
 
-            _schedulesWithAttendance = new HashSet<int>( new AttendanceService( rockContext ).Queryable().Where( a => a.Occurrence.ScheduleId.HasValue ).Select( a => a.Occurrence.ScheduleId.Value ).Distinct().ToList() );
+            var categoryId = hfCategoryId.Value.AsIntegerOrNull();
+            var categoryGridField = gSchedules.ColumnsWithDataField( "Category.Name" ).FirstOrDefault();
 
-            if ( sortProperty != null )
+            if ( categoryGridField != null )
             {
-                qry = qry.Sort( sortProperty );
+                // only show the Category Grid field is a category wasn't specified
+                categoryGridField.Visible = !categoryId.HasValue;
             }
-            else
-            {
-                qry = qry.OrderBy( s => s.Name );
-            }
-
-            gSchedules.SetLinqDataSource( qry.AsNoTracking() );
 
             gSchedules.EntityTypeId = EntityTypeCache.Get<Schedule>().Id;
             gSchedules.DataBind();
+        }
+
+        /// <summary>
+        /// Gets the sorted schedule list.
+        /// </summary>
+        /// <returns></returns>
+        private List<Schedule> GetSortedScheduleList( RockContext rockContext )
+        {
+            ScheduleService scheduleService = new ScheduleService( rockContext );
+            var scheduleQuery = scheduleService.Queryable().Where( a => !string.IsNullOrEmpty( a.Name ) );
+            var categoryGuid = this.PageParameter( PageParameterKey.CategoryGuid ).AsGuidOrNull();
+
+            if ( this.GetAttributeValue( AttributeKey.FilterCategoryFromQueryString ).AsBoolean() )
+            {
+                var categoryId = hfCategoryId.Value.AsIntegerOrNull();
+                if ( categoryId.HasValue )
+                {
+                    scheduleQuery = scheduleQuery.Where( a => a.CategoryId == categoryId.Value );
+                }
+            }
+
+            _schedulesWithAttendance = new HashSet<int>( new AttendanceService( rockContext ).Queryable().Where( a => a.Occurrence.ScheduleId.HasValue ).Select( a => a.Occurrence.ScheduleId.Value ).Distinct().ToList() );
+
+            var sortedScheduleList = scheduleQuery.ToList().OrderByOrderAndNextScheduledDateTime();
+            return sortedScheduleList;
+        }
+
+        /// <summary>
+        /// Hook so that other blocks can set the visibility of all ISecondaryBlocks on its page
+        /// </summary>
+        /// <param name="visible">if set to <c>true</c> [visible].</param>
+        public void SetVisible( bool visible )
+        {
+            pnlScheduleList.Visible = visible;
         }
 
         #endregion
