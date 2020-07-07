@@ -1,0 +1,274 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.Composition;
+using System.Linq;
+using Rock;
+using Rock.Attribute;
+using Rock.Financial;
+using Rock.Model;
+using Rock.Web.Cache;
+
+namespace org.example.TestPluginGateway
+{
+    /// <summary>
+    /// Test Plugin Gateway
+    /// </summary>
+    [Description( "Test Plugin Gateway" )]
+    [Export( typeof( GatewayComponent ) )]
+    [ExportMetadata( "ComponentName", "TestPluginGateway" )]
+
+    [TextField( "Declined Card Numbers", "Enter partial card numbers that you wish to be declined separated by commas. Any card number that ends with a number matching a value entered here will be declined.", false, "", "", 0 )]
+    public class TestPluginGateway : GatewayComponent
+    {
+
+        #region Gateway Component Implementation
+
+        /// <summary>
+        /// Gets the supported payment schedules.
+        /// </summary>
+        /// <value>
+        /// The supported payment schedules.
+        /// </value>
+        public override List<DefinedValueCache> SupportedPaymentSchedules
+        {
+            get
+            {
+                var values = new List<DefinedValueCache>();
+                values.Add( DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_FREQUENCY_ONE_TIME ) );
+                values.Add( DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_FREQUENCY_WEEKLY ) );
+                values.Add( DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_FREQUENCY_BIWEEKLY ) );
+                values.Add( DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_FREQUENCY_TWICEMONTHLY ) );
+                values.Add( DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_FREQUENCY_MONTHLY ) );
+                return values;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the gateway requires the name on card for CC processing
+        /// </summary>
+        /// <param name="financialGateway">The financial gateway.</param>
+        /// <returns></returns>
+        /// <value>
+        ///   <c>true</c> if [name on card required]; otherwise, <c>false</c>.
+        /// </value>
+        public override bool PromptForNameOnCard( FinancialGateway financialGateway )
+        {
+            return false;
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether [address required].
+        /// </summary>
+        /// <param name="financialGateway">The financial gateway.</param>
+        /// <returns></returns>
+        /// <value>
+        ///   <c>true</c> if [address required]; otherwise, <c>false</c>.
+        /// </value>
+        public override bool PromptForBillingAddress( FinancialGateway financialGateway )
+        {
+            return false;
+        }
+
+        /// <summary>
+        /// Charges the specified payment info.
+        /// </summary>
+        /// <param name="financialGateway">The financial gateway.</param>
+        /// <param name="paymentInfo">The payment info.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override FinancialTransaction Charge( FinancialGateway financialGateway, PaymentInfo paymentInfo, out string errorMessage )
+        {
+            errorMessage = string.Empty;
+
+            if ( ValidateCard( financialGateway, paymentInfo, out errorMessage ) )
+            {
+                var transaction = new FinancialTransaction();
+                transaction.TransactionCode = "PLUGIN T" + RockDateTime.Now.ToString( "yyyyMMddHHmmssFFF" );
+                return transaction;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Credits the specified transaction.
+        /// </summary>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="amount">The amount.</param>
+        /// <param name="comment">The comment.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override FinancialTransaction Credit( FinancialTransaction transaction, decimal amount, string comment, out string errorMessage )
+        {
+            errorMessage = string.Empty;
+
+            var refundTransaction = new FinancialTransaction();
+            refundTransaction.TransactionCode = "T" + RockDateTime.Now.ToString( "yyyyMMddHHmmssFFF" );
+            return transaction;
+        }
+
+        /// <summary>
+        /// Adds the scheduled payment.
+        /// </summary>
+        /// <param name="financialGateway">The financial gateway.</param>
+        /// <param name="schedule">The schedule.</param>
+        /// <param name="paymentInfo">The payment info.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override FinancialScheduledTransaction AddScheduledPayment( FinancialGateway financialGateway, PaymentSchedule schedule, PaymentInfo paymentInfo, out string errorMessage )
+        {
+            errorMessage = string.Empty;
+
+            if ( ValidateCard( financialGateway, paymentInfo, out errorMessage ) )
+            {
+                var scheduledTransaction = new FinancialScheduledTransaction();
+                scheduledTransaction.IsActive = true;
+                scheduledTransaction.StartDate = schedule.StartDate;
+                scheduledTransaction.NextPaymentDate = schedule.StartDate;
+                scheduledTransaction.TransactionCode = "T" + RockDateTime.Now.ToString( "yyyyMMddHHmmssFFF" );
+                scheduledTransaction.GatewayScheduleId = "P" + RockDateTime.Now.ToString( "yyyyMMddHHmmssFFF" );
+                scheduledTransaction.LastStatusUpdateDateTime = RockDateTime.Now;
+                return scheduledTransaction;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Reactivates the scheduled payment.
+        /// </summary>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override bool ReactivateScheduledPayment( FinancialScheduledTransaction transaction, out string errorMessage )
+        {
+            transaction.IsActive = true;
+            errorMessage = string.Empty;
+            return true;
+        }
+
+        /// <summary>
+        /// Updates the scheduled payment.
+        /// </summary>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="paymentInfo">The payment info.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override bool UpdateScheduledPayment( FinancialScheduledTransaction transaction, PaymentInfo paymentInfo, out string errorMessage )
+        {
+            errorMessage = string.Empty;
+            return true;
+        }
+
+        /// <summary>
+        /// Cancels the scheduled payment.
+        /// </summary>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override bool CancelScheduledPayment( FinancialScheduledTransaction transaction, out string errorMessage )
+        {
+            transaction.IsActive = false;
+            errorMessage = string.Empty;
+            return true;
+        }
+
+        /// <summary>
+        /// Gets the scheduled payment status.
+        /// </summary>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override bool GetScheduledPaymentStatus( FinancialScheduledTransaction transaction, out string errorMessage )
+        {
+            transaction.LastStatusUpdateDateTime = RockDateTime.Now;
+            errorMessage = string.Empty;
+            return true;
+        }
+
+        /// <summary>
+        /// Gets the payments that have been processed for any scheduled transactions
+        /// </summary>
+        /// <param name="financialGateway">The financial gateway.</param>
+        /// <param name="startDate">The start date.</param>
+        /// <param name="endDate">The end date.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override List<Payment> GetPayments( FinancialGateway financialGateway, DateTime startDate, DateTime endDate, out string errorMessage )
+        {
+            errorMessage = string.Empty;
+            return new List<Payment>();
+        }
+
+        /// <summary>
+        /// Gets an optional reference identifier needed to process future transaction from saved account.
+        /// </summary>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override string GetReferenceNumber( FinancialTransaction transaction, out string errorMessage )
+        {
+            errorMessage = string.Empty;
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Gets an optional reference identifier needed to process future transaction from saved account.
+        /// </summary>
+        /// <param name="scheduledTransaction">The scheduled transaction.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public override string GetReferenceNumber( FinancialScheduledTransaction scheduledTransaction, out string errorMessage )
+        {
+            errorMessage = string.Empty;
+            return string.Empty;
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        private bool ValidateCard( FinancialGateway financialGateway, PaymentInfo paymentInfo, out string errorMessage )
+        {
+            string cardNumber = string.Empty;
+
+            CreditCardPaymentInfo ccPayment = paymentInfo as CreditCardPaymentInfo;
+            if ( ccPayment != null )
+            {
+                if ( ccPayment.Code == "911" )
+                {
+                    errorMessage = "Error processing Credit Card!";
+                    return false;
+                }
+
+                cardNumber = ccPayment.Number;
+            }
+
+            SwipePaymentInfo swipePayment = paymentInfo as SwipePaymentInfo;
+            if ( swipePayment != null )
+            {
+                cardNumber = swipePayment.Number;
+            }
+
+            if ( !string.IsNullOrWhiteSpace( cardNumber ) )
+            {
+                var declinedNumers = GetAttributeValue( financialGateway, "DeclinedCardNumbers" );
+                if ( !string.IsNullOrWhiteSpace( declinedNumers ) )
+                {
+                    if ( declinedNumers.SplitDelimitedValues().Any( n => cardNumber.EndsWith( n ) ) )
+                    {
+                        errorMessage = "Error processing Credit Card!";
+                        return false;
+                    }
+                }
+            }
+
+            errorMessage = string.Empty;
+            return true;
+        }
+
+        #endregion
+
+    }
+}
