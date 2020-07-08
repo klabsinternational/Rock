@@ -43,40 +43,17 @@
                     <%-- Filter Options --%>
                     <div class="col-lg-2 col-md-3 col-sm-3 col-xs-3 filter-options">
                         <asp:HiddenField ID="hfGroupId" runat="server" />
-                        <%--
-                            2020-05-01 BJW
-                            LimitToSchedulingEnabledGroups="true" was removed from this group picker because it was causing performance issues.
-                            The performance issue was a result of querying the hierarchy for groups that have group types with scheduling enabled.
-                            This hierarchy query was timing out on some Rock instances with a large amount of groups. Talked with JME to verify
-                            this was okay to remove.
-                        --%>
-                        <Rock:GroupPicker ID="gpGroup" runat="server" Label="Group" OnValueChanged="gpGroup_ValueChanged" />
+                        <Rock:GroupPicker ID="gpGroup" runat="server" Label="Group" OnValueChanged="gpGroup_ValueChanged" LimitToSchedulingEnabledGroups="true" />
                         <Rock:RockDropDownList ID="ddlWeek" runat="server" Label="Week" AutoPostBack="true" OnSelectedIndexChanged="ddlWeek_SelectedIndexChanged" />
 
                         <Rock:NotificationBox ID="nbGroupWarning" runat="server" NotificationBoxType="Warning" />
                         <asp:Panel ID="pnlGroupScheduleLocations" runat="server">
-                            <Rock:RockRadioButtonList ID="rblSchedule" runat="server" Label="Schedule" AutoPostBack="true" OnSelectedIndexChanged="rblSchedule_SelectedIndexChanged" />
+                            <Rock:RockCheckBox ID="cbAllSchedules" runat="server" Label="All Schedules" AutoPostBack="true" OnCheckedChanged="cbAllSchedules_CheckedChanged" />
+                            <Rock:RockRadioButtonList ID="rblIndividualSchedule" runat="server" Label="Individual Schedule" AutoPostBack="true" OnSelectedIndexChanged="rblIndividualSchedule_SelectedIndexChanged" />
                             <label class="control-label js-location-label">Locations</label>
                             <asp:HiddenField ID="hfAllSelectedLocationIds" runat="server" />
                             <Rock:RockCheckBoxList ID="cblGroupLocations" runat="server" AutoPostBack="true" OnSelectedIndexChanged="cblGroupLocations_SelectedIndexChanged" />
                         </asp:Panel>
-
-                        <Rock:RockControlWrapper ID="rcwResourceListSource" runat="server" Label="Source of People">
-
-                            <Rock:ButtonGroup ID="bgResourceListSource" runat="server" CssClass="margin-b-md" SelectedItemClass="btn btn-xs btn-primary" UnselectedItemClass="btn btn-xs btn-default" AutoPostBack="true" OnSelectedIndexChanged="bgResourceListSource_SelectedIndexChanged" />
-
-                            <asp:Panel ID="pnlResourceFilterGroup" runat="server">
-                                <Rock:RockRadioButtonList ID="rblGroupMemberFilter" runat="server" AutoPostBack="true" OnSelectedIndexChanged="rblGroupMemberFilter_SelectedIndexChanged" />
-                            </asp:Panel>
-
-                            <asp:Panel ID="pnlResourceFilterAlternateGroup" runat="server">
-                                <Rock:GroupPicker ID="gpResourceListAlternateGroup" runat="server" Label="Alternate Group" OnValueChanged="gpResourceListAlternateGroup_ValueChanged" />
-                            </asp:Panel>
-
-                            <asp:Panel ID="pnlResourceFilterDataView" runat="server">
-                                <Rock:DataViewItemPicker ID="dvpResourceListDataView" runat="server" Label="Data View" EntityTypeId="15" OnValueChanged="dvpResourceListDataView_ValueChanged" />
-                            </asp:Panel>
-                        </Rock:RockControlWrapper>
                     </div>
 
 
@@ -88,12 +65,53 @@
                         <asp:Panel ID="pnlScheduler" runat="server" CssClass="resource-area">
                             <div class="row row-eq-height">
                                 <div class="col-md-4 hidden-xs">
+                                    <div class="group-scheduler-resource-filter header-filter-options">
+
+                                        <div class="btn-group">
+                                            <div class="dropdown-toggle btn" data-toggle="dropdown">
+                                                <i class="fa fa-list-ul"></i>
+                                                <asp:HiddenField ID="hfSchedulerResourceListSourceType" runat="server" />
+                                                <asp:Literal ID="lSelectedResourceTypeDropDownText" runat="server" Text="List: Group Members" />
+                                            </div>
+
+                                            <ul class="dropdown-menu" role="menu">
+                                                <li>
+                                                    <asp:LinkButton ID="btnGroupMembers" runat="server" Text="Group Members" OnClick="ResourceListSourceType_Change" />
+                                                </li>
+                                                <li>
+                                                    <asp:LinkButton ID="btnGroupMembersMatchingPreference" runat="server" Text="Group Members (Matching Preference)" OnClick="ResourceListSourceType_Change"/>
+                                                </li>
+
+                                                <li>
+                                                    <asp:LinkButton ID="btnAlternateGroup" runat="server" Text="Alternate Group" OnClick="ResourceListSourceType_Change"/>
+                                                </li>
+
+                                                <li>
+                                                    <asp:LinkButton ID="btnParentGroup" runat="server" Text="Parent Group" OnClick="ResourceListSourceType_Change"/>
+                                                </li>
+
+                                                <li>
+                                                    <asp:LinkButton ID="btnDataView" runat="server" Text="Data View" OnClick="ResourceListSourceType_Change"/>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <div class="group-schedule-filter-options">
+                                        <asp:Panel ID="pnlResourceFilterAlternateGroup" runat="server">
+                                            <Rock:GroupPicker ID="gpResourceListAlternateGroup" runat="server" Label="Alternate Group" OnValueChanged="gpResourceListAlternateGroup_ValueChanged" />
+                                        </asp:Panel>
+
+                                        <asp:Panel ID="pnlResourceFilterDataView" runat="server">
+                                            <Rock:DataViewItemPicker ID="dvpResourceListDataView" runat="server" Label="Data View" EntityTypeId="15" OnValueChanged="dvpResourceListDataView_ValueChanged" />
+                                        </asp:Panel>
+                                    </div>
 
                                     <div class="group-scheduler-resourcelist">
 
                                         <Rock:HiddenFieldWithClass ID="hfOccurrenceGroupId" CssClass="js-occurrence-group-id" runat="server" />
                                         <Rock:HiddenFieldWithClass ID="hfOccurrenceSundayDate" CssClass="js-occurrence-sunday-date" runat="server" />
-                                        <Rock:HiddenFieldWithClass ID="hfOccurrenceScheduleId" CssClass="js-occurrence-schedule-id" runat="server" />
+                                        <Rock:HiddenFieldWithClass ID="hfOccurrenceScheduleIds" CssClass="js-occurrence-schedule-ids" runat="server" />
                                         <Rock:HiddenFieldWithClass ID="hfResourceGroupId" CssClass="js-resource-group-id" runat="server" />
                                         <Rock:HiddenFieldWithClass ID="hfResourceGroupMemberFilterType" CssClass="js-resource-groupmemberfiltertype" runat="server" />
                                         <Rock:HiddenFieldWithClass ID="hfResourceDataViewId" CssClass="js-resource-dataview-id" runat="server" />
@@ -156,30 +174,30 @@
 
                                         <div class="js-resource resource unselectable" data-status="pending" data-has-scheduling-conflict="false" data-has-requirements-conflict="false" data-has-blackout-conflict="false" data-attendance-id="" data-person-id="">
 
-                                                <div class="flex">
-                                                    <span class="resource-name js-resource-name"></span>
-                                                    <div class="resource-meta">
+                                            <div class="flex">
+                                                <span class="resource-name js-resource-name"></span>
+                                                <div class="resource-meta">
 
-                                                        <div class="js-resource-meta text-right"></div>
-                                                    </div>
-                                                    <div class="dropdown js-resource-actions hide-transit">
-                                                        <button class="btn btn-link btn-overflow" type="button" data-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>
-                                                        <ul class="dropdown-menu">
-                                                            <li>
-                                                                <button type="button" class="dropdown-item btn-link js-markconfirmed">Mark Confirmed</button>
-                                                            </li>
-                                                            <li>
-                                                                <button type="button" class="dropdown-item btn-link js-markpending">Mark Pending</button>
-                                                            </li>
-                                                            <li>
-                                                                <button type="button" class="dropdown-item btn-link js-markdeclined">Mark Declined</button>
-                                                            </li>
-                                                            <li>
-                                                                <button type="button" class="dropdown-item btn-link js-resendconfirmation">Resend Confirmation</button>
-                                                            </li>
-                                                        </ul>
-                                                    </div>
+                                                    <div class="js-resource-meta text-right"></div>
                                                 </div>
+                                                <div class="dropdown js-resource-actions hide-transit">
+                                                    <button class="btn btn-link btn-overflow" type="button" data-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>
+                                                    <ul class="dropdown-menu">
+                                                        <li>
+                                                            <button type="button" class="dropdown-item btn-link js-markconfirmed">Mark Confirmed</button>
+                                                        </li>
+                                                        <li>
+                                                            <button type="button" class="dropdown-item btn-link js-markpending">Mark Pending</button>
+                                                        </li>
+                                                        <li>
+                                                            <button type="button" class="dropdown-item btn-link js-markdeclined">Mark Declined</button>
+                                                        </li>
+                                                        <li>
+                                                            <button type="button" class="dropdown-item btn-link js-resendconfirmation">Resend Confirmation</button>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
 
                                         </div>
                                     </div>
@@ -199,7 +217,8 @@
                                                         <div class="panel-heading">
                                                             <h1 class="panel-title">
                                                                 <asp:Literal ID="lLocationTitle" runat="server" />
-                                                                <small><asp:Literal runat="server" ID="lOccurrenceScheduledDateTime" /></small>
+                                                                <small>
+                                                                    <asp:Literal runat="server" ID="lOccurrenceScheduledDateTime" /></small>
                                                             </h1>
                                                             <asp:Panel ID="pnlStatusLabels" runat="server" CssClass="panel-labels">
                                                                 <div class="scheduling-status js-scheduling-status pull-right">

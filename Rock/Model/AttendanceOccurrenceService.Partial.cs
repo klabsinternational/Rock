@@ -559,6 +559,7 @@ namespace Rock.Model
             return missingAttendanceOccurrenceList;
         }
 
+
         /// <summary>
         /// Gets the join queryable of AttendanceOccurrence, GroupLocation, and GroupLocationScheduleConfig for the specified occurrenceDate, scheduleId and groupLocationIds
         /// </summary>
@@ -568,13 +569,28 @@ namespace Rock.Model
         /// <returns></returns>
         public IQueryable<AttendanceOccurrenceGroupLocationScheduleConfigJoinResult> AttendanceOccurrenceGroupLocationScheduleConfigJoinQuery( List<DateTime> occurrenceDateList, int scheduleId, List<int> groupLocationIds )
         {
+            var scheduleIds = new List<int>();
+            scheduleIds.Add( scheduleId );
+            return AttendanceOccurrenceGroupLocationScheduleConfigJoinQuery( occurrenceDateList, scheduleIds, groupLocationIds );
+        }
+
+        /// <summary>
+        /// Gets the join queryable of AttendanceOccurrence, GroupLocation, and GroupLocationScheduleConfig for the specified occurrenceDate, scheduleId and groupLocationIds
+        /// </summary>
+        /// <param name="occurrenceDateList">The occurrence date list.</param>
+        /// <param name="scheduleIds">The schedule ids.</param>
+        /// <param name="groupLocationIds">The group location ids.</param>
+        /// <returns></returns>
+        public IQueryable<AttendanceOccurrenceGroupLocationScheduleConfigJoinResult> AttendanceOccurrenceGroupLocationScheduleConfigJoinQuery( List<DateTime> occurrenceDateList, List<int> scheduleIds, List<int> groupLocationIds )
+        {
             var groupLocationQuery = new GroupLocationService( this.Context as RockContext ).GetByIds( groupLocationIds );
 
             var attendanceOccurrencesQuery = this.Queryable()
                 .Where( a => a.GroupId.HasValue
                         && a.LocationId.HasValue
+                        && a.ScheduleId.HasValue
                         && groupLocationQuery.Any( gl => gl.GroupId == a.GroupId && gl.LocationId == a.LocationId )
-                        && a.ScheduleId == scheduleId
+                        && scheduleIds.Contains( a.ScheduleId.Value )
                         && occurrenceDateList.Contains( a.OccurrenceDate ) );
 
             // join with the GroupLocation 

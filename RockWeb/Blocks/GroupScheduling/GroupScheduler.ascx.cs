@@ -77,7 +77,8 @@ namespace RockWeb.Blocks.GroupScheduling
         {
             public const string SelectedGroupId = "SelectedGroupId";
             public const string SelectedDate = "SelectedDate";
-            public const string SelectedScheduleId = "SelectedScheduleId";
+            public const string SelectAllSchedules = "SelectAllSchedules";
+            public const string SelectedIndividualScheduleId = "SelectedIndividualScheduleId";
             public const string SelectedGroupLocationIds = "SelectedGroupLocationIds";
             public const string SelectedResourceListSourceType = "SelectedResourceListSourceType";
             public const string GroupMemberFilterType = "GroupMemberFilterType";
@@ -159,9 +160,6 @@ btnCopyToClipboard.ClientID );
         /// </summary>
         private void LoadDropDowns()
         {
-            bgResourceListSource.BindToEnum<SchedulerResourceListSourceType>();
-            rblGroupMemberFilter.BindToEnum<SchedulerResourceGroupMemberFilterType>();
-
             int numOfWeeks = GetAttributeValue( AttributeKey.FutureWeeksToShow ).AsIntegerOrNull() ?? 6;
 
             ddlWeek.Items.Clear();
@@ -234,9 +232,9 @@ btnCopyToClipboard.ClientID );
             pnlScheduler.Visible = true;
 
             // if a schedule is already selected, set it as the selected schedule (if it still exists for this group)
-            var selectedScheduleId = rblSchedule.SelectedValue.AsIntegerOrNull();
+            var selectedScheduleId = rblIndividualSchedule.SelectedValue.AsIntegerOrNull();
 
-            rblSchedule.Items.Clear();
+            rblIndividualSchedule.Items.Clear();
 
             List<Schedule> sortedScheduleList = groupSchedules.OrderByOrderAndNextScheduledDateTime();
 
@@ -254,12 +252,12 @@ btnCopyToClipboard.ClientID );
 
                 listItem.Value = schedule.Id.ToString();
                 listItem.Selected = selectedScheduleId.HasValue && selectedScheduleId.Value == schedule.Id;
-                rblSchedule.Items.Add( listItem );
+                rblIndividualSchedule.Items.Add( listItem );
             }
 
-            if ( rblSchedule.SelectedItem == null )
+            if ( rblIndividualSchedule.SelectedItem == null )
             {
-                rblSchedule.SetValue( sortedScheduleList.FirstOrDefault() );
+                rblIndividualSchedule.SetValue( sortedScheduleList.FirstOrDefault() );
             }
         }
 
@@ -310,16 +308,16 @@ btnCopyToClipboard.ClientID );
             }
 
             UpdateScheduleList();
-            rblSchedule.SetValue( this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.SelectedScheduleId ).AsIntegerOrNull() );
+            cbAllSchedules.Checked = this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.SelectAllSchedules ).AsBoolean();
+            rblIndividualSchedule.SetValue( this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.SelectedIndividualScheduleId ).AsIntegerOrNull() );
 
             UpdateGroupLocationList();
             cblGroupLocations.SetValues( this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.SelectedGroupLocationIds ).SplitDelimitedValues().AsIntegerList() );
 
-            var resouceListSourceType = this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.SelectedResourceListSourceType ).ConvertToEnumOrNull<SchedulerResourceListSourceType>() ?? SchedulerResourceListSourceType.Group;
-            bgResourceListSource.SetValue( resouceListSourceType.ConvertToInt() );
-
+            var resourceListSourceType = this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.SelectedResourceListSourceType ).ConvertToEnumOrNull<SchedulerResourceListSourceType>() ?? SchedulerResourceListSourceType.Group;
             var groupMemberFilterType = this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.GroupMemberFilterType ).ConvertToEnumOrNull<SchedulerResourceGroupMemberFilterType>() ?? SchedulerResourceGroupMemberFilterType.ShowAllGroupMembers;
-            rblGroupMemberFilter.SetValue( groupMemberFilterType.ConvertToInt() );
+
+            SetResourceListSourceType( resourceListSourceType, groupMemberFilterType );
 
             gpResourceListAlternateGroup.SetValue( this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.AlternateGroupId ).AsIntegerOrNull() );
             dvpResourceListDataView.SetValue( this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.DataViewId ).AsIntegerOrNull() );
@@ -353,7 +351,8 @@ btnCopyToClipboard.ClientID );
                 groupId = group.Id;
             }
 
-            int scheduleId = rblSchedule.SelectedValue.AsInteger();
+            List<int> scheduleIds = GetSelectedScheduleIds();
+
             var allSelectedLocationIds = new HashSet<int>( hfAllSelectedLocationIds.Value.SplitDelimitedValues().AsIntegerList() );
             foreach ( var displayedLocationItem in cblGroupLocations.Items.OfType<ListItem>() )
             {
@@ -373,36 +372,53 @@ btnCopyToClipboard.ClientID );
             this.SetBlockUserPreference( UserPreferenceKey.SelectedGroupId, groupId.ToString() );
             this.SetBlockUserPreference( UserPreferenceKey.SelectedDate, ddlWeek.SelectedValue );
             this.SetBlockUserPreference( UserPreferenceKey.SelectedGroupLocationIds, allSelectedLocationIds.ToList().AsDelimited( "," ) );
-            this.SetBlockUserPreference( UserPreferenceKey.SelectedScheduleId, rblSchedule.SelectedValue );
+            this.SetBlockUserPreference( UserPreferenceKey.SelectAllSchedules, cbAllSchedules.Checked.ToString() );
+            this.SetBlockUserPreference( UserPreferenceKey.SelectedIndividualScheduleId, rblIndividualSchedule.SelectedValue );
+
+            rblIndividualSchedule.Visible = cbAllSchedules.Checked == false;
+
+            var resourceListSourceType = ( SchedulerResourceListSourceType ) hfSchedulerResourceListSourceType.Value.AsInteger();
+            var groupMemberFilterType = ( SchedulerResourceGroupMemberFilterType ) hfResourceGroupMemberFilterType.Value.AsInteger();
 
             if ( group != null && group.SchedulingMustMeetRequirements )
             {
-                bgResourceListSource.Visible = false;
-                bgResourceListSource.SetValue( ( int ) SchedulerResourceListSourceType.Group );
+                // don't show options for other groups or people if SchedulingMustMeetRequirements
+                // this is because people from other groups wouldn't meet scheduling requirements (since they aren't in the same group as the Attendance Occurrence)
+                btnAlternateGroup.Visible = false;
+                btnParentGroup.Visible = false;
+                btnDataView.Visible = false;
                 pnlAddPerson.Visible = false;
                 ppAddPerson.Visible = false;
+                if ( resourceListSourceType != SchedulerResourceListSourceType.Group )
+                {
+                    resourceListSourceType = SchedulerResourceListSourceType.Group;
+                    SetResourceListSourceType( resourceListSourceType, groupMemberFilterType );
+                }
             }
             else
             {
-                bgResourceListSource.Visible = true;
+                btnAlternateGroup.Visible = true;
+
+                // only show the ParentGroup option of the group has a parent group
+                btnParentGroup.Visible = group != null && group.ParentGroup != null;
+
+                btnDataView.Visible = true;
                 pnlAddPerson.Visible = true;
                 ppAddPerson.Visible = true;
             }
 
-            var resourceListSourceType = bgResourceListSource.SelectedValueAsEnumOrNull<SchedulerResourceListSourceType>();
             this.SetBlockUserPreference( UserPreferenceKey.SelectedResourceListSourceType, resourceListSourceType.ToString() );
 
-            var groupMemberFilterType = rblGroupMemberFilter.SelectedValueAsEnumOrNull<SchedulerResourceGroupMemberFilterType>();
+            
             this.SetBlockUserPreference( UserPreferenceKey.GroupMemberFilterType, groupMemberFilterType.ToString() );
 
             this.SetBlockUserPreference( UserPreferenceKey.AlternateGroupId, gpResourceListAlternateGroup.SelectedValue );
             this.SetBlockUserPreference( UserPreferenceKey.DataViewId, dvpResourceListDataView.SelectedValue );
 
-            pnlResourceFilterGroup.Visible = resourceListSourceType == SchedulerResourceListSourceType.Group;
             pnlResourceFilterAlternateGroup.Visible = resourceListSourceType == SchedulerResourceListSourceType.AlternateGroup;
             pnlResourceFilterDataView.Visible = resourceListSourceType == SchedulerResourceListSourceType.DataView;
 
-            bool filterIsValid = groupId > 0 && scheduleId > 0 && cblGroupLocations.SelectedValues.Any();
+            bool filterIsValid = groupId > 0 && scheduleIds.Any() && cblGroupLocations.SelectedValues.Any();
             pnlScheduler.Visible = filterIsValid && !group.DisableScheduling;
             nbFilterInstructions.Visible = !filterIsValid;
 
@@ -431,6 +447,26 @@ btnCopyToClipboard.ClientID );
             Uri uri = new Uri( Request.Url.ToString() );
             btnCopyToClipboard.Attributes["data-clipboard-text"] = uri.GetLeftPart( UriPartial.Authority ) + pageReference.BuildUrl();
             btnCopyToClipboard.Disabled = false;
+        }
+
+        /// <summary>
+        /// Gets the selected schedule ids.
+        /// </summary>
+        /// <returns></returns>
+        private List<int> GetSelectedScheduleIds()
+        {
+            List<int> scheduleIds = new List<int>();
+            if ( cbAllSchedules.Checked )
+            {
+                var allScheduleIds = rblIndividualSchedule.Items.OfType<ListItem>().Select( a => a.Value.AsInteger() ).ToList();
+                scheduleIds.AddRange( allScheduleIds );
+            }
+            else
+            {
+                scheduleIds.Add( rblIndividualSchedule.SelectedValue.AsInteger() );
+            }
+
+            return scheduleIds;
         }
 
         /// <summary>
@@ -464,25 +500,25 @@ btnCopyToClipboard.ClientID );
                 }
 
                 pnlScheduler.Visible = true;
-                int scheduleId = rblSchedule.SelectedValue.AsInteger();
+                List<int> scheduleIds = GetSelectedScheduleIds();
 
                 var rockContext = new RockContext();
                 var groupLocationsQuery = new GroupLocationService( rockContext ).Queryable()
                     .Where( gl =>
                         gl.GroupId == group.Id &&
-                        gl.Schedules.Any( s => s.Id == scheduleId ) &&
+                        gl.Schedules.Any( s => scheduleIds.Contains( s.Id ) ) &&
                         gl.Location.IsActive )
                     .OrderBy( a => new { a.Order, a.Location.Name } )
                     .AsNoTracking();
 
                 var groupLocationsList = groupLocationsQuery.ToList();
 
-                if ( !groupLocationsList.Any() && scheduleId != 0 )
+                if ( !groupLocationsList.Any() && scheduleIds.Any() )
                 {
                     nbGroupWarning.Text = "Group does not have any locations for the selected schedule";
                     nbGroupWarning.Visible = true;
                 }
-                else if ( scheduleId != 0 )
+                else if ( scheduleIds.Any() )
                 {
                     nbGroupWarning.Visible = false;
                 }
@@ -520,10 +556,11 @@ btnCopyToClipboard.ClientID );
             int groupId = hfGroupId.Value.AsInteger();
             int? resourceGroupId = null;
             int? resourceDataViewId = null;
-            int scheduleId = rblSchedule.SelectedValue.AsInteger();
+            List<int> scheduleIds = GetSelectedScheduleIds();
+
             hfResourceAdditionalPersonIds.Value = string.Empty;
 
-            var resourceListSourceType = bgResourceListSource.SelectedValueAsEnum<SchedulerResourceListSourceType>();
+            var resourceListSourceType = hfSchedulerResourceListSourceType.Value.ConvertToEnum<SchedulerResourceListSourceType>();
             switch ( resourceListSourceType )
             {
                 case SchedulerResourceListSourceType.Group:
@@ -546,21 +583,10 @@ btnCopyToClipboard.ClientID );
             }
 
             hfOccurrenceGroupId.Value = hfGroupId.Value;
-            hfOccurrenceScheduleId.Value = rblSchedule.SelectedValue;
+            hfOccurrenceScheduleIds.Value = scheduleIds.AsDelimited( "," );
             hfOccurrenceSundayDate.Value = ddlWeek.SelectedValue.AsDateTime().ToISO8601DateString();
 
             hfResourceGroupId.Value = resourceGroupId.ToString();
-
-            // note, SchedulerResourceGroupMemberFilterType only applies when resourceListSourceType is Group.
-            if ( resourceListSourceType == SchedulerResourceListSourceType.Group )
-            {
-                hfResourceGroupMemberFilterType.Value = rblGroupMemberFilter.SelectedValueAsEnum<SchedulerResourceGroupMemberFilterType>().ConvertToInt().ToString();
-            }
-            else
-            {
-                hfResourceGroupMemberFilterType.Value = SchedulerResourceGroupMemberFilterType.ShowAllGroupMembers.ConvertToInt().ToString();
-            }
-
             hfResourceDataViewId.Value = resourceDataViewId.ToString();
             hfResourceAdditionalPersonIds.Value = string.Empty;
         }
@@ -580,19 +606,26 @@ btnCopyToClipboard.ClientID );
                 occurrenceSundayWeekStartDate = RockDateTime.Today;
             }
 
-            var scheduleId = rblSchedule.SelectedValueAsId();
+            var scheduleIds = GetSelectedScheduleIds();
 
             var rockContext = new RockContext();
-            var occurrenceSchedule = new ScheduleService( rockContext ).GetNoTracking( scheduleId ?? 0 );
+            var occurrenceSchedules = new ScheduleService( rockContext ).GetByIds( scheduleIds ).AsNoTracking().ToList();
 
-            if ( occurrenceSchedule == null )
+            if ( !occurrenceSchedules.Any() )
             {
                 btnAutoSchedule.Visible = false;
                 return;
             }
 
-            // get all the occurrences for the selected week for this scheduled (It could be more than once a week if it is a daily scheduled, or it might not be in the selected week if it is every 2 weeks, etc)
-            var scheduleOccurrenceDateTimeList = occurrenceSchedule.GetScheduledStartTimes( occurrenceSundayWeekStartDate, occurrenceSundayDate.AddDays( 1 ) );
+            // get all the occurrences for the selected week for the selected schedules (It could be more than once a week if it is a daily scheduled, or it might not be in the selected week if it is every 2 weeks, etc)
+            List<DateTime> scheduleOccurrenceDateTimeList = new List<DateTime>();
+            foreach ( var occurrenceSchedule in occurrenceSchedules )
+            {
+                var occurrenceStartTimes = occurrenceSchedule.GetScheduledStartTimes( occurrenceSundayWeekStartDate, occurrenceSundayDate.AddDays( 1 ) );
+                scheduleOccurrenceDateTimeList.AddRange( occurrenceStartTimes );
+            }
+
+            scheduleOccurrenceDateTimeList = scheduleOccurrenceDateTimeList.Distinct().ToList();
 
             if ( !scheduleOccurrenceDateTimeList.Any() )
             {
@@ -600,21 +633,24 @@ btnCopyToClipboard.ClientID );
                 return;
             }
 
-            var occurrenceDateList = scheduleOccurrenceDateTimeList.Select( a => a.Date ).ToList();
+            var occurrenceDateList = scheduleOccurrenceDateTimeList.Select( a => a.Date ).Distinct().ToList();
             btnAutoSchedule.Visible = true;
 
             var attendanceOccurrenceService = new AttendanceOccurrenceService( rockContext );
             var selectedGroupLocationIds = cblGroupLocations.SelectedValuesAsInt;
 
-            List<AttendanceOccurrence> missingAttendanceOccurrenceList = attendanceOccurrenceService.CreateMissingAttendanceOccurrences( occurrenceDateList, scheduleId.Value, selectedGroupLocationIds );
-            if ( missingAttendanceOccurrenceList.Any() )
+            foreach ( var scheduleId in scheduleIds )
             {
-                attendanceOccurrenceService.AddRange( missingAttendanceOccurrenceList );
+                List<AttendanceOccurrence> missingAttendanceOccurrenceListForSchedule =
+                    attendanceOccurrenceService.CreateMissingAttendanceOccurrences( occurrenceDateList, scheduleId, selectedGroupLocationIds );
+
+                attendanceOccurrenceService.AddRange( missingAttendanceOccurrenceListForSchedule );
                 rockContext.SaveChanges();
             }
 
+
             IQueryable<AttendanceOccurrenceService.AttendanceOccurrenceGroupLocationScheduleConfigJoinResult> attendanceOccurrenceGroupLocationScheduleConfigQuery
-                = attendanceOccurrenceService.AttendanceOccurrenceGroupLocationScheduleConfigJoinQuery( occurrenceDateList, scheduleId.Value, selectedGroupLocationIds );
+                = attendanceOccurrenceService.AttendanceOccurrenceGroupLocationScheduleConfigJoinQuery( occurrenceDateList, scheduleIds, selectedGroupLocationIds );
 
             var attendanceOccurrencesList = attendanceOccurrenceGroupLocationScheduleConfigQuery.AsNoTracking()
                 .OrderBy( a => a.GroupLocation.Order ).ThenBy( a => a.GroupLocation.Location.Name )
@@ -640,7 +676,11 @@ btnCopyToClipboard.ClientID );
 
             // if there are any people that signed up with no location preference, add the to a special list of "No Location Preference" occurrences to the top of the list
             var unassignedLocationOccurrenceList = attendanceOccurrenceService.Queryable()
-                .Where( a => occurrenceDateList.Contains( a.OccurrenceDate ) && a.ScheduleId == scheduleId.Value && a.GroupId == groupId && a.LocationId.HasValue == false )
+                .Where( a => occurrenceDateList.Contains( a.OccurrenceDate )
+                    && a.ScheduleId.HasValue
+                    && scheduleIds.Contains( a.ScheduleId.Value )
+                    && a.GroupId == groupId
+                    && a.LocationId.HasValue == false )
                 .Where( a => a.Attendees.Any( x => x.RequestedToAttend == true || x.ScheduledToAttend == true ) )
                 .Select( a => new AttendanceOccurrenceRowItem
                 {
@@ -844,20 +884,135 @@ btnCopyToClipboard.ClientID );
         }
 
         /// <summary>
-        /// Handles the SelectedIndexChanged event of the rblSchedule control.
+        /// Handles the SelectedIndexChanged event of the rblIndividualSchedule control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
-        protected void rblSchedule_SelectedIndexChanged( object sender, EventArgs e )
+        protected void rblIndividualSchedule_SelectedIndexChanged( object sender, EventArgs e )
         {
             UpdateGroupLocationList();
             ApplyFilter();
         }
 
+        /// <summary>
+        /// Handles the CheckedChanged event of the cbAllSchedules control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void cbAllSchedules_CheckedChanged( object sender, EventArgs e )
+        {
+            UpdateGroupLocationList();
+            ApplyFilter();
+        }
+
+        /// <summary>
+        /// Handles the SelectedIndexChanged event of the cblGroupLocations control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void cblGroupLocations_SelectedIndexChanged( object sender, EventArgs e )
         {
             var toggledLocation = sender;
             ApplyFilter();
+        }
+
+        /// <summary>
+        /// Handles the Change event of the ResourceListSourceType control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void ResourceListSourceType_Change( object sender, EventArgs e )
+        {
+            SchedulerResourceListSourceType schedulerResourceListSourceType;
+            SchedulerResourceGroupMemberFilterType schedulerResourceGroupMemberFilterType = SchedulerResourceGroupMemberFilterType.ShowAllGroupMembers;
+            if ( sender == btnGroupMembers )
+            {
+                schedulerResourceListSourceType = SchedulerResourceListSourceType.Group;
+                schedulerResourceGroupMemberFilterType = SchedulerResourceGroupMemberFilterType.ShowAllGroupMembers;
+            }
+            else if ( sender == btnGroupMembersMatchingPreference )
+            {
+                schedulerResourceListSourceType = SchedulerResourceListSourceType.Group;
+                schedulerResourceGroupMemberFilterType = SchedulerResourceGroupMemberFilterType.ShowMatchingPreference;
+            }
+            else if ( sender == btnAlternateGroup )
+            {
+                schedulerResourceListSourceType = SchedulerResourceListSourceType.AlternateGroup;
+            }
+            else if ( sender == btnDataView )
+            {
+                schedulerResourceListSourceType = SchedulerResourceListSourceType.DataView;
+            }
+            else if ( sender == btnParentGroup )
+            {
+                schedulerResourceListSourceType = SchedulerResourceListSourceType.ParentGroup;
+            }
+            else
+            {
+                // shouldn't happen, but just in case
+                schedulerResourceListSourceType = SchedulerResourceListSourceType.Group;
+                schedulerResourceGroupMemberFilterType = SchedulerResourceGroupMemberFilterType.ShowAllGroupMembers;
+            }
+
+
+            SetResourceListSourceType( schedulerResourceListSourceType, schedulerResourceGroupMemberFilterType );
+            ApplyFilter();
+        }
+
+        /// <summary>
+        /// Sets the type of the resource list source.
+        /// </summary>
+        /// <param name="schedulerResourceListSourceType">Type of the scheduler resource list source.</param>
+        /// <param name="schedulerResourceGroupMemberFilterType">Type of the scheduler resource group member filter.</param>
+        private void SetResourceListSourceType( SchedulerResourceListSourceType schedulerResourceListSourceType, SchedulerResourceGroupMemberFilterType schedulerResourceGroupMemberFilterType )
+        {
+            hfSchedulerResourceListSourceType.Value = schedulerResourceListSourceType.ConvertToInt().ToString();
+            hfResourceGroupMemberFilterType.Value = schedulerResourceGroupMemberFilterType.ConvertToInt().ToString();
+
+            switch ( schedulerResourceListSourceType )
+            {
+                case SchedulerResourceListSourceType.Group:
+                    {
+                        if ( schedulerResourceGroupMemberFilterType == SchedulerResourceGroupMemberFilterType.ShowMatchingPreference )
+                        {
+                            lSelectedResourceTypeDropDownText.Text = "Group Members (Matching Preference)";
+                        }
+                        else
+                        {
+                            lSelectedResourceTypeDropDownText.Text = "Group Members";
+                        }
+
+                        sfResource.Placeholder = "Search";
+
+                        break;
+                    }
+
+                case SchedulerResourceListSourceType.AlternateGroup:
+                    {
+                        lSelectedResourceTypeDropDownText.Text = "Alternate Group";
+                        sfResource.Placeholder = "Search Alternate Group";
+                        break;
+                    }
+
+                case SchedulerResourceListSourceType.DataView:
+                    {
+                        lSelectedResourceTypeDropDownText.Text = "Data View";
+                        sfResource.Placeholder = "Search Data View";
+                        break;
+                    }
+
+                case SchedulerResourceListSourceType.ParentGroup:
+                    {
+                        lSelectedResourceTypeDropDownText.Text = "Parent Group";
+                        break;
+                    }
+
+                default:
+                    {
+                        lSelectedResourceTypeDropDownText.Text = "Group Members";
+                        break;
+                    }
+            }
         }
 
         /// <summary>
@@ -988,5 +1143,9 @@ btnCopyToClipboard.ClientID );
             // clear on the selected person
             ppAddPerson.SetValue( null );
         }
+
+
+
+
     }
 }

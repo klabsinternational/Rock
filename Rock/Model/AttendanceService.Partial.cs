@@ -826,13 +826,16 @@ namespace Rock.Model
         {
             var rockContext = this.Context as RockContext;
 
-            var occurrenceSchedule = new ScheduleService( rockContext ).GetNoTracking( schedulerResourceParameters.AttendanceOccurrenceScheduleId );
+            var occurrenceSchedules =
+                new ScheduleService( rockContext ).GetByIds( schedulerResourceParameters.AttendanceOccurrenceScheduleIds.ToList() )
+                .AsNoTracking()
+                .ToList();
 
             List<SchedulerResource> schedulerResourceList = new List<SchedulerResource>();
 
-            if ( occurrenceSchedule == null )
+            if ( !occurrenceSchedules.Any() )
             {
-                // schedule not found, return empty list
+                // no schedules found, return empty list
                 return schedulerResourceList;
             }
 
@@ -846,8 +849,16 @@ namespace Rock.Model
             }
 
 
-            // get all the occurrences for the selected week for this schedule (It could be more than once a week if it is a daily scheduled, or it might not be in the selected week if it is every 2 weeks, etc)
-            var scheduleOccurrenceDateTimeList = occurrenceSchedule.GetScheduledStartTimes( occurrenceSundayWeekStartDate, occurrenceSundayDate.AddDays( 1 ) );
+            // get all the occurrences for the selected week for the selected schedules (It could be more than once a week if it is a daily scheduled, or it might not be in the selected week if it is every 2 weeks, etc)
+            List<DateTime> scheduleOccurrenceDateTimeList = new List<DateTime>();
+            foreach ( var occurrenceSchedule in occurrenceSchedules )
+            {
+                var occurrenceStartTimes = occurrenceSchedule.GetScheduledStartTimes( occurrenceSundayWeekStartDate, occurrenceSundayDate.AddDays( 1 ) );
+                scheduleOccurrenceDateTimeList.AddRange( occurrenceStartTimes );
+            }
+
+            scheduleOccurrenceDateTimeList = scheduleOccurrenceDateTimeList.Distinct().ToList();
+
             if ( !scheduleOccurrenceDateTimeList.Any() )
             {
                 // no occurrences for the selected week, so just return an empty list
@@ -1061,9 +1072,11 @@ namespace Rock.Model
                  *      - Alisha cannot remove Ted's now invalid assignment because she can no longer see the inactive schedule
                  */
 
+                var scheduleIds = schedulerResourceParameters.AttendanceOccurrenceScheduleIds;
+
                 var scheduledAttendanceGroupIdsLookupQuery = attendanceService.Queryable()
                    .Where( a => ( a.RequestedToAttend == true || a.ScheduledToAttend == true )
-                             && a.Occurrence.ScheduleId == schedulerResourceParameters.AttendanceOccurrenceScheduleId
+                             && a.Occurrence.ScheduleId.HasValue && scheduleIds.Contains( a.Occurrence.ScheduleId.Value )
                              && scheduleOccurrenceDateList.Contains( a.Occurrence.OccurrenceDate )
                              && a.Occurrence.GroupId.HasValue )
                    .WhereDeducedIsActive();
@@ -1385,11 +1398,14 @@ namespace Rock.Model
                 }
             }
 
+            var scheduleIds = new List<int>();
+            scheduleIds.Add( attendanceOccurrence.ScheduleId.Value );
+
             // get all available resources (group members that have a schedule template matching the occurrence date and schedule)
             var schedulerResourceParameters = new SchedulerResourceParameters
             {
                 AttendanceOccurrenceGroupId = attendanceOccurrence.GroupId.Value,
-                AttendanceOccurrenceScheduleId = attendanceOccurrence.ScheduleId.Value,
+                AttendanceOccurrenceScheduleIds = scheduleIds.ToArray(),
                 AttendanceOccurrenceSundayDate = attendanceOccurrence.OccurrenceDate.SundayDate(),
                 ResourceGroupId = attendanceOccurrence.GroupId.Value,
                 GroupMemberFilterType = SchedulerResourceGroupMemberFilterType.ShowMatchingPreference
@@ -2107,19 +2123,27 @@ namespace Rock.Model
     public enum SchedulerResourceListSourceType
     {
         /// <summary>
-        /// The group
+        /// Show all members of the selected group
         /// </summary>
+        [Description( "Group Members" )]
         Group,
 
         /// <summary>
-        /// The alternate group
+        /// All group members from another group
         /// </summary>
-        [Description( "Alt Group" )]
+        [Description( "Alternate Group" )]
         AlternateGroup,
 
         /// <summary>
-        /// The data view
+        /// The Parent group of the select group (only show if the selected group has a parent group)
         /// </summary>
+        [Description( "Parent Group" )]
+        ParentGroup,
+
+        /// <summary>
+        /// People that exist in a selected dataview
+        /// </summary>
+        [Description( "Data View" )]
         DataView
     }
 
@@ -2154,12 +2178,12 @@ namespace Rock.Model
         public int AttendanceOccurrenceGroupId { get; set; }
 
         /// <summary>
-        /// Gets or sets the attendance occurrence schedule identifier.
+        /// Gets or sets the attendance occurrence schedules
         /// </summary>
         /// <value>
-        /// The attendance occurrence schedule identifier.
+        /// The attendance occurrence schedules
         /// </value>
-        public int AttendanceOccurrenceScheduleId { get; set; }
+        public int[] AttendanceOccurrenceScheduleIds { get; set; }
 
         /// <summary>
         /// Gets or sets the attendance occurrence sunday date.
