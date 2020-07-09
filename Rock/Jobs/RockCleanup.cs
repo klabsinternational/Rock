@@ -1,4 +1,4 @@
-﻿// <copyright>
+// <copyright>
 // Copyright by the Spark Development Network
 //
 // Licensed under the Rock Community License (the "License");
@@ -265,7 +265,7 @@ namespace Rock.Jobs
             {
                 var icon = "<i class='fa fa-circle text-success'></i>";
                 var title = result.Title.PluralizeIf( result.RowsAffected != 1 ).ApplyCase( LetterCasing.Title );
-                return $"{icon} {result.RowsAffected} {title} ({result.Elapsed.TotalMilliseconds:N0}ms)";
+                return $"{icon} {result.RowsAffected:N0} {title} ({result.Elapsed.TotalMilliseconds:N0}ms)";
             }
         }
 
@@ -930,10 +930,12 @@ namespace Rock.Jobs
                         i.InteractionDateTime < retentionCutoffDateTime );
 
                     var interactionSessionIdsForInteractionChannel = interactionsToDeleteQuery
-                        .Where( i => i.InteractionSessionId != null )
-                        .Where( i => !interactionSessionIdsOfDeletedInteractions.Contains( i.Id ) )
-                        .Select( i => ( int ) i.InteractionSessionId )
+                        .Select( i => i.InteractionSessionId )
+                        .ToList()
+                        .Where( i => i.HasValue )
+                        .Select( i => i.Value )
                         .Distinct()
+                        .Where( i => !interactionSessionIdsOfDeletedInteractions.Contains( i ) )
                         .ToList();
 
                     interactionSessionIdsOfDeletedInteractions.AddRange( interactionSessionIdsForInteractionChannel );
