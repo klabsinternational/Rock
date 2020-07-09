@@ -609,7 +609,7 @@ namespace Rock.Model
         }
 
         /// <summary>
-        /// Return class for <see cref="AttendanceOccurrenceGroupLocationScheduleConfigJoinQuery"/>
+        /// Return class for <see cref="AttendanceOccurrenceGroupLocationScheduleConfigJoinQuery(List{DateTime}, List{int}, List{int})"/>
         /// </summary>
         public class AttendanceOccurrenceGroupLocationScheduleConfigJoinResult
         {

@@ -2126,7 +2126,13 @@ namespace Rock.Model
         /// Show all members of the selected group
         /// </summary>
         [Description( "Group Members" )]
-        Group,
+        GroupMembers,
+
+        /// <summary>
+        /// Show all members of the selected group that have a scheduling preference set
+        /// </summary>
+        [Description( "Group Members (Matching Preference)" )]
+        GroupMatchingPreference,
 
         /// <summary>
         /// All group members from another group
