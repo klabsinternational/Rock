@@ -182,12 +182,12 @@ namespace Rock.Model
         /// The streak type achievement types.
         /// </value>
         [DataMember]
-        public virtual ICollection<StreakTypeAchievementType> StreakTypeAchievementTypes
+        public virtual ICollection<AchievementType> StreakTypeAchievementTypes
         {
-            get => _streakTypeAchievementTypes ?? ( _streakTypeAchievementTypes = new Collection<StreakTypeAchievementType>() );
+            get => _streakTypeAchievementTypes ?? ( _streakTypeAchievementTypes = new Collection<AchievementType>() );
             set => _streakTypeAchievementTypes = value;
         }
-        private ICollection<StreakTypeAchievementType> _streakTypeAchievementTypes;
+        private ICollection<AchievementType> _streakTypeAchievementTypes;
 
         #endregion Virtual Properties
     }

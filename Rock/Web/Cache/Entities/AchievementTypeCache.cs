@@ -25,13 +25,37 @@ using Rock.Model;
 namespace Rock.Web.Cache
 {
     /// <summary>
-    /// Cache object for <see cref="StreakTypeAchievementType" />
+    /// Cache object for <see cref="AchievementType" />
     /// </summary>
     [Serializable]
     [DataContract]
-    public class StreakTypeAchievementTypeCache : ModelCache<StreakTypeAchievementTypeCache, StreakTypeAchievementType>
+    public class AchievementTypeCache : ModelCache<AchievementTypeCache, AchievementType>
     {
         #region Entity Properties
+
+        /// <summary>
+        /// Gets or sets the source entity type identifier.
+        /// </summary>
+        [DataMember]
+        public int? SourceEntityTypeId { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the achiever entity type identifier.
+        /// </summary>
+        [DataMember]
+        public int AchieverEntityTypeId { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the source entity qualifier column.
+        /// </summary>
+        [DataMember]
+        public string SourceEntityQualifierColumn { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the source entity qualifier value.
+        /// </summary>
+        [DataMember]
+        public string SourceEntityQualifierValue { get; private set; }
 
         /// <summary>
         /// Gets the name.
@@ -52,16 +76,17 @@ namespace Rock.Web.Cache
         public string Description { get; private set; }
 
         /// <summary>
-        /// Gets or sets the Id of the <see cref="Model.StreakType"/> to which this StreakTypeAchievementType belongs. This property is required.
+        /// Gets or sets the Id of the source entity to which this AchievementType belongs. This property is required.
+        /// This was originally StreakTypeId.
         /// </summary>
         [DataMember]
-        public int StreakTypeId { get; private set; }
+        public int SourceEntityId { get; private set; }
 
         /// <summary>
         /// Gets or sets the Id of the achievement component <see cref="EntityType"/>
         /// </summary>
         [DataMember]
-        public int AchievementEntityTypeId { get; private set; }
+        public int ComponentEntityTypeId { get; private set; }
 
         /// <summary>
         /// Gets or sets the Id of the <see cref="WorkflowType"/> to be triggered when an achievement is started
@@ -156,11 +181,11 @@ namespace Rock.Web.Cache
         #region Related Cache Objects
 
         /// <summary>
-        /// Gets the Achievement Component Entity Type Cache.
+        /// Gets the Component Entity Type Cache.
         /// </summary>
-        public EntityTypeCache AchievementEntityType
+        public EntityTypeCache ComponentEntityType
         {
-            get => EntityTypeCache.Get( AchievementEntityTypeId );
+            get => EntityTypeCache.Get( ComponentEntityTypeId );
         }
 
         /// <summary>
@@ -175,14 +200,6 @@ namespace Rock.Web.Cache
         }
 
         /// <summary>
-        /// Gets the Streak Type Cache.
-        /// </summary>
-        public StreakTypeCache StreakTypeCache
-        {
-            get => StreakTypeCache.Get( StreakTypeId );
-        }
-
-        /// <summary>
         /// Gets the achievement component.
         /// </summary>
         /// <value>
@@ -190,7 +207,7 @@ namespace Rock.Web.Cache
         /// </value>
         public virtual AchievementComponent AchievementComponent
         {
-            get => AchievementEntityType != null ? AchievementContainer.GetComponent( AchievementEntityType.Name ) : null;
+            get => ComponentEntityType != null ? AchievementContainer.GetComponent( ComponentEntityType.Name ) : null;
         }
 
         /// <summary>
@@ -199,8 +216,8 @@ namespace Rock.Web.Cache
         /// <value>
         /// The prerequisites.
         /// </value>
-        public List<StreakTypeAchievementTypePrerequisiteCache> Prerequisites
-            => StreakTypeAchievementTypePrerequisiteCache.All().Where( statp => statp.StreakTypeAchievementTypeId == Id ).ToList();
+        public List<AchievementTypePrerequisiteCache> Prerequisites
+            => AchievementTypePrerequisiteCache.All().Where( statp => statp.AchievementTypeId == Id ).ToList();
 
         /// <summary>
         /// Gets the prerequisite achievement types.
@@ -208,8 +225,8 @@ namespace Rock.Web.Cache
         /// <value>
         /// The prerequisite achievement types.
         /// </value>
-        public List<StreakTypeAchievementTypeCache> PrerequisiteAchievementTypes
-            => Prerequisites.Select( statp => statp.PrerequisiteStreakTypeAchievementType ).ToList();
+        public List<AchievementTypeCache> PrerequisiteAchievementTypes
+            => Prerequisites.Select( statp => statp.PrerequisiteAchievementType ).ToList();
 
         #endregion Related Cache Objects
 
@@ -222,29 +239,33 @@ namespace Rock.Web.Cache
         public override void SetFromEntity( IEntity entity )
         {
             base.SetFromEntity( entity );
-            var streakTypeAchievementType = entity as StreakTypeAchievementType;
+            var achievementType = entity as AchievementType;
 
-            if ( streakTypeAchievementType == null )
+            if ( achievementType == null )
             {
                 return;
             }
 
-            Name = streakTypeAchievementType.Name;
-            Description = streakTypeAchievementType.Description;
-            IsActive = streakTypeAchievementType.IsActive;
-            StreakTypeId = streakTypeAchievementType.StreakTypeId;
-            AchievementEntityTypeId = streakTypeAchievementType.AchievementEntityTypeId;
-            AchievementStartWorkflowTypeId = streakTypeAchievementType.AchievementStartWorkflowTypeId;
-            AchievementFailureWorkflowTypeId = streakTypeAchievementType.AchievementFailureWorkflowTypeId;
-            AchievementSuccessWorkflowTypeId = streakTypeAchievementType.AchievementSuccessWorkflowTypeId;
-            AchievementStepTypeId = streakTypeAchievementType.AchievementStepTypeId;
-            AchievementStepStatusId = streakTypeAchievementType.AchievementStepStatusId;
-            BadgeLavaTemplate = streakTypeAchievementType.BadgeLavaTemplate;
-            ResultsLavaTemplate = streakTypeAchievementType.ResultsLavaTemplate;
-            AchievementIconCssClass = streakTypeAchievementType.AchievementIconCssClass;
-            MaxAccomplishmentsAllowed = streakTypeAchievementType.MaxAccomplishmentsAllowed;
-            AllowOverAchievement = streakTypeAchievementType.AllowOverAchievement;
-            CategoryId = streakTypeAchievementType.CategoryId;
+            Name = achievementType.Name;
+            Description = achievementType.Description;
+            IsActive = achievementType.IsActive;
+            SourceEntityId = achievementType.SourceEntityId;
+            SourceEntityTypeId = achievementType.SourceEntityTypeId;
+            SourceEntityQualifierColumn = achievementType.SourceEntityQualifierColumn;
+            SourceEntityQualifierValue = achievementType.SourceEntityQualifierValue;
+            AchieverEntityTypeId = achievementType.AchieverEntityTypeId;
+            ComponentEntityTypeId = achievementType.ComponentEntityTypeId;
+            AchievementStartWorkflowTypeId = achievementType.AchievementStartWorkflowTypeId;
+            AchievementFailureWorkflowTypeId = achievementType.AchievementFailureWorkflowTypeId;
+            AchievementSuccessWorkflowTypeId = achievementType.AchievementSuccessWorkflowTypeId;
+            AchievementStepTypeId = achievementType.AchievementStepTypeId;
+            AchievementStepStatusId = achievementType.AchievementStepStatusId;
+            BadgeLavaTemplate = achievementType.BadgeLavaTemplate;
+            ResultsLavaTemplate = achievementType.ResultsLavaTemplate;
+            AchievementIconCssClass = achievementType.AchievementIconCssClass;
+            MaxAccomplishmentsAllowed = achievementType.MaxAccomplishmentsAllowed;
+            AllowOverAchievement = achievementType.AllowOverAchievement;
+            CategoryId = achievementType.CategoryId;
         }
 
         #endregion Public Methods

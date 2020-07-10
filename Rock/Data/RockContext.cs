@@ -1795,7 +1795,7 @@ namespace Rock.Data
         /// <value>
         /// The StreakAchievementAttempts.
         /// </value>
-        public DbSet<StreakAchievementAttempt> StreakAchievementAttempts { get; set; }
+        public DbSet<AchievementAttempt> StreakAchievementAttempts { get; set; }
 
         /// <summary>
         /// Gets or sets the StreakTypes.
@@ -1811,7 +1811,7 @@ namespace Rock.Data
         /// <value>
         /// The StreakTypeAchievementTypes.
         /// </value>
-        public DbSet<StreakTypeAchievementType> StreakTypeAchievementTypes { get; set; }
+        public DbSet<AchievementType> StreakTypeAchievementTypes { get; set; }
 
         /// <summary>
         /// Gets or sets the streak type achievement type prerequisites.
@@ -1819,7 +1819,7 @@ namespace Rock.Data
         /// <value>
         /// The streak type achievement type prerequisites.
         /// </value>
-        public DbSet<StreakTypeAchievementTypePrerequisite> StreakTypeAchievementTypePrerequisites { get; set; }
+        public DbSet<AchievementTypePrerequisite> StreakTypeAchievementTypePrerequisites { get; set; }
 
         /// <summary>
         /// Gets or sets the StreakTypeExclusions.

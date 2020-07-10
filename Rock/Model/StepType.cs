@@ -271,18 +271,18 @@ namespace Rock.Model
         private ICollection<StepWorkflowTrigger> _stepWorkflowTriggers;
 
         /// <summary>
-        /// Gets or sets the streak type achievement types.
+        /// Gets or sets the achievement types.
         /// </summary>
         /// <value>
-        /// The streak type achievement types.
+        /// The achievement types.
         /// </value>
         [DataMember]
-        public virtual ICollection<StreakTypeAchievementType> StreakTypeAchievementTypes
+        public virtual ICollection<AchievementType> AchievementTypes
         {
-            get => _streakTypeAchievementTypes ?? ( _streakTypeAchievementTypes = new Collection<StreakTypeAchievementType>() );
+            get => _streakTypeAchievementTypes ?? ( _streakTypeAchievementTypes = new Collection<AchievementType>() );
             set => _streakTypeAchievementTypes = value;
         }
-        private ICollection<StreakTypeAchievementType> _streakTypeAchievementTypes;
+        private ICollection<AchievementType> _streakTypeAchievementTypes;
 
         #endregion Virtual Properties
 

@@ -73,8 +73,8 @@ namespace Rock.Model
         {
             // Since Entity Framework cannot cascade delete achievement attempts because of a possible circular reference,
             // we need to delete them here
-            var attemptService = new StreakAchievementAttemptService( Context as RockContext );
-            var attempts = attemptService.Queryable().Where( a => a.Streak.StreakTypeId == item.Id );
+            var attemptService = new AchievementAttemptService( Context as RockContext );
+            var attempts = attemptService.GetByStreakTypeId( item.Id );
             attemptService.DeleteRange( attempts );
 
             // Now we can delete the streak type as normal
@@ -774,10 +774,10 @@ namespace Rock.Model
             if ( streaksToDelete.Any() )
             {
                 // Keep all attempts by pointing them to the streak that will be kept
-                var attemptService = new StreakAchievementAttemptService( rockContext );
+                var attemptService = new AchievementAttemptService( rockContext );
                 var streaksToDeleteIds = streaksToDelete.Select( s => s.Id ).ToList();
-                var attempts = attemptService.Queryable().Where( saa => streaksToDeleteIds.Contains( saa.StreakId ) ).ToList();
-                attempts.ForEach( saa => saa.Streak = streakToKeep );
+                var attempts = attemptService.Queryable().Where( saa => streaksToDeleteIds.Contains( saa.AchieverEntityId ) ).ToList();
+                attempts.ForEach( saa => saa.AchieverEntityId = streakToKeep.Id );
 
                 // Delete the streaks
                 streakService.DeleteRange( streaksToDelete );

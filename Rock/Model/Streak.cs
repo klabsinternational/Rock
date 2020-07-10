@@ -177,12 +177,12 @@ namespace Rock.Model
         /// </value>
         [DataMember]
         [JsonIgnore]
-        public virtual ICollection<StreakAchievementAttempt> StreakAchievementAttempts
+        public virtual ICollection<AchievementAttempt> StreakAchievementAttempts
         {
-            get => _streakAchievementAttempts ?? ( _streakAchievementAttempts = new Collection<StreakAchievementAttempt>() );
+            get => _streakAchievementAttempts ?? ( _streakAchievementAttempts = new Collection<AchievementAttempt>() );
             set => _streakAchievementAttempts = value;
         }
-        private ICollection<StreakAchievementAttempt> _streakAchievementAttempts;
+        private ICollection<AchievementAttempt> _streakAchievementAttempts;
 
         #endregion Virtual Properties
 

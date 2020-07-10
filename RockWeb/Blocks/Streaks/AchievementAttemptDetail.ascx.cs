@@ -89,7 +89,7 @@ namespace RockWeb.Blocks.Streaks
             /// <summary>
             /// The streak achievement attempt identifier
             /// </summary>
-            public const string StreakAchievementAttemptId = "StreakAchievementAttemptId";
+            public const string AchievementAttemptId = "AchievementAttemptId";
         }
 
         #endregion Keys
@@ -167,7 +167,7 @@ namespace RockWeb.Blocks.Streaks
         /// </summary>
         private void InitializeActionButtons()
         {
-            btnDelete.Attributes["onclick"] = string.Format( "javascript: return Rock.dialogs.confirmDelete(event, '{0}', 'Are you sure?');", StreakAchievementAttempt.FriendlyTypeName );
+            btnDelete.Attributes["onclick"] = string.Format( "javascript: return Rock.dialogs.confirmDelete(event, '{0}', 'Are you sure?');", AchievementAttempt.FriendlyTypeName );
         }
 
         /// <summary>
@@ -393,7 +393,7 @@ namespace RockWeb.Blocks.Streaks
                 var streak = GetOrAddStreak();
                 var achievementTypeId = achievementType == null ? atpAchievementType.SelectedValue.AsInteger() : achievementType.Id;
 
-                attempt = new StreakAchievementAttempt
+                attempt = new AchievementAttempt
                 {
                     StreakTypeAchievementTypeId = achievementTypeId,
                     StreakId = streak.Id
@@ -469,7 +469,7 @@ namespace RockWeb.Blocks.Streaks
 
             // If the save was successful, reload the page using the new record Id.
             NavigateToPage( RockPage.Guid, new Dictionary<string, string> {
-                { PageParameterKey.StreakAchievementAttemptId, attempt.Id.ToString() }
+                { PageParameterKey.AchievementAttemptId, attempt.Id.ToString() }
             } );
         }
 
@@ -759,7 +759,7 @@ namespace RockWeb.Blocks.Streaks
         /// Gets the type of the achievement.
         /// </summary>
         /// <returns></returns>
-        private StreakTypeAchievementTypeCache GetAchievementTypeCache()
+        private AchievementTypeCache GetAchievementTypeCache()
         {
             if ( _streakTypeAchievementTypeCache != null )
             {
@@ -771,27 +771,27 @@ namespace RockWeb.Blocks.Streaks
 
             if ( attempt != null )
             {
-                achievementTypeId = attempt.StreakTypeAchievementTypeId;
+                achievementTypeId = attempt.AchievementTypeId;
             }
 
             if ( achievementTypeId.HasValue && achievementTypeId.Value > 0 )
             {
-                _streakTypeAchievementTypeCache = StreakTypeAchievementTypeCache.Get( achievementTypeId.Value );
+                _streakTypeAchievementTypeCache = AchievementTypeCache.Get( achievementTypeId.Value );
             }
 
             return _streakTypeAchievementTypeCache;
         }
-        private StreakTypeAchievementTypeCache _streakTypeAchievementTypeCache = null;
+        private AchievementTypeCache _streakTypeAchievementTypeCache = null;
 
         /// <summary>
         /// Gets the attempt.
         /// </summary>
         /// <returns></returns>
-        private StreakAchievementAttempt GetAttempt()
+        private AchievementAttempt GetAttempt()
         {
             if ( _attempt == null )
             {
-                var attemptId = PageParameter( PageParameterKey.StreakAchievementAttemptId ).AsIntegerOrNull();
+                var attemptId = PageParameter( PageParameterKey.AchievementAttemptId ).AsIntegerOrNull();
 
                 if ( attemptId.HasValue && attemptId.Value > 0 )
                 {
@@ -802,7 +802,7 @@ namespace RockWeb.Blocks.Streaks
 
             return _attempt;
         }
-        private StreakAchievementAttempt _attempt = null;
+        private AchievementAttempt _attempt = null;
 
         /// <summary>
         /// Get the actual streak model for deleting or editing
@@ -951,17 +951,17 @@ namespace RockWeb.Blocks.Streaks
         /// Gets the attempt service.
         /// </summary>
         /// <returns></returns>
-        private StreakAchievementAttemptService GetAttemptService()
+        private AchievementAttemptService GetAttemptService()
         {
             if ( _attemptService == null )
             {
                 var rockContext = GetRockContext();
-                _attemptService = new StreakAchievementAttemptService( rockContext );
+                _attemptService = new AchievementAttemptService( rockContext );
             }
 
             return _attemptService;
         }
-        private StreakAchievementAttemptService _attemptService = null;
+        private AchievementAttemptService _attemptService = null;
 
         /// <summary>
         /// Get the rock context

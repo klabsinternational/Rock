@@ -28,14 +28,41 @@ using Rock.Web.Cache;
 namespace Rock.Model
 {
     /// <summary>
-    /// Represents a Streak Type Achievement Type in Rock.
+    /// Represents an Achievement Type in Rock.
     /// </summary>
-    [RockDomain( "Streaks" )]
-    [Table( "StreakTypeAchievementType" )]
+    [RockDomain( "Achievements" )]
+    [Table( "AchievementType" )]
     [DataContract]
-    public partial class StreakTypeAchievementType : Model<StreakTypeAchievementType>, IHasActiveFlag, ICacheable
+    public partial class AchievementType : Model<AchievementType>, IHasActiveFlag, ICacheable
     {
         #region Entity Properties
+
+        /// <summary>
+        /// Gets or sets the source entity type identifier.
+        /// </summary>
+        [DataMember]
+        public int? SourceEntityTypeId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the achiever entity type identifier.
+        /// </summary>
+        [DataMember( IsRequired = true )]
+        [Required]
+        public int AchieverEntityTypeId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the source entity qualifier column.
+        /// </summary>
+        [MaxLength( 50 )]
+        [DataMember]
+        public string SourceEntityQualifierColumn { get; set; }
+
+        /// <summary>
+        /// Gets or sets the source entity qualifier value.
+        /// </summary>
+        [MaxLength( 200 )]
+        [DataMember]
+        public string SourceEntityQualifierValue { get; set; }
 
         /// <summary>
         /// Gets or sets the name of the achievement type. This property is required.
@@ -52,18 +79,19 @@ namespace Rock.Model
         public string Description { get; set; }
 
         /// <summary>
-        /// Gets or sets the Id of the <see cref="Model.StreakType"/> to which this StreakTypeAchievementType belongs. This property is required.
+        /// Gets or sets the Id of the source entity to which this AchievementType belongs. This property is required.
+        /// This was originally StreakTypeId.
         /// </summary>
         [Required]
         [DataMember( IsRequired = true )]
-        public int StreakTypeId { get; set; }
+        public int SourceEntityId { get; set; }
 
         /// <summary>
-        /// Gets or sets the Id of the achievement component <see cref="EntityType"/>
+        /// Gets or sets the Id of the component <see cref="EntityType"/>
         /// </summary>
         [Required]
         [DataMember( IsRequired = true )]
-        public int AchievementEntityTypeId { get; set; }
+        public int ComponentEntityTypeId { get; set; }
 
         /// <summary>
         /// Gets or sets the Id of the <see cref="WorkflowType"/> to be triggered when an achievement is started
@@ -165,7 +193,7 @@ namespace Rock.Model
         /// <returns></returns>
         public IEntityCache GetCacheObject()
         {
-            return StreakTypeAchievementTypeCache.Get( this.Id );
+            return AchievementTypeCache.Get( this.Id );
         }
 
         /// <summary>
@@ -175,7 +203,7 @@ namespace Rock.Model
         /// <param name="dbContext">The database context.</param>
         public void UpdateCache( EntityState entityState, Rock.Data.DbContext dbContext )
         {
-            StreakTypeAchievementTypeCache.UpdateCachedEntity( Id, entityState );
+            AchievementTypeCache.UpdateCachedEntity( Id, entityState );
         }
 
         #endregion
@@ -183,16 +211,10 @@ namespace Rock.Model
         #region Virtual Properties
 
         /// <summary>
-        /// Gets or sets the <see cref="Model.StreakType"/>.
-        /// </summary>
-        [DataMember]
-        public virtual StreakType StreakType { get; set; }
-
-        /// <summary>
         /// Gets or sets the <see cref="EntityType"/> of the component.
         /// </summary>
         [DataMember]
-        public virtual EntityType AchievementEntityType { get; set; }
+        public virtual EntityType ComponentEntityType { get; set; }
 
         /// <summary>
         /// Gets or sets the <see cref="WorkflowType"/> to be launched when the achievement starts.
@@ -231,19 +253,19 @@ namespace Rock.Model
         public virtual Category Category { get; set; }
 
         /// <summary>
-        /// Gets or sets the streak achievement attempts.
+        /// Gets or sets the achievement attempts.
         /// </summary>
         /// <value>
-        /// The streak type achievement types.
+        /// The achievement attempts.
         /// </value>
         [DataMember]
         [JsonIgnore]
-        public virtual ICollection<StreakAchievementAttempt> StreakAchievementAttempts
+        public virtual ICollection<AchievementAttempt> AchievementAttempts
         {
-            get => _streakAchievementAttempts ?? ( _streakAchievementAttempts = new Collection<StreakAchievementAttempt>() );
-            set => _streakAchievementAttempts = value;
+            get => _achievementAttempts ?? ( _achievementAttempts = new Collection<AchievementAttempt>() );
+            set => _achievementAttempts = value;
         }
-        private ICollection<StreakAchievementAttempt> _streakAchievementAttempts;
+        private ICollection<AchievementAttempt> _achievementAttempts;
 
         /// <summary>
         /// Gets or sets the prerequisites.
@@ -252,12 +274,12 @@ namespace Rock.Model
         /// The prerequisites.
         /// </value>
         [DataMember]
-        public virtual ICollection<StreakTypeAchievementTypePrerequisite> Prerequisites
+        public virtual ICollection<AchievementTypePrerequisite> Prerequisites
         {
-            get => _prerequisites ?? ( _prerequisites = new Collection<StreakTypeAchievementTypePrerequisite>() );
+            get => _prerequisites ?? ( _prerequisites = new Collection<AchievementTypePrerequisite>() );
             set => _prerequisites = value;
         }
-        private ICollection<StreakTypeAchievementTypePrerequisite> _prerequisites;
+        private ICollection<AchievementTypePrerequisite> _prerequisites;
 
         /// <summary>
         /// Gets or sets the dependencies.
@@ -266,34 +288,33 @@ namespace Rock.Model
         /// The dependencies.
         /// </value>
         [DataMember]
-        public virtual ICollection<StreakTypeAchievementTypePrerequisite> Dependencies
+        public virtual ICollection<AchievementTypePrerequisite> Dependencies
         {
-            get => _dependencies ?? ( _dependencies = new Collection<StreakTypeAchievementTypePrerequisite>() );
+            get => _dependencies ?? ( _dependencies = new Collection<AchievementTypePrerequisite>() );
             set => _dependencies = value;
         }
-        private ICollection<StreakTypeAchievementTypePrerequisite> _dependencies;
+        private ICollection<AchievementTypePrerequisite> _dependencies;
 
         #endregion Virtual Properties
 
         #region Entity Configuration
 
         /// <summary>
-        /// Streak Type Achievement Type Configuration class.
+        /// Achievement Type Configuration class.
         /// </summary>
-        public partial class StreakTypeAchievementTypeConfiguration : EntityTypeConfiguration<StreakTypeAchievementType>
+        public partial class AchievementTypeConfiguration : EntityTypeConfiguration<AchievementType>
         {
             /// <summary>
-            /// Initializes a new instance of the <see cref="StreakTypeAchievementTypeConfiguration"/> class.
+            /// Initializes a new instance of the <see cref="AchievementTypeConfiguration"/> class.
             /// </summary>
-            public StreakTypeAchievementTypeConfiguration()
+            public AchievementTypeConfiguration()
             {
-                HasRequired( stat => stat.StreakType ).WithMany( st => st.StreakTypeAchievementTypes ).HasForeignKey( stat => stat.StreakTypeId ).WillCascadeOnDelete( true );
-                HasRequired( stat => stat.AchievementEntityType ).WithMany().HasForeignKey( stat => stat.AchievementEntityTypeId ).WillCascadeOnDelete( true );
+                HasRequired( stat => stat.ComponentEntityType ).WithMany().HasForeignKey( stat => stat.ComponentEntityTypeId ).WillCascadeOnDelete( true );
 
                 HasOptional( stat => stat.AchievementStartWorkflowType ).WithMany().HasForeignKey( stat => stat.AchievementStartWorkflowTypeId ).WillCascadeOnDelete( false );
                 HasOptional( stat => stat.AchievementSuccessWorkflowType ).WithMany().HasForeignKey( stat => stat.AchievementSuccessWorkflowTypeId ).WillCascadeOnDelete( false );
                 HasOptional( stat => stat.AchievementFailureWorkflowType ).WithMany().HasForeignKey( stat => stat.AchievementFailureWorkflowTypeId ).WillCascadeOnDelete( false );
-                HasOptional( stat => stat.AchievementStepType ).WithMany( st => st.StreakTypeAchievementTypes ).HasForeignKey( stat => stat.AchievementStepTypeId ).WillCascadeOnDelete( false );
+                HasOptional( stat => stat.AchievementStepType ).WithMany( st => st.AchievementTypes ).HasForeignKey( stat => stat.AchievementStepTypeId ).WillCascadeOnDelete( false );
                 HasOptional( stat => stat.AchievementStepStatus ).WithMany().HasForeignKey( stat => stat.AchievementStepStatusId ).WillCascadeOnDelete( false );
                 HasOptional( stat => stat.Category ).WithMany().HasForeignKey( stat => stat.CategoryId ).WillCascadeOnDelete( false );
             }

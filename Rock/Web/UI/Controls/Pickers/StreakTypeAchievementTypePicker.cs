@@ -64,7 +64,7 @@ namespace Rock.Web.UI.Controls
                 picker.Items.Add( new ListItem() );
             }
             
-            var achievementTypes = StreakTypeAchievementTypeCache.All()
+            var achievementTypes = AchievementTypeCache.All()
                 .Where( stat => stat.IsActive )
                 .OrderBy( stat => stat.Name )
                 .ToList();

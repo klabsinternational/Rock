@@ -520,6 +520,7 @@
     <Compile Include="Logging\RockLogEvent.cs" />
     <Compile Include="Logging\RockLogSystemSettings.cs" />
     <Compile Include="Logging\RockSerilogReader.cs" />
+    <Compile Include="Model\AchievementAttemptService.Partial.cs" />
     <Compile Include="Model\AttendanceCheckInSession.cs" />
     <Compile Include="Model\CodeGenerated\AttendanceCheckInSessionService.cs" />
     <Compile Include="Model\CodeGenerated\IdentityVerificationCodeService.cs" />
@@ -638,9 +639,9 @@
     <Compile Include="Model\CodeGenerated\SmsPipelineService.cs" />
     <Compile Include="Model\CodeGenerated\RegistrationTemplatePlacementService.cs" />
     <Compile Include="Model\CodeGenerated\RelatedEntityService.cs" />
-    <Compile Include="Model\CodeGenerated\StreakAchievementAttemptService.cs" />
-    <Compile Include="Model\CodeGenerated\StreakTypeAchievementTypePrerequisiteService.cs" />
-    <Compile Include="Model\CodeGenerated\StreakTypeAchievementTypeService.cs" />
+    <Compile Include="Model\CodeGenerated\AchievementAttemptService.cs" />
+    <Compile Include="Model\CodeGenerated\AchievementTypePrerequisiteService.cs" />
+    <Compile Include="Model\CodeGenerated\AchievementTypeService.cs" />
     <Compile Include="Model\CodeGenerated\SystemCommunicationService.cs" />
     <Compile Include="Model\DocumentTypeService.Partial.cs" />
     <Compile Include="Model\EntityCampusFilter.cs" />
@@ -659,10 +660,10 @@
     <Compile Include="Model\RelatedEntityService.Partial.cs" />
     <Compile Include="Model\StepTypeService.Partial.cs" />
     <Compile Include="Model\StepService.Partial.cs" />
-    <Compile Include="Model\StreakAchievementAttempts.cs" />
-    <Compile Include="Model\StreakTypeAchievementTypePrerequisite.cs" />
-    <Compile Include="Model\StreakTypeAchievementTypeService.Partial.cs" />
-    <Compile Include="Model\StreakTypeAchievementType.cs" />
+    <Compile Include="Model\AchievementAttempts.cs" />
+    <Compile Include="Model\AchievementTypePrerequisite.cs" />
+    <Compile Include="Model\AchievementTypeService.Partial.cs" />
+    <Compile Include="Model\AchievementType.cs" />
     <Compile Include="Model\SystemCommunication.cs" />
     <Compile Include="Net\ClientInformation.cs" />
     <Compile Include="Badge\Component\Steps.cs" />
@@ -703,8 +704,8 @@
     <Compile Include="Web\Cache\Entities\DocumentTypeCache.cs" />
     <Compile Include="Web\Cache\Entities\PersistedDatasetCache.cs" />
     <Compile Include="Web\Cache\Entities\Obsolete\PersonBadgeCache.cs" />
-    <Compile Include="Web\Cache\Entities\StreakTypeAchievementTypePrerequisiteCache.cs" />
-    <Compile Include="Web\Cache\Entities\StreakTypeAchievementTypeCache.cs" />
+    <Compile Include="Web\Cache\Entities\AchievementTypePrerequisiteCache.cs" />
+    <Compile Include="Web\Cache\Entities\AchievementTypeCache.cs" />
     <Compile Include="Web\Cache\NonEntities\EntityDocumentTypesCache.cs" />
     <Compile Include="Web\Cache\NonEntities\PersistedDatasetValueCache.cs" />
     <Compile Include="Web\RockCustomSettingsProvider.cs" />

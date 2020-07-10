@@ -128,6 +128,15 @@ namespace Rock.Model
         public bool IsIndexingEnabled { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether [are achievements enabled].
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if [are achievements enabled]; otherwise, <c>false</c>.
+        /// </value>
+        [DataMember]
+        public bool AreAchievementsEnabled { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether attributes of this entity type support a Pre-HTML and Post-HTML option.
         /// </summary>
         /// <value>
