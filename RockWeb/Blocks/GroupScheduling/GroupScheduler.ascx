@@ -42,7 +42,7 @@
 
                 <%-- Filter Options (Header) --%>
                 <div class="row row-eq-height">
-                    <div class="col-md-4 hidden-xs" style="background-color: magenta">
+                    <div class="col-md-4 hidden-xs">
                         <%-- Resource List - Filter Options (Header) --%>
                         <div class="group-scheduler-resource-filter resource-filter-options">
                             <asp:Panel ID="pnlResourceListFilter" runat="server">
@@ -66,15 +66,17 @@
                             </asp:Panel>
                         </div>
                     </div>
-                    <div class="col-md-8 hidden-xs" style="background-color: darkolivegreen">
+                    <div class="col-md-8 hidden-xs">
                         <%-- AttendanceOccurrences - Filter Options (Header) --%>
                         <div class="group-scheduler-occurrence-filter occurrences-filter-options">
-                            <asp:HiddenField ID="hfGroupId" runat="server" />
+                            <asp:HiddenField ID="hfSelectedGroupId" runat="server" />
+                            <asp:HiddenField ID="hfListedGroupIds" runat="server" />
                             <div class="row">
-                                <div class="col-md-3">
-                                    <Rock:GroupPicker ID="gpGroup" runat="server" Label="" OnValueChanged="gpGroup_ValueChanged" CssClass="occurrences-group-picker" LimitToSchedulingEnabledGroups="true" />
+                                <div class="col-md-6">
+                                    <Rock:GroupPicker ID="gpListedGroups" runat="server" Label="" AllowMultiSelect="true" OnValueChanged="gpListedGroups_ValueChanged" CssClass="occurrences-groups-picker" LimitToSchedulingEnabledGroups="true" />
+                                    <Rock:RockCheckBox ID="cbShowChildGroups" runat="server" Text="Show Child Groups" CssClass="pull-right" AutoPostBack="true" OnCheckedChanged="gpListedGroups_ValueChanged" />
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
 
                                     <!-- Filter for Week -->
                                     <asp:Panel ID="pnlWeekFilter" runat="server">
@@ -97,9 +99,30 @@
                                     </asp:Panel>
 
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <asp:Panel ID="pnlGroupScheduleLocations" runat="server">
                                         <div class="row">
+                                            <div class="col-md-6">
+                                                <!-- Filter for Locations -->
+                                                <asp:Panel ID="pnlGroupLocationFilter" runat="server">
+                                                    <div class="btn-group">
+                                                        <div class="dropdown-toggle btn" data-toggle="dropdown">
+                                                            <asp:HiddenField ID="hfSelectedGroupLocationIds" runat="server" />
+                                                            <asp:Literal ID="lSelectedGroupLocationFilterText" runat="server" Text="Locations...." />
+                                                        </div>
+
+                                                        <ul class="dropdown-menu" role="menu">
+                                                            <asp:Repeater ID="rptGroupLocationSelector" runat="server" OnItemDataBound="rptGroupLocationSelector_ItemDataBound">
+                                                                <ItemTemplate>
+                                                                    <li>
+                                                                        <asp:LinkButton ID="btnSelectGroupLocation" runat="server" Text="-" CommandArgument="-" OnClick="btnSelectGroupLocation_Click" />
+                                                                    </li>
+                                                                </ItemTemplate>
+                                                            </asp:Repeater>
+                                                        </ul>
+                                                    </div>
+                                                </asp:Panel>
+                                            </div>
                                             <div class="col-md-6">
 
                                                 <!-- Filter for Schedules -->
@@ -123,27 +146,7 @@
                                                 </asp:Panel>
                                                 
                                             </div>
-                                            <div class="col-md-6">
-                                                <!-- Filter for Locations -->
-                                                <asp:Panel ID="pnlGroupLocationFilter" runat="server">
-                                                    <div class="btn-group">
-                                                        <div class="dropdown-toggle btn" data-toggle="dropdown">
-                                                            <asp:HiddenField ID="hfSelectedGroupLocationIds" runat="server" />
-                                                            <asp:Literal ID="lSelectedGroupLocationFilterText" runat="server" Text="Locations...." />
-                                                        </div>
-
-                                                        <ul class="dropdown-menu" role="menu">
-                                                            <asp:Repeater ID="rptGroupLocationSelector" runat="server" OnItemDataBound="rptGroupLocationSelector_ItemDataBound">
-                                                                <ItemTemplate>
-                                                                    <li>
-                                                                        <asp:LinkButton ID="btnSelectGroupLocation" runat="server" Text="-" CommandArgument="-" OnClick="btnSelectGroupLocation_Click" />
-                                                                    </li>
-                                                                </ItemTemplate>
-                                                            </asp:Repeater>
-                                                        </ul>
-                                                    </div>
-                                                </asp:Panel>
-                                            </div>
+                                            
                                         </div>
                                     </asp:Panel>
                                 </div>

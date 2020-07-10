@@ -388,9 +388,14 @@
                     additionalPersonIds = self.$additionalPersonIds.val().split(',');
                 }
 
+                var attendanceOccurrenceScheduleIds = [];
+                if ($('.js-occurrence-schedule-ids', $resourceList).val() != '') {
+                    attendanceOccurrenceScheduleIds = $('.js-occurrence-schedule-ids', $resourceList).val().split(',');
+                }
+
                 var schedulerResourceParameters = {
                     AttendanceOccurrenceGroupId: Number($('.js-occurrence-group-id', $resourceList).val()),
-                    AttendanceOccurrenceScheduleIds: $('.js-occurrence-schedule-ids', $resourceList).val(),
+                    AttendanceOccurrenceScheduleIds: attendanceOccurrenceScheduleIds,
                     AttendanceOccurrenceSundayDate: $('.js-occurrence-sunday-date', $resourceList).val(),
                     ResourceGroupId: $('.js-resource-group-id', $resourceList).val(),
                     GroupMemberFilterType: $('.js-resource-groupmemberfiltertype', $resourceList).val(),
