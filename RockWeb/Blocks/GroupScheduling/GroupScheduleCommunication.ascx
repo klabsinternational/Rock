@@ -32,6 +32,7 @@
                             <Rock:GroupPicker ID="gpGroups" runat="server" AllowMultiSelect="true" Label="Groups" Required="true" OnSelectItem="gpGroups_SelectItem" LimitToSchedulingEnabledGroups="true" />
                             <Rock:RockCheckBoxList ID="cblInviteStatus" runat="server" Label="Invite Status" RepeatDirection="Horizontal" Required="true" />
                             <Rock:RockListBox ID="lbSchedules" runat="server" Label="Schedules" AutoPostBack="true" OnSelectedIndexChanged="lbSchedules_SelectedIndexChanged" Required="true" />
+                            <Rock:RockDropDownList ID="ddlWeek" runat="server" Label="Week" />
                         </div>
                         <div class="col-md-6">
                             <Rock:RockCheckBox ID="cbIncludeChildGroups" runat="server" Label="Include Child Groups" AutoPostBack="true" OnCheckedChanged="cbIncludeChildGroups_CheckedChanged" />

@@ -98,7 +98,7 @@ namespace RockWeb.Blocks.GroupScheduling
             public const string DataViewId = "DataViewId";
         }
 
-        #endregion UserPreferanceKeys
+        #endregion UserPreferenceKeys
 
         #region Base Control Methods
 

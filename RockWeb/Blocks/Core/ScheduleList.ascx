@@ -16,11 +16,22 @@
                 <div class="panel-body">
 
                     <div class="grid grid-panel">
+
+                        <Rock:GridFilter ID="fSchedules" runat="server">
+                            <Rock:CategoryPicker ID="cpCategoryFilter" runat="server" AllowCategorySelection="true" AllowMultiSelect="false" />
+                            <Rock:RockDropDownList ID="ddlActiveFilter" runat="server" Label="Active Status">
+                                <asp:ListItem Text="[All]" Value="all"></asp:ListItem>
+                                <asp:ListItem Text="Active" Value="True"></asp:ListItem>
+                                <asp:ListItem Text="Inactive" Value="False"></asp:ListItem>
+                            </Rock:RockDropDownList>
+                        </Rock:GridFilter>
+
                         <Rock:Grid ID="gSchedules" runat="server" AllowSorting="false" OnRowSelected="gSchedules_Edit" CssClass="js-grid-schedule-list">
                             <Columns>
                                 <Rock:ReorderField />
                                 <Rock:RockBoundField DataField="Name" HeaderText="Name" />
                                 <Rock:RockBoundField DataField="Category.Name" HeaderText="Category" />
+                                <Rock:BoolField DataField="IsActive" HeaderText="Active" />
                                 <Rock:DeleteField OnClick="gSchedules_Delete" />
                             </Columns>
                         </Rock:Grid>

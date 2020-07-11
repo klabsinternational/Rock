@@ -62,6 +62,12 @@ namespace RockWeb.Blocks.Administration
             public const string CategoryGuid = "CategoryGuid";
         }
 
+        public static class GridUserPreferenceKey
+        {
+            public const string Category = "Category";
+            public const string ActiveStatus = "Active Status";
+        }
+
         #region properties
 
         private HashSet<int> _schedulesWithAttendance = null;
@@ -77,6 +83,19 @@ namespace RockWeb.Blocks.Administration
         protected override void OnInit( EventArgs e )
         {
             base.OnInit( e );
+
+            // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
+            this.BlockUpdated += ScheduleList_BlockUpdated;
+            this.AddConfigurationUpdateTrigger( upScheduleList );
+
+            if ( !this.IsPostBack )
+            {
+                BindFilter();
+            }
+
+            fSchedules.ApplyFilterClick += fSchedules_ApplyFilterClick;
+            fSchedules.ClearFilterClick += fSchedules_ClearFilterClick;
+            fSchedules.DisplayFilterValue += fSchedules_DisplayFilterValue;
 
             gSchedules.DataKeyNames = new string[] { "Id" };
 
@@ -115,6 +134,96 @@ namespace RockWeb.Blocks.Administration
     });
 ";
             ScriptManager.RegisterStartupScript( gSchedules, gSchedules.GetType(), "deleteScheduleScript", deleteScript, true );
+        }
+
+        /// <summary>
+        /// Handles the BlockUpdated event of the ScheduleList control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        private void ScheduleList_BlockUpdated( object sender, EventArgs e )
+        {
+            this.NavigateToCurrentPageReference();
+        }
+
+        /// <summary>
+        /// fs the schedules display filter value.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        private void fSchedules_DisplayFilterValue( object sender, GridFilter.DisplayFilterValueArgs e )
+        {
+            switch ( e.Key )
+            {
+                case GridUserPreferenceKey.Category:
+
+                    {
+                        var categoryId = e.Value.AsIntegerOrNull();
+                        e.Value = string.Empty;
+                        if ( categoryId.HasValue && categoryId > 0 )
+                        {
+                            var category = CategoryCache.Get( categoryId.Value );
+                            if ( category != null )
+                            {
+                                e.Value = category.Name;
+                            }
+                        }
+
+                        break;
+                    }
+
+                case GridUserPreferenceKey.ActiveStatus:
+
+                    {
+                        if ( !string.IsNullOrEmpty( e.Value ) && e.Value == "all" )
+                        {
+                            e.Value = string.Empty;
+                        }
+
+                        break;
+                    }
+
+                default:
+                    {
+                        break;
+                    }
+            }
+        }
+
+        /// <summary>
+        /// Handles the ClearFilterClick event of the fSchedules control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        private void fSchedules_ClearFilterClick( object sender, EventArgs e )
+        {
+            fSchedules.DeleteUserPreferences();
+            BindFilter();
+        }
+
+        /// <summary>
+        /// Handles the ApplyFilterClick event of the fSchedules control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        private void fSchedules_ApplyFilterClick( object sender, EventArgs e )
+        {
+            fSchedules.SaveUserPreference( GridUserPreferenceKey.Category, cpCategoryFilter.SelectedValue );
+            fSchedules.SaveUserPreference( GridUserPreferenceKey.ActiveStatus, ddlActiveFilter.SelectedValue );
+
+            BindGrid();
+        }
+
+        /// <summary>
+        /// Binds the filter.
+        /// </summary>
+        private void BindFilter()
+        {
+            cpCategoryFilter.EntityTypeId = EntityTypeCache.GetId<Rock.Model.Schedule>() ?? 0;
+            cpCategoryFilter.SetValue( fSchedules.GetUserPreference( GridUserPreferenceKey.Category ).AsIntegerOrNull() );
+            cpCategoryFilter.Visible = !this.GetAttributeValue( AttributeKey.FilterCategoryFromQueryString ).AsBoolean();
+            var itemActiveStatus = fSchedules.GetUserPreference( GridUserPreferenceKey.ActiveStatus );
+            ddlActiveFilter.SetValue( itemActiveStatus );
         }
 
         /// <summary>
@@ -183,8 +292,6 @@ namespace RockWeb.Blocks.Administration
 
                     if ( !categoryId.HasValue )
                     {
-                        // TODO: Double check if this is what we want to do
-
                         // if we are in FilterCategoryFromQueryString mode, only show if there is a CategoryId in the URL
                         pnlScheduleList.Visible = false;
                         return;
@@ -293,17 +400,40 @@ namespace RockWeb.Blocks.Administration
             ScheduleService scheduleService = new ScheduleService( rockContext );
             var scheduleQuery = scheduleService.Queryable().Where( a => !string.IsNullOrEmpty( a.Name ) );
             var categoryGuid = this.PageParameter( PageParameterKey.CategoryGuid ).AsGuidOrNull();
+            int? categoryId;
 
             if ( this.GetAttributeValue( AttributeKey.FilterCategoryFromQueryString ).AsBoolean() )
             {
-                var categoryId = hfCategoryId.Value.AsIntegerOrNull();
-                if ( categoryId.HasValue )
+                categoryId = hfCategoryId.Value.AsIntegerOrNull();
+            }
+            else
+            {
+                categoryId = fSchedules.GetUserPreference( GridUserPreferenceKey.Category ).AsIntegerOrNull();
+            }
+
+            if ( categoryId.HasValue )
+            {
+                scheduleQuery = scheduleQuery.Where( a => a.CategoryId == categoryId.Value );
+            }
+
+            string activeFilterValue = fSchedules.GetUserPreference( GridUserPreferenceKey.ActiveStatus );
+            if ( !string.IsNullOrWhiteSpace( activeFilterValue ) )
+            {
+                if ( activeFilterValue != "all" )
                 {
-                    scheduleQuery = scheduleQuery.Where( a => a.CategoryId == categoryId.Value );
+                    var activeFilter = activeFilterValue.AsBoolean();
+                    scheduleQuery = scheduleQuery.Where( b => b.IsActive == activeFilter );
                 }
             }
 
-            _schedulesWithAttendance = new HashSet<int>( new AttendanceService( rockContext ).Queryable().Where( a => a.Occurrence.ScheduleId.HasValue ).Select( a => a.Occurrence.ScheduleId.Value ).Distinct().ToList() );
+            // populate _schedulesWithAttendance so that a warning can be displayed if a schedule with attendances is deleted
+            var displayedScheduleIds = scheduleQuery.Select( a => a.Id ).ToList();
+            var attendancesQry = new AttendanceService( rockContext )
+                .Queryable()
+                .Where( a => a.Occurrence.ScheduleId.HasValue && displayedScheduleIds.Contains( a.Occurrence.ScheduleId.Value ) )
+                .Select( a => a.Occurrence.ScheduleId.Value );
+
+            _schedulesWithAttendance = new HashSet<int>( attendancesQry.Distinct().ToList() );
 
             var sortedScheduleList = scheduleQuery.ToList().OrderByOrderAndNextScheduledDateTime();
             return sortedScheduleList;

@@ -89,6 +89,19 @@ namespace RockWeb.Blocks.GroupScheduling
         #endregion
 
         /// <summary>
+        /// Raises the <see cref="E:System.Web.UI.Control.Init" /> event.
+        /// </summary>
+        /// <param name="e">An <see cref="T:System.EventArgs" /> object that contains the event data.</param>
+        protected override void OnInit( EventArgs e )
+        {
+            base.OnInit( e );
+
+            // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
+            this.BlockUpdated += GroupScheduleStatusBoard_BlockUpdated;
+            this.AddConfigurationUpdateTrigger( upScheduleStatusBoard );
+        }
+
+        /// <summary>
         /// Raises the <see cref="E:System.Web.UI.Control.Load" /> event.
         /// </summary>
         /// <param name="e">The <see cref="T:System.EventArgs" /> object that contains the event data.</param>
@@ -103,6 +116,16 @@ namespace RockWeb.Blocks.GroupScheduling
                 ApplyBlockSettings();
                 BuildStatusBoard();
             }
+        }
+
+        /// <summary>
+        /// Handles the BlockUpdated event of the GroupScheduleStatusBoard control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        private void GroupScheduleStatusBoard_BlockUpdated( object sender, EventArgs e )
+        {
+            this.NavigateToCurrentPageReference();
         }
 
         /// <summary>

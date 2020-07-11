@@ -649,10 +649,7 @@ $('#{0}').tooltip();
 
             using ( var rockContext = new RockContext() )
             {
-                var groupMemberService = new GroupMemberService( rockContext );
-
-                // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-                var groupMember = groupMemberService.GetByGroupIdAndPersonId( groupId, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
                 if ( groupMember != null )
                 {
                     groupMember.ScheduleReminderEmailOffsetDays = days;
@@ -692,8 +689,7 @@ $('#{0}').tooltip();
             {
                 var groupMemberService = new GroupMemberService( rockContext );
 
-                // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-                var groupMember = groupMemberService.GetByGroupIdAndPersonId( groupId, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
 
                 if ( groupMember != null )
                 {
@@ -755,13 +751,13 @@ $('#{0}').tooltip();
             // bind grid gGroupPreferenceAssignments
             using ( var rockContext = new RockContext() )
             {
-                // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-                int? groupMemberId = new GroupMemberService( rockContext )
-                    .GetByGroupIdAndPersonId( hfPreferencesGroupId.ValueAsInt(), this.SelectedPersonId )
-                    .AsNoTracking()
-                    .OrderBy( a => a.GroupRole.IsLeader )
-                    .Select( gm => ( int? ) gm.Id )
-                    .FirstOrDefault();
+                var groupId = hfPreferencesGroupId.Value.AsInteger();
+                int? groupMemberId = null;
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
+                if ( groupMember != null )
+                {
+                    groupMemberId = groupMember.Id;
+                }
 
                 var groupLocationService = new GroupLocationService( rockContext );
 
@@ -835,12 +831,15 @@ $('#{0}').tooltip();
                 int? selectedScheduleId = null;
                 int? selectedLocationId = null;
 
+                GroupMemberAssignmentService groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
+                int? groupMemberId = null;
+
                 if ( groupMemberAssignmentId.HasValue )
                 {
-                    GroupMemberAssignmentService groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
                     GroupMemberAssignment groupMemberAssignment = groupMemberAssignmentService.Get( groupMemberAssignmentId.Value );
                     if ( groupMemberAssignment != null )
                     {
+                        groupMemberId = groupMemberAssignment.GroupMemberId;
                         selectedScheduleId = groupMemberAssignment.ScheduleId;
                         selectedLocationId = groupMemberAssignment.LocationId;
                     }
@@ -848,6 +847,29 @@ $('#{0}').tooltip();
 
                 hfGroupScheduleAssignmentGroupId.Value = groupId.ToString();
                 hfGroupScheduleAssignmentId.Value = groupMemberAssignmentId.ToString();
+
+                // get the groupMemberId record for the selectedPerson,Group (if the person is in there twice, prefer the IsLeader role
+                if ( !groupMemberId.HasValue )
+                {
+                    var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
+                    if ( groupMember != null )
+                    {
+                        groupMemberId = groupMember.Id;
+                    }
+                }
+
+                if ( !groupMemberId.HasValue )
+                {
+                    // shouldn't happen
+                    return;
+                }
+
+                var configuredScheduleIds = groupMemberAssignmentService.Queryable()
+                    .Where( a => a.GroupMemberId == groupMemberId.Value && a.ScheduleId.HasValue )
+                    .Select( s => s.ScheduleId.Value ).Distinct().ToList();
+
+                // limit to schedules that haven't had a schedule preference set yet
+                sortedScheduleList = sortedScheduleList.Where( a => !configuredScheduleIds.Contains( a.Id ) ).ToList();
 
                 ddlGroupScheduleAssignmentSchedule.Items.Clear();
                 ddlGroupScheduleAssignmentSchedule.Items.Add( new ListItem() );
@@ -937,12 +959,7 @@ $('#{0}').tooltip();
             }
             else
             {
-                // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-                groupMember = new GroupMemberService( rockContext )
-                    .GetByGroupIdAndPersonId( groupId.Value, this.SelectedPersonId )
-                    .AsNoTracking()
-                    .OrderBy( a => a.GroupRole.IsLeader )
-                    .FirstOrDefault();
+                groupMember = this.GetGroupMemberRecord( rockContext, groupId.Value, this.SelectedPersonId );
             }
 
             var scheduleId = ddlGroupScheduleAssignmentSchedule.SelectedValue.AsIntegerOrNull();
@@ -1076,24 +1093,47 @@ $('#{0}').tooltip();
             {
                 // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
                 var groupId = hfPreferencesGroupId.ValueAsInt();
-                var groupMemberId = new GroupMemberService( rockContext ).GetByGroupIdAndPersonId( groupId, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).Select( a => ( int? ) a.Id ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
 
                 var groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
 
-                if ( groupMemberId.HasValue )
+                if ( groupMember != null )
                 {
                     if ( scheduleCheckBox.Checked )
                     {
-                        groupMemberAssignmentService.AddOrUpdate( groupMemberId.Value, hfScheduleId.ValueAsInt() );
+                        groupMemberAssignmentService.AddOrUpdate( groupMember.Id, hfScheduleId.ValueAsInt() );
                     }
                     else
                     {
-                        groupMemberAssignmentService.DeleteByGroupMemberAndSchedule( groupMemberId.Value, hfScheduleId.ValueAsInt() );
+                        groupMemberAssignmentService.DeleteByGroupMemberAndSchedule( groupMember.Id, hfScheduleId.ValueAsInt() );
                     }
                 }
 
                 rockContext.SaveChanges();
             }
+        }
+
+        /// <summary>
+        /// Gets the GroupMember record for <see cref="SelectedPersonId" /> and specified groupId.
+        /// If the person is in there more than once, prefer the IsLeader role.
+        /// </summary>
+        /// <param name="rockContext">The rock context.</param>
+        /// <param name="groupId">The group identifier.</param>
+        /// <param name="personId">The person identifier.</param>
+        /// <returns></returns>
+        private GroupMember GetGroupMemberRecord( RockContext rockContext, int groupId, int? personId )
+        {
+            if ( !personId.HasValue )
+            {
+                return null;
+            }
+
+            var groupMemberQuery = new GroupMemberService( rockContext )
+             .GetByGroupIdAndPersonId( groupId, personId.Value );
+
+            var groupMember = groupMemberQuery.OrderBy( a => a.GroupRole.IsLeader ).FirstOrDefault();
+
+            return groupMember;
         }
 
         /// <summary>
@@ -1113,13 +1153,13 @@ $('#{0}').tooltip();
 
             using ( var rockContext = new RockContext() )
             {
-                var groupMemberId = new GroupMemberService( rockContext ).GetByGroupIdAndPersonId( groupId, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).Select( a => ( int? ) a.Id ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
 
                 var groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
 
-                if ( groupMemberId.HasValue )
+                if ( groupMember != null )
                 {
-                    groupMemberAssignmentService.AddOrUpdate( groupMemberId.Value, hfScheduleId.ValueAsInt(), locationDropDownList.SelectedValueAsInt() );
+                    groupMemberAssignmentService.AddOrUpdate( groupMember.Id, hfScheduleId.ValueAsInt(), locationDropDownList.SelectedValueAsInt() );
                 }
 
                 rockContext.SaveChanges();
@@ -1144,7 +1184,7 @@ $('#{0}').tooltip();
                 var groupMemberService = new GroupMemberService( rockContext );
 
                 // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-                var groupMember = groupMemberService.GetByGroupIdAndPersonId( group.Id, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, group.Id, this.SelectedPersonId );
 
                 if ( groupMember == null )
                 {

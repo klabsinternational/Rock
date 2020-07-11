@@ -18,7 +18,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Entity;
 using System.Linq;
-using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 
@@ -57,6 +56,21 @@ namespace RockWeb.Blocks.GroupScheduling
 
         #endregion PageParameterKeys
 
+        private static class UserPreferenceKey
+        {
+            public const string UserPreferenceConfigurationJSON = "UserPreferenceConfigurationJSON";
+        }
+
+        private class UserPreferenceConfiguration
+        {
+            public int[] GroupIds { get; set; }
+            public bool IncludeChildGroups { get; set; }
+            public string[] InviteStatuses { get; set; }
+            public int[] ScheduleIds { get; set; }
+            public int[] LocationIds { get; set; }
+        }
+        
+
         #region Base Control Methods
 
         /// <summary>
@@ -83,7 +97,8 @@ namespace RockWeb.Blocks.GroupScheduling
             if ( !Page.IsPostBack )
             {
                 PopulateDropDowns();
-                UpdateListsForSelectedGroups();
+                ShowDetails();
+                
             }
             else
             {
@@ -181,8 +196,7 @@ namespace RockWeb.Blocks.GroupScheduling
 
             var attendanceOccurrenceService = new AttendanceOccurrenceService( rockContext );
 
-            var sundayDate = RockDateTime.GetSundayDate( RockDateTime.Now );
-            // TODO, should selected week be configurable?
+            var sundayDate = ddlWeek.SelectedValue.AsDateTime() ?? RockDateTime.Now.SundayDate();
 
             var attendanceOccurrenceQuery = attendanceOccurrenceService
                 .Queryable()
@@ -263,6 +277,16 @@ namespace RockWeb.Blocks.GroupScheduling
                 communicationUrl = string.Format( communicationUrl, communication.Id );
             }
 
+            UserPreferenceConfiguration userPreferenceConfiguration = this.GetBlockUserPreference( UserPreferenceKey.UserPreferenceConfigurationJSON ).FromJsonOrNull<UserPreferenceConfiguration>() ?? new UserPreferenceConfiguration();
+            userPreferenceConfiguration.GroupIds = gpGroups.SelectedValuesAsInt().ToArray();
+            userPreferenceConfiguration.IncludeChildGroups = cbIncludeChildGroups.Checked;
+            userPreferenceConfiguration.InviteStatuses = cblInviteStatus.SelectedValues.ToArray();
+            userPreferenceConfiguration.ScheduleIds = lbSchedules.SelectedValuesAsInt.ToArray();
+            userPreferenceConfiguration.LocationIds = cblLocations.SelectedValuesAsInt.ToArray();
+            this.SetBlockUserPreference( UserPreferenceKey.UserPreferenceConfigurationJSON, userPreferenceConfiguration.ToJson() );
+
+
+
             Page.Response.Redirect( communicationUrl, false );
             Context.ApplicationInstance.CompleteRequest();
         }
@@ -320,6 +344,28 @@ namespace RockWeb.Blocks.GroupScheduling
         }
 
         /// <summary>
+        /// Shows the details.
+        /// </summary>
+        private void ShowDetails()
+        {
+            UserPreferenceConfiguration userPreferenceConfiguration = this.GetBlockUserPreference( UserPreferenceKey.UserPreferenceConfigurationJSON ).FromJsonOrNull<UserPreferenceConfiguration>();
+            userPreferenceConfiguration = userPreferenceConfiguration ?? new UserPreferenceConfiguration
+            {
+                InviteStatuses = cblInviteStatus.SelectedValues.ToArray()
+            };
+
+            gpGroups.SetValues( userPreferenceConfiguration.GroupIds ?? new int[0] );
+            cbIncludeChildGroups.Checked = userPreferenceConfiguration.IncludeChildGroups;
+            cblInviteStatus.SetValues( userPreferenceConfiguration.InviteStatuses );
+            UpdateListsForSelectedGroups();
+            
+            lbSchedules.SetValues( userPreferenceConfiguration.ScheduleIds ?? new int[0]);
+            UpdateLocationListFromSelectedSchedules();
+
+            cblLocations.SetValues( userPreferenceConfiguration.LocationIds ?? new int[0] );
+        }
+
+        /// <summary>
         /// Populates the drop downs.
         /// </summary>
         private void PopulateDropDowns()
@@ -329,6 +375,20 @@ namespace RockWeb.Blocks.GroupScheduling
             cblInviteStatus.Items.Add( new ListItem( "Pending", ScheduledAttendanceItemStatus.Pending.ToString() ) );
             cblInviteStatus.Items.Add( new ListItem( "Declined", ScheduledAttendanceItemStatus.Declined.ToString() ) );
             cblInviteStatus.SetValue( ScheduledAttendanceItemStatus.Confirmed.ToString() );
+
+            int numOfWeeks = 6;
+
+            ddlWeek.Items.Clear();
+
+            var sundayDate = RockDateTime.Now.SundayDate();
+            int weekNum = 0;
+            while ( weekNum < numOfWeeks )
+            {
+                string weekTitle = string.Format( "Week of {0} to {1}", sundayDate.AddDays( -6 ).ToShortDateString(), sundayDate.ToShortDateString() );
+                ddlWeek.Items.Add( new ListItem( weekTitle, sundayDate.ToISO8601DateString() ) );
+                weekNum++;
+                sundayDate = sundayDate.AddDays( 7 );
+            }
         }
 
         /// <summary>
