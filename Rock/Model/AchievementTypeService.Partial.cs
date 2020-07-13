@@ -39,7 +39,7 @@ namespace Rock.Model
         {
             // Since Entity Framework cannot cascade delete dependent prerequisites because of a possible circular reference,
             // we need to delete them here
-            var prerequisiteService = new StreakTypeAchievementTypePrerequisiteService( Context as RockContext );
+            var prerequisiteService = new AchievementTypePrerequisiteService( Context as RockContext );
             var dependencyQuery = prerequisiteService.Queryable().Where( statp => statp.PrerequisiteAchievementTypeId == item.Id );
             prerequisiteService.DeleteRange( dependencyQuery );
 
@@ -205,23 +205,22 @@ namespace Rock.Model
         /// <summary>
         /// Gets the progress statement for the person for this achievement. Flat means that the unmet prerequisites are not computed.
         /// </summary>
-        /// <param name="streakTypeAchievementTypeCache">The streak type achievement type cache.</param>
+        /// <param name="achievementTypeCache">The achievement type cache.</param>
         /// <param name="personId">The person identifier.</param>
         /// <returns></returns>
-        private ProgressStatement GetFlatProgressStatement( AchievementTypeCache streakTypeAchievementTypeCache, int personId )
+        private ProgressStatement GetFlatProgressStatement( AchievementTypeCache achievementTypeCache, int personId )
         {
             var rockContext = Context as RockContext;
-            var attemptService = new StreakAchievementAttemptService( rockContext );
+            var attemptService = new AchievementAttemptService( rockContext );
 
-            var attempts = attemptService.Queryable()
+            var attempts = attemptService
+                .QueryByPersonId( personId )
                 .AsNoTracking()
-                .Where( saa =>
-                    saa.AchievementTypeId == streakTypeAchievementTypeCache.Id &&
-                    saa.Streak.PersonAlias.PersonId == personId )
+                .Where( aa => aa.AchievementTypeId == achievementTypeCache.Id )
                 .OrderByDescending( saa => saa.AchievementAttemptStartDateTime )
                 .ToList();
 
-            var progressStatement = new ProgressStatement( streakTypeAchievementTypeCache );
+            var progressStatement = new ProgressStatement( achievementTypeCache );
 
             // If there are no attempts, no other information can be derived
             if ( !attempts.Any() )
@@ -322,12 +321,12 @@ namespace Rock.Model
         /// <summary>
         /// Gets or sets the best attempt.
         /// </summary>
-        public StreakAchievementAttempt BestAttempt { get; set; }
+        public AchievementAttempt BestAttempt { get; set; }
 
         /// <summary>
         /// Gets or sets the most recent attempt.
         /// </summary>
-        public StreakAchievementAttempt MostRecentAttempt { get; set; }
+        public AchievementAttempt MostRecentAttempt { get; set; }
 
         /// <summary>
         /// Gets or sets the attributes.

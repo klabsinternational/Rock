@@ -29,17 +29,12 @@ namespace Rock.Transactions
     /// Transaction to process changes that occur to an attempt
     /// </summary>
     /// <seealso cref="Rock.Transactions.ITransaction" />
-    public class StreakAchievementAttemptChangeTransaction : ITransaction
+    public class AchievementAttemptChangeTransaction : ITransaction
     {
-        /// <summary>
-        /// Gets the streak identifier.
-        /// </summary>
-        private int StreakId { get; }
-
         /// <summary>
         /// Gets the streak achievement attempt unique identifier.
         /// </summary>
-        private Guid StreakAchievementAttemptGuid { get; }
+        private Guid AchievementAttemptGuid { get; }
 
         /// <summary>
         /// Gets a value indicating whether this instance is starting.
@@ -57,9 +52,9 @@ namespace Rock.Transactions
         private bool IsNowSuccessful { get; }
 
         /// <summary>
-        /// Gets the streak type achievement type identifier.
+        /// Gets the achievement type identifier.
         /// </summary>
-        private int StreakTypeAchievementTypeId { get; }
+        private int AchievementTypeId { get; }
 
         /// <summary>
         /// Gets the start date.
@@ -72,27 +67,26 @@ namespace Rock.Transactions
         private DateTime? EndDate { get; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="StreakAchievementAttemptChangeTransaction"/> class.
+        /// Initializes a new instance of the <see cref="AchievementAttemptChangeTransaction"/> class.
         /// </summary>
         /// <param name="entry">The entry.</param>
-        public StreakAchievementAttemptChangeTransaction( DbEntityEntry entry )
+        public AchievementAttemptChangeTransaction( DbEntityEntry entry )
         {
             if ( entry.State != EntityState.Added && entry.State != EntityState.Modified )
             {
                 return;
             }
 
-            var streakAchievementAttempt = entry.Entity as StreakAchievementAttempt;
+            var streakAchievementAttempt = entry.Entity as AchievementAttempt;
 
             var wasClosed = entry.State != EntityState.Added && ( entry.Property( "IsClosed" )?.OriginalValue as bool? ?? false );
             var wasSuccessful = entry.State != EntityState.Added && ( entry.Property( "IsSuccessful" )?.OriginalValue as bool? ?? false );
 
-            StreakId = streakAchievementAttempt.StreakId;
-            StreakAchievementAttemptGuid = streakAchievementAttempt.Guid;
+            AchievementAttemptGuid = streakAchievementAttempt.Guid;
             IsNowStarting = entry.State == EntityState.Added;
             IsNowEnding = !wasClosed && streakAchievementAttempt.IsClosed;
             IsNowSuccessful = !wasSuccessful && streakAchievementAttempt.IsSuccessful;
-            StreakTypeAchievementTypeId = streakAchievementAttempt.AchievementTypeId;
+            AchievementTypeId = streakAchievementAttempt.AchievementTypeId;
             StartDate = streakAchievementAttempt.AchievementAttemptStartDateTime;
             EndDate = streakAchievementAttempt.AchievementAttemptEndDateTime;
         }
@@ -103,7 +97,7 @@ namespace Rock.Transactions
         /// <exception cref="System.NotImplementedException"></exception>
         public void Execute()
         {
-            var achievementTypeCache = AchievementTypeCache.Get( StreakTypeAchievementTypeId );
+            var achievementTypeCache = AchievementTypeCache.Get( AchievementTypeId );
 
             if ( achievementTypeCache == null || !achievementTypeCache.IsActive )
             {
@@ -130,11 +124,30 @@ namespace Rock.Transactions
                 achievementTypeCache.AchievementStepTypeId.HasValue )
             {
                 var rockContext = new RockContext();
-                var streakService = new StreakService( rockContext );
-                var personAliasId = streakService.Queryable().AsNoTracking()
-                    .Where( s => s.Id == StreakId )
-                    .Select( s => s.PersonAliasId )
+                var achievementAttemptService = new AchievementAttemptService( rockContext );
+                var achieverEntityId = achievementAttemptService.Queryable()
+                    .AsNoTracking()
+                    .Where( aa => aa.Guid == AchievementAttemptGuid )
+                    .Select( s => s.AchieverEntityId )
                     .FirstOrDefault();
+
+                var personAliasEntityTypeId = EntityTypeCache.Get<PersonAlias>().Id;
+                var personEntityTypeId = EntityTypeCache.Get<Person>().Id;
+                int personAliasId = default;
+
+                if ( achievementTypeCache.AchieverEntityTypeId == personAliasEntityTypeId )
+                {
+                    personAliasId = achieverEntityId;
+                }
+                else if ( achievementTypeCache.AchieverEntityTypeId == personEntityTypeId )
+                {
+                    var personAliasService = new PersonAliasService( rockContext );
+                    personAliasId = personAliasService.Queryable()
+                        .AsNoTracking()
+                        .Where( pa => pa.PersonId == achieverEntityId )
+                        .Select( pa => pa.Id )
+                        .FirstOrDefault();
+                }
 
                 if ( personAliasId != default )
                 {
@@ -155,7 +168,7 @@ namespace Rock.Transactions
 
             if ( attempt != null )
             {
-                transaction = new LaunchWorkflowTransaction<StreakAchievementAttempt>( workflowTypeId, attempt.Id );
+                transaction = new LaunchWorkflowTransaction<AchievementAttempt>( workflowTypeId, attempt.Id );
             }
             else
             {
@@ -169,7 +182,7 @@ namespace Rock.Transactions
         /// Gets the streak achievement attempt.
         /// </summary>
         /// <returns></returns>
-        private StreakAchievementAttempt GetStreakAchievementAttempt()
+        private AchievementAttempt GetStreakAchievementAttempt()
         {
             if ( _streakAchievementAttempt != null )
             {
@@ -177,11 +190,11 @@ namespace Rock.Transactions
             }
 
             var rockContext = new RockContext();
-            var service = new StreakAchievementAttemptService( rockContext );
-            _streakAchievementAttempt = service.Get( StreakAchievementAttemptGuid );
+            var service = new AchievementAttemptService( rockContext );
+            _streakAchievementAttempt = service.Get( AchievementAttemptGuid );
             return _streakAchievementAttempt;
         }
-        private StreakAchievementAttempt _streakAchievementAttempt = null;
+        private AchievementAttempt _streakAchievementAttempt = null;
 
         /// <summary>
         /// Adds the step.

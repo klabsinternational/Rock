@@ -30,6 +30,31 @@ namespace Rock.Model
     public partial class StreakService
     {
         /// <summary>
+        /// Queries streaks by achievement attempt identifier.
+        /// </summary>
+        /// <param name="achievementAttemptId">The achievement attempt identifier.</param>
+        /// <returns></returns>
+        public IQueryable<Streak> QueryByAchievementAttemptId( int achievementAttemptId )
+        {
+            var rockContext = Context as RockContext;
+            var achievementAttemptService = new AchievementAttemptService( rockContext );
+            var streakEntityTypeId = EntityTypeCache.Get<Streak>().Id;
+            var personAliasEntityTypeId = EntityTypeCache.Get<PersonAlias>().Id;
+
+            var attemptQuery = achievementAttemptService.Queryable()
+                .AsNoTracking()
+                .Where( aa =>
+                    aa.AchievementType.SourceEntityTypeId == streakEntityTypeId &&
+                    aa.AchievementType.AchieverEntityTypeId == personAliasEntityTypeId &&
+                    aa.AchievementType.SourceEntityQualifierColumn == nameof( Streak.StreakTypeId ) &&
+                    aa.Id == achievementAttemptId );
+
+            return Queryable().Where( s =>
+                attemptQuery.Select( aa => aa.AchieverEntityId ).Contains( s.PersonAliasId ) &&
+                attemptQuery.Select( aa => aa.AchievementType.SourceEntityQualifierValue ).Contains( s.StreakTypeId.ToString() ) );
+        }
+
+        /// <summary>
         /// Get the person's streaks in the streak type
         /// </summary>
         /// <param name="streakTypeId"></param>
@@ -49,23 +74,6 @@ namespace Rock.Model
         public bool IsEnrolled( int streakTypeId, int personId )
         {
             return Queryable().AsNoTracking().Any( se => se.StreakTypeId == streakTypeId && se.PersonAlias.PersonId == personId );
-        }
-
-        /// <summary>
-        /// Deletes the specified item.
-        /// </summary>
-        /// <param name="item">The item.</param>
-        /// <returns></returns>
-        public override bool Delete( Streak item )
-        {
-            // Since Entity Framework cannot cascade delete achievement attempts because of a possible circular reference,
-            // we need to delete them here
-            var attemptService = new StreakAchievementAttemptService( Context as RockContext );
-            var attempts = attemptService.Queryable().Where( a => a.StreakId == item.Id );
-            attemptService.DeleteRange( attempts );
-
-            // Now we can delete the streak as normal
-            return base.Delete( item );
         }
 
         /// <summary>

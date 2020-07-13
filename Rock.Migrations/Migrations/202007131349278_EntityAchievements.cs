@@ -1,4 +1,4 @@
-// <copyright>
+﻿// <copyright>
 // Copyright by the Spark Development Network
 //
 // Licensed under the Rock Community License (the "License");
@@ -41,6 +41,19 @@ namespace Rock.Migrations
             RenameIndex( table: "dbo.StreakTypeAchievementTypePrerequisite", name: "IX_StreakTypeAchievementTypeId", newName: "IX_AchievementTypeId" );
             RenameIndex( table: "dbo.StreakTypeAchievementTypePrerequisite", name: "IX_PrerequisiteStreakTypeAchievementTypeId", newName: "IX_PrerequisiteAchievementTypeId" );
             AddColumn( "dbo.EntityType", "IsAchievementsEnabled", c => c.Boolean( nullable: false ) );
+
+            DropForeignKey( "dbo.StreakAchievementAttempt", "StreakId", "dbo.Streak" );
+            RenameTable( name: "dbo.StreakAchievementAttempt", newName: "AchievementAttempt" );
+            RenameTable( name: "dbo.StreakTypeAchievementTypePrerequisite", newName: "AchievementTypePrerequisite" );
+            DropIndex( "dbo.AchievementAttempt", new[] { "StreakId" } );
+            RenameColumn( table: "dbo.AchievementType", name: "AchievementEntityTypeId", newName: "ComponentEntityTypeId" );
+            RenameIndex( table: "dbo.AchievementType", name: "IX_AchievementEntityTypeId", newName: "IX_ComponentEntityTypeId" );
+            AddColumn( "dbo.AchievementType", "SourceEntityTypeId", c => c.Int() );
+            AddColumn( "dbo.AchievementType", "AchieverEntityTypeId", c => c.Int( nullable: false ) );
+            AddColumn( "dbo.AchievementType", "SourceEntityQualifierColumn", c => c.String( maxLength: 50 ) );
+            AddColumn( "dbo.AchievementAttempt", "AchieverEntityId", c => c.Int( nullable: false ) );
+            AlterColumn( "dbo.AchievementType", "SourceEntityQualifierValue", c => c.String( maxLength: 200 ) );
+            DropColumn( "dbo.AchievementAttempt", "StreakId" );
         }
 
         /// <summary>
@@ -48,6 +61,19 @@ namespace Rock.Migrations
         /// </summary>
         public override void Down()
         {
+            AddColumn( "dbo.AchievementAttempt", "StreakId", c => c.Int( nullable: false ) );
+            AlterColumn( "dbo.AchievementType", "SourceEntityQualifierValue", c => c.String() );
+            DropColumn( "dbo.AchievementAttempt", "AchieverEntityId" );
+            DropColumn( "dbo.AchievementType", "SourceEntityQualifierColumn" );
+            DropColumn( "dbo.AchievementType", "AchieverEntityTypeId" );
+            DropColumn( "dbo.AchievementType", "SourceEntityTypeId" );
+            RenameIndex( table: "dbo.AchievementType", name: "IX_ComponentEntityTypeId", newName: "IX_AchievementEntityTypeId" );
+            RenameColumn( table: "dbo.AchievementType", name: "ComponentEntityTypeId", newName: "AchievementEntityTypeId" );
+            CreateIndex( "dbo.AchievementAttempt", "StreakId" );
+            AddForeignKey( "dbo.StreakAchievementAttempt", "StreakId", "dbo.Streak", "Id" );
+            RenameTable( name: "dbo.AchievementTypePrerequisite", newName: "StreakTypeAchievementTypePrerequisite" );
+            RenameTable( name: "dbo.AchievementAttempt", newName: "StreakAchievementAttempt" );
+            
             AlterColumn( "dbo.AchievementType", "SourceEntityQualifierValue", c => c.Int( nullable: false ) );
             RenameColumn( "dbo.AchievementType", "SourceEntityQualifierValue", "StreakTypeId" );
             DropColumn( "dbo.EntityType", "IsAchievementsEnabled" );
@@ -58,8 +84,8 @@ namespace Rock.Migrations
             RenameColumn( table: "dbo.StreakTypeAchievementTypePrerequisite", name: "AchievementTypeId", newName: "StreakTypeAchievementTypeId" );
             RenameColumn( table: "dbo.StreakTypeAchievementTypePrerequisite", name: "PrerequisiteAchievementTypeId", newName: "PrerequisiteStreakTypeAchievementTypeId" );
             CreateIndex( "dbo.AchievementType", "StreakTypeId" );
-            AddForeignKey( "dbo.StreakTypeAchievementType", "StreakTypeId", "dbo.StreakType", "Id", cascadeDelete: true );
             RenameTable( name: "dbo.AchievementType", newName: "StreakTypeAchievementType" );
+            AddForeignKey( "dbo.StreakTypeAchievementType", "StreakTypeId", "dbo.StreakType", "Id", cascadeDelete: true );
         }
     }
 }

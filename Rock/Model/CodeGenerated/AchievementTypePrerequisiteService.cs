@@ -30,13 +30,13 @@ namespace Rock.Model
     /// <summary>
     /// StreakTypeAchievementTypePrerequisite Service class
     /// </summary>
-    public partial class StreakTypeAchievementTypePrerequisiteService : Service<StreakTypeAchievementTypePrerequisite>
+    public partial class AchievementTypePrerequisiteService : Service<AchievementTypePrerequisite>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="StreakTypeAchievementTypePrerequisiteService"/> class
+        /// Initializes a new instance of the <see cref="AchievementTypePrerequisiteService"/> class
         /// </summary>
         /// <param name="context">The context.</param>
-        public StreakTypeAchievementTypePrerequisiteService(RockContext context) : base(context)
+        public AchievementTypePrerequisiteService(RockContext context) : base(context)
         {
         }
 
@@ -48,7 +48,7 @@ namespace Rock.Model
         /// <returns>
         ///   <c>true</c> if this instance can delete the specified item; otherwise, <c>false</c>.
         /// </returns>
-        public bool CanDelete( StreakTypeAchievementTypePrerequisite item, out string errorMessage )
+        public bool CanDelete( AchievementTypePrerequisite item, out string errorMessage )
         {
             errorMessage = string.Empty;
             return true;
@@ -66,15 +66,15 @@ namespace Rock.Model
         /// <param name="source">The source.</param>
         /// <param name="deepCopy">if set to <c>true</c> a deep copy is made. If false, only the basic entity properties are copied.</param>
         /// <returns></returns>
-        public static StreakTypeAchievementTypePrerequisite Clone( this StreakTypeAchievementTypePrerequisite source, bool deepCopy )
+        public static AchievementTypePrerequisite Clone( this AchievementTypePrerequisite source, bool deepCopy )
         {
             if (deepCopy)
             {
-                return source.Clone() as StreakTypeAchievementTypePrerequisite;
+                return source.Clone() as AchievementTypePrerequisite;
             }
             else
             {
-                var target = new StreakTypeAchievementTypePrerequisite();
+                var target = new AchievementTypePrerequisite();
                 target.CopyPropertiesFrom( source );
                 return target;
             }
@@ -85,7 +85,7 @@ namespace Rock.Model
         /// </summary>
         /// <param name="target">The target.</param>
         /// <param name="source">The source.</param>
-        public static void CopyPropertiesFrom( this StreakTypeAchievementTypePrerequisite target, StreakTypeAchievementTypePrerequisite source )
+        public static void CopyPropertiesFrom( this AchievementTypePrerequisite target, AchievementTypePrerequisite source )
         {
             target.Id = source.Id;
             target.ForeignGuid = source.ForeignGuid;

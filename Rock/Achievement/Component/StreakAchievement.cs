@@ -104,7 +104,7 @@ namespace Rock.Achievement.Component
         /// <param name="openAttempt"></param>
         /// <param name="achievementTypeCache">The achievement type cache.</param>
         /// <param name="streak">The streak.</param>
-        protected override void UpdateOpenAttempt( StreakAchievementAttempt openAttempt, AchievementTypeCache achievementTypeCache, Streak streak )
+        protected override void UpdateOpenAttempt( AchievementAttempt openAttempt, AchievementTypeCache achievementTypeCache, Streak streak )
         {
             var rockContext = new RockContext();
             var streakTypeService = new StreakTypeService( rockContext );
@@ -205,7 +205,7 @@ namespace Rock.Achievement.Component
         /// <param name="streak">The streak.</param>
         /// <param name="mostRecentClosedAttempt">The most recent closed attempt.</param>
         /// <returns></returns>
-        protected override List<StreakAchievementAttempt> CreateNewAttempts( AchievementTypeCache achievementTypeCache, Streak streak, StreakAchievementAttempt mostRecentClosedAttempt )
+        protected override List<AchievementAttempt> CreateNewAttempts( AchievementTypeCache achievementTypeCache, Streak streak, AchievementAttempt mostRecentClosedAttempt )
         {
             var rockContext = new RockContext();
             var streakTypeService = new StreakTypeService( rockContext );
@@ -239,7 +239,7 @@ namespace Rock.Achievement.Component
             var maxDateForStreakBreaking = StreakTypeService.GetMaxDateForStreakBreaking( streakTypeCache );
 
             // Track the attempts in a list that will be returned. The int is the streak count for that attempt
-            var attempts = new List<StreakAchievementAttempt>();
+            var attempts = new List<AchievementAttempt>();
             var streaks = new List<ComputedStreak>();
 
             // Define what happens for each bit in the date range
@@ -349,9 +349,9 @@ namespace Rock.Achievement.Component
         /// <param name="targetCount">The target count.</param>
         /// <param name="isClosed">if set to <c>true</c> [is closed].</param>
         /// <returns></returns>
-        private static StreakAchievementAttempt GetAttemptFromStreak( ComputedStreak computedStreak, int targetCount, bool isClosed )
+        private static AchievementAttempt GetAttemptFromStreak( ComputedStreak computedStreak, int targetCount, bool isClosed )
         {
-            var attempt = new StreakAchievementAttempt();
+            var attempt = new AchievementAttempt();
             ApplyStreakToAttempt( computedStreak, attempt, targetCount, isClosed );
             return attempt;
         }
@@ -363,7 +363,7 @@ namespace Rock.Achievement.Component
         /// <param name="attempt">The attempt.</param>
         /// <param name="targetCount">The target count.</param>
         /// <param name="isClosed">if set to <c>true</c> [is closed].</param>
-        private static void ApplyStreakToAttempt( ComputedStreak computedStreak, StreakAchievementAttempt attempt, int targetCount, bool isClosed )
+        private static void ApplyStreakToAttempt( ComputedStreak computedStreak, AchievementAttempt attempt, int targetCount, bool isClosed )
         {
             var progress = CalculateProgress( computedStreak.Count, targetCount );
 

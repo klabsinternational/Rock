@@ -118,7 +118,7 @@ namespace Rock.Achievement
         /// </summary>
         /// <param name="source">The source.</param>
         /// <param name="target">The target.</param>
-        protected void CopyAttempt( StreakAchievementAttempt source, StreakAchievementAttempt target )
+        protected void CopyAttempt( AchievementAttempt source, AchievementAttempt target )
         {
             target.Progress = source.Progress;
             target.IsClosed = source.IsClosed;
@@ -135,7 +135,7 @@ namespace Rock.Achievement
         /// <param name="achievementTypeStartDate">The achievement type start date.</param>
         /// <param name="targetCount">How many engagements are required to be successful</param>
         /// <returns></returns>
-        protected DateTime CalculateMinDateForAchievementAttempt( DateTime enrollmentDate, StreakAchievementAttempt mostRecentClosedAttempt, DateTime? achievementTypeStartDate, int targetCount )
+        protected DateTime CalculateMinDateForAchievementAttempt( DateTime enrollmentDate, AchievementAttempt mostRecentClosedAttempt, DateTime? achievementTypeStartDate, int targetCount )
         {
             // Use the enrollment date as a starting point for the calculation
             var minDate = enrollmentDate;
@@ -214,7 +214,7 @@ namespace Rock.Achievement
         /// <param name="attempt">The attempt.</param>
         /// <param name="targetCount">The target count.</param>
         /// <returns></returns>
-        protected static int CalculateDeficiency( StreakAchievementAttempt attempt, int targetCount )
+        protected static int CalculateDeficiency( AchievementAttempt attempt, int targetCount )
         {
             var progress = attempt?.Progress ?? 0m;
 
@@ -267,12 +267,10 @@ namespace Rock.Achievement
 
             // Get all of the attempts for this streak and achievement combo, ordered by start date DESC so that
             // the most recent attempts can be found with FirstOrDefault
-            var streakAchievementAttemptService = new StreakAchievementAttemptService( rockContext );
-            var attempts = streakAchievementAttemptService.Queryable()
+            var streakAchievementAttemptService = new AchievementAttemptService( rockContext );
+            var attempts = streakAchievementAttemptService.QueryByStreakId( streak.Id )
+                .Where( saa => saa.AchievementTypeId == achievementTypeCache.Id )
                 .OrderByDescending( saa => saa.AchievementAttemptStartDateTime )
-                .Where( saa =>
-                    saa.AchievementTypeId == achievementTypeCache.Id &&
-                    saa.StreakId == streak.Id )
                 .ToList();
 
             var mostRecentSuccess = attempts.FirstOrDefault( saa => saa.AchievementAttemptEndDateTime.HasValue && saa.IsSuccessful );
@@ -329,7 +327,7 @@ namespace Rock.Achievement
                     }
                     else
                     {
-                        newAttempt.StreakId = streak.Id;
+                        newAttempt.AchieverEntityId = streak.PersonAliasId;
                         newAttempt.AchievementTypeId = achievementTypeCache.Id;
                         streakAchievementAttemptService.Add( newAttempt );
                     }
@@ -360,7 +358,7 @@ namespace Rock.Achievement
         /// <param name="openAttempt">The open attempt.</param>
         /// <param name="achievementTypeCache">The achievement type cache.</param>
         /// <param name="streak">The streak.</param>
-        protected abstract void UpdateOpenAttempt( StreakAchievementAttempt openAttempt, AchievementTypeCache achievementTypeCache, Streak streak );
+        protected abstract void UpdateOpenAttempt( AchievementAttempt openAttempt, AchievementTypeCache achievementTypeCache, Streak streak );
 
         /// <summary>
         /// Create new attempt records and return them in a list. All new attempts should be after the most recent successful attempt.
@@ -369,6 +367,6 @@ namespace Rock.Achievement
         /// <param name="streak">The streak.</param>
         /// <param name="mostRecentSuccess">The most recent successful attempt.</param>
         /// <returns></returns>
-        protected abstract List<StreakAchievementAttempt> CreateNewAttempts( AchievementTypeCache achievementTypeCache, Streak streak, StreakAchievementAttempt mostRecentSuccess );
+        protected abstract List<AchievementAttempt> CreateNewAttempts( AchievementTypeCache achievementTypeCache, Streak streak, AchievementAttempt mostRecentSuccess );
     }
 }

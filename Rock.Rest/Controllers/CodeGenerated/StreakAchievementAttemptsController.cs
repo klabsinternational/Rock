@@ -28,11 +28,11 @@ namespace Rock.Rest.Controllers
     /// <summary>
     /// StreakAchievementAttempts REST API
     /// </summary>
-    public partial class StreakAchievementAttemptsController : Rock.Rest.ApiController<Rock.Model.StreakAchievementAttempt>
+    public partial class StreakAchievementAttemptsController : Rock.Rest.ApiController<Rock.Model.AchievementAttempt>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="StreakAchievementAttemptsController"/> class.
         /// </summary>
-        public StreakAchievementAttemptsController() : base( new Rock.Model.StreakAchievementAttemptService( new Rock.Data.RockContext() ) ) { } 
+        public StreakAchievementAttemptsController() : base( new Rock.Model.AchievementAttemptService( new Rock.Data.RockContext() ) ) { } 
     }
 }

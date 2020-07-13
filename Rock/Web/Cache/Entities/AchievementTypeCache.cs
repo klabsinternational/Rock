@@ -52,6 +52,24 @@ namespace Rock.Web.Cache
         public string Description { get; private set; }
 
         /// <summary>
+        /// Gets the achiever entity type id.
+        /// </summary>
+        [DataMember]
+        public int AchieverEntityTypeId { get; private set; }
+
+        /// <summary>
+        /// Gets the source entity type id.
+        /// </summary>
+        [DataMember]
+        public int? SourceEntityTypeId { get; private set; }
+
+        /// <summary>
+        /// Gets the source entity qualifier column.
+        /// </summary>
+        [DataMember]
+        public string SourceEntityQualifierColumn { get; private set; }
+
+        /// <summary>
         /// Gets or sets the source entity qualifier value.
         /// This was originally StreakTypeId.
         /// </summary>
@@ -59,10 +77,10 @@ namespace Rock.Web.Cache
         public string SourceEntityQualifierValue { get; private set; }
 
         /// <summary>
-        /// Gets or sets the Id of the achievement component <see cref="EntityType"/>
+        /// Gets or sets the Id of the component <see cref="EntityType"/>
         /// </summary>
         [DataMember]
-        public int AchievementEntityTypeId { get; private set; }
+        public int ComponentEntityTypeId { get; private set; }
 
         /// <summary>
         /// Gets or sets the Id of the <see cref="WorkflowType"/> to be triggered when an achievement is started
@@ -156,7 +174,6 @@ namespace Rock.Web.Cache
 
         #region Streak Achievement Helpers
 
-        /* TODO
         /// <summary>
         /// Gets a value indicating whether this instance is streak sourced.
         /// </summary>
@@ -167,7 +184,6 @@ namespace Rock.Web.Cache
         {
             get => EntityTypeCache.Get<Streak>().Id == SourceEntityTypeId;
         }
-        */
 
         /// <summary>
         /// Gets the streak type identifier.
@@ -177,8 +193,8 @@ namespace Rock.Web.Cache
         /// </value>
         public int? StreakTypeId
         {
-            get => // TODO ( IsStreakSourced && SourceEntityQualifierColumn == nameof( Streak.StreakTypeId ) ) ?
-                // StreakTypeCache.Get( SourceEntityQualifierValue ) :
+            get => ( IsStreakSourced && SourceEntityQualifierColumn == nameof( Streak.StreakTypeId ) ) ?
+                SourceEntityQualifierValue.AsIntegerOrNull() :
                 null;
         }
 
@@ -191,7 +207,7 @@ namespace Rock.Web.Cache
         /// </summary>
         public EntityTypeCache AchievementEntityType
         {
-            get => EntityTypeCache.Get( AchievementEntityTypeId );
+            get => EntityTypeCache.Get( ComponentEntityTypeId );
         }
 
         /// <summary>
@@ -210,7 +226,7 @@ namespace Rock.Web.Cache
         /// </summary>
         public StreakTypeCache StreakTypeCache
         {
-            get => null; // TODO StreakTypeId.HasValue ? StreakTypeCache.Get( StreakTypeId.Value ) : null;
+            get => StreakTypeId.HasValue ? StreakTypeCache.Get( StreakTypeId.Value ) : null;
         }
 
         /// <summary>
@@ -230,8 +246,8 @@ namespace Rock.Web.Cache
         /// <value>
         /// The prerequisites.
         /// </value>
-        public List<StreakTypeAchievementTypePrerequisiteCache> Prerequisites
-            => StreakTypeAchievementTypePrerequisiteCache.All().Where( statp => statp.StreakTypeAchievementTypeId == Id ).ToList();
+        public List<AchievementTypePrerequisiteCache> Prerequisites
+            => AchievementTypePrerequisiteCache.All().Where( statp => statp.StreakTypeAchievementTypeId == Id ).ToList();
 
         /// <summary>
         /// Gets the prerequisite achievement types.
@@ -253,29 +269,32 @@ namespace Rock.Web.Cache
         public override void SetFromEntity( IEntity entity )
         {
             base.SetFromEntity( entity );
-            var streakTypeAchievementType = entity as AchievementType;
+            var achievementType = entity as AchievementType;
 
-            if ( streakTypeAchievementType == null )
+            if ( achievementType == null )
             {
                 return;
             }
 
-            Name = streakTypeAchievementType.Name;
-            Description = streakTypeAchievementType.Description;
-            IsActive = streakTypeAchievementType.IsActive;
-            SourceEntityQualifierValue = streakTypeAchievementType.SourceEntityQualifierValue;
-            AchievementEntityTypeId = streakTypeAchievementType.AchievementEntityTypeId;
-            AchievementStartWorkflowTypeId = streakTypeAchievementType.AchievementStartWorkflowTypeId;
-            AchievementFailureWorkflowTypeId = streakTypeAchievementType.AchievementFailureWorkflowTypeId;
-            AchievementSuccessWorkflowTypeId = streakTypeAchievementType.AchievementSuccessWorkflowTypeId;
-            AchievementStepTypeId = streakTypeAchievementType.AchievementStepTypeId;
-            AchievementStepStatusId = streakTypeAchievementType.AchievementStepStatusId;
-            BadgeLavaTemplate = streakTypeAchievementType.BadgeLavaTemplate;
-            ResultsLavaTemplate = streakTypeAchievementType.ResultsLavaTemplate;
-            AchievementIconCssClass = streakTypeAchievementType.AchievementIconCssClass;
-            MaxAccomplishmentsAllowed = streakTypeAchievementType.MaxAccomplishmentsAllowed;
-            AllowOverAchievement = streakTypeAchievementType.AllowOverAchievement;
-            CategoryId = streakTypeAchievementType.CategoryId;
+            Name = achievementType.Name;
+            Description = achievementType.Description;
+            IsActive = achievementType.IsActive;
+            AchieverEntityTypeId = achievementType.AchieverEntityTypeId;
+            SourceEntityTypeId = achievementType.SourceEntityTypeId;
+            SourceEntityQualifierColumn = achievementType.SourceEntityQualifierColumn;
+            SourceEntityQualifierValue = achievementType.SourceEntityQualifierValue;
+            ComponentEntityTypeId = achievementType.ComponentEntityTypeId;
+            AchievementStartWorkflowTypeId = achievementType.AchievementStartWorkflowTypeId;
+            AchievementFailureWorkflowTypeId = achievementType.AchievementFailureWorkflowTypeId;
+            AchievementSuccessWorkflowTypeId = achievementType.AchievementSuccessWorkflowTypeId;
+            AchievementStepTypeId = achievementType.AchievementStepTypeId;
+            AchievementStepStatusId = achievementType.AchievementStepStatusId;
+            BadgeLavaTemplate = achievementType.BadgeLavaTemplate;
+            ResultsLavaTemplate = achievementType.ResultsLavaTemplate;
+            AchievementIconCssClass = achievementType.AchievementIconCssClass;
+            MaxAccomplishmentsAllowed = achievementType.MaxAccomplishmentsAllowed;
+            AllowOverAchievement = achievementType.AllowOverAchievement;
+            CategoryId = achievementType.CategoryId;
         }
 
         #endregion Public Methods

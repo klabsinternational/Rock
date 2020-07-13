@@ -52,9 +52,9 @@ namespace Rock.Model
         {
             errorMessage = string.Empty;
  
-            if ( new Service<StreakTypeAchievementTypePrerequisite>( Context ).Queryable().Any( a => a.PrerequisiteAchievementTypeId == item.Id ) )
+            if ( new Service<AchievementTypePrerequisite>( Context ).Queryable().Any( a => a.PrerequisiteAchievementTypeId == item.Id ) )
             {
-                errorMessage = string.Format( "This {0} is assigned to a {1}.", AchievementType.FriendlyTypeName, StreakTypeAchievementTypePrerequisite.FriendlyTypeName );
+                errorMessage = string.Format( "This {0} is assigned to a {1}.", AchievementType.FriendlyTypeName, AchievementTypePrerequisite.FriendlyTypeName );
                 return false;
             }  
             return true;
@@ -94,7 +94,7 @@ namespace Rock.Model
         public static void CopyPropertiesFrom( this AchievementType target, AchievementType source )
         {
             target.Id = source.Id;
-            target.AchievementEntityTypeId = source.AchievementEntityTypeId;
+            target.ComponentEntityTypeId = source.ComponentEntityTypeId;
             target.AchievementFailureWorkflowTypeId = source.AchievementFailureWorkflowTypeId;
             target.AchievementIconCssClass = source.AchievementIconCssClass;
             target.AchievementStartWorkflowTypeId = source.AchievementStartWorkflowTypeId;

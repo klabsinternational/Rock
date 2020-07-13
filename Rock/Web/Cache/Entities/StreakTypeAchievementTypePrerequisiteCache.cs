@@ -22,11 +22,11 @@ using Rock.Model;
 namespace Rock.Web.Cache
 {
     /// <summary>
-    /// Cache object for <see cref="StreakTypeAchievementTypePrerequisite" />
+    /// Cache object for <see cref="AchievementTypePrerequisite" />
     /// </summary>
     [Serializable]
     [DataContract]
-    public class StreakTypeAchievementTypePrerequisiteCache : ModelCache<StreakTypeAchievementTypePrerequisiteCache, StreakTypeAchievementTypePrerequisite>
+    public class AchievementTypePrerequisiteCache : ModelCache<AchievementTypePrerequisiteCache, AchievementTypePrerequisite>
     {
         #region Entity Properties
 
@@ -69,7 +69,7 @@ namespace Rock.Web.Cache
         public override void SetFromEntity( IEntity entity )
         {
             base.SetFromEntity( entity );
-            var prerequisite = entity as StreakTypeAchievementTypePrerequisite;
+            var prerequisite = entity as AchievementTypePrerequisite;
 
             if ( prerequisite == null )
             {
