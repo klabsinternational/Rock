@@ -54,7 +54,7 @@ namespace Rock.Achievement
             base.Refresh();
 
             // Create any attributes that need to be created
-            int modelEntityTypeId = EntityTypeCache.Get( typeof( StreakTypeAchievementType ) ).Id;
+            int modelEntityTypeId = EntityTypeCache.Get( typeof( AchievementType ) ).Id;
 
             using ( var rockContext = new RockContext() )
             {

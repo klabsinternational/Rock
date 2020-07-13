@@ -43,11 +43,11 @@ namespace Rock.Model
         public int StreakId { get; set; }
 
         /// <summary>
-        /// Gets or sets the Id of the <see cref="StreakTypeAchievementType"/> to which this attempt belongs. This property is required.
+        /// Gets or sets the Id of the <see cref="Model.AchievementType"/> to which this attempt belongs. This property is required.
         /// </summary>
         [Required]
         [DataMember( IsRequired = true )]
-        public int StreakTypeAchievementTypeId { get; set; }
+        public int AchievementTypeId { get; set; }
 
         /// <summary>
         /// Gets or sets the progress. This is a percentage so .25 is 25% and 1 is 100%.
@@ -106,10 +106,10 @@ namespace Rock.Model
         public virtual Streak Streak { get; set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="Model.StreakTypeAchievementType"/>.
+        /// Gets or sets the <see cref="Model.AchievementType"/>.
         /// </summary>
         [DataMember]
-        public virtual StreakTypeAchievementType StreakTypeAchievementType { get; set; }
+        public virtual AchievementType AchievementType { get; set; }
 
         #endregion Virtual Properties
 
@@ -126,7 +126,7 @@ namespace Rock.Model
             public StreakAchievementAttemptConfiguration()
             {
                 HasRequired( saa => saa.Streak ).WithMany( s => s.StreakAchievementAttempts ).HasForeignKey( saa => saa.StreakId ).WillCascadeOnDelete( false );
-                HasRequired( saa => saa.StreakTypeAchievementType ).WithMany( s => s.StreakAchievementAttempts ).HasForeignKey( saa => saa.StreakTypeAchievementTypeId ).WillCascadeOnDelete( true );
+                HasRequired( saa => saa.AchievementType ).WithMany( s => s.Attempts ).HasForeignKey( saa => saa.AchievementTypeId ).WillCascadeOnDelete( true );
             }
         }
 

@@ -25,11 +25,11 @@ using Rock.Model;
 namespace Rock.Web.Cache
 {
     /// <summary>
-    /// Cache object for <see cref="StreakTypeAchievementType" />
+    /// Cache object for <see cref="AchievementType" />
     /// </summary>
     [Serializable]
     [DataContract]
-    public class StreakTypeAchievementTypeCache : ModelCache<StreakTypeAchievementTypeCache, StreakTypeAchievementType>
+    public class AchievementTypeCache : ModelCache<AchievementTypeCache, AchievementType>
     {
         #region Entity Properties
 
@@ -52,10 +52,11 @@ namespace Rock.Web.Cache
         public string Description { get; private set; }
 
         /// <summary>
-        /// Gets or sets the Id of the <see cref="Model.StreakType"/> to which this StreakTypeAchievementType belongs. This property is required.
+        /// Gets or sets the source entity qualifier value.
+        /// This was originally StreakTypeId.
         /// </summary>
         [DataMember]
-        public int StreakTypeId { get; private set; }
+        public string SourceEntityQualifierValue { get; private set; }
 
         /// <summary>
         /// Gets or sets the Id of the achievement component <see cref="EntityType"/>
@@ -153,6 +154,36 @@ namespace Rock.Web.Cache
 
         #endregion IHasActiveFlag
 
+        #region Streak Achievement Helpers
+
+        /* TODO
+        /// <summary>
+        /// Gets a value indicating whether this instance is streak sourced.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is streak sourced; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsStreakSourced
+        {
+            get => EntityTypeCache.Get<Streak>().Id == SourceEntityTypeId;
+        }
+        */
+
+        /// <summary>
+        /// Gets the streak type identifier.
+        /// </summary>
+        /// <value>
+        /// The streak type identifier.
+        /// </value>
+        public int? StreakTypeId
+        {
+            get => // TODO ( IsStreakSourced && SourceEntityQualifierColumn == nameof( Streak.StreakTypeId ) ) ?
+                // StreakTypeCache.Get( SourceEntityQualifierValue ) :
+                null;
+        }
+
+        #endregion Streak Achievement Helpers
+
         #region Related Cache Objects
 
         /// <summary>
@@ -179,7 +210,7 @@ namespace Rock.Web.Cache
         /// </summary>
         public StreakTypeCache StreakTypeCache
         {
-            get => StreakTypeCache.Get( StreakTypeId );
+            get => null; // TODO StreakTypeId.HasValue ? StreakTypeCache.Get( StreakTypeId.Value ) : null;
         }
 
         /// <summary>
@@ -208,7 +239,7 @@ namespace Rock.Web.Cache
         /// <value>
         /// The prerequisite achievement types.
         /// </value>
-        public List<StreakTypeAchievementTypeCache> PrerequisiteAchievementTypes
+        public List<AchievementTypeCache> PrerequisiteAchievementTypes
             => Prerequisites.Select( statp => statp.PrerequisiteStreakTypeAchievementType ).ToList();
 
         #endregion Related Cache Objects
@@ -222,7 +253,7 @@ namespace Rock.Web.Cache
         public override void SetFromEntity( IEntity entity )
         {
             base.SetFromEntity( entity );
-            var streakTypeAchievementType = entity as StreakTypeAchievementType;
+            var streakTypeAchievementType = entity as AchievementType;
 
             if ( streakTypeAchievementType == null )
             {
@@ -232,7 +263,7 @@ namespace Rock.Web.Cache
             Name = streakTypeAchievementType.Name;
             Description = streakTypeAchievementType.Description;
             IsActive = streakTypeAchievementType.IsActive;
-            StreakTypeId = streakTypeAchievementType.StreakTypeId;
+            SourceEntityQualifierValue = streakTypeAchievementType.SourceEntityQualifierValue;
             AchievementEntityTypeId = streakTypeAchievementType.AchievementEntityTypeId;
             AchievementStartWorkflowTypeId = streakTypeAchievementType.AchievementStartWorkflowTypeId;
             AchievementFailureWorkflowTypeId = streakTypeAchievementType.AchievementFailureWorkflowTypeId;

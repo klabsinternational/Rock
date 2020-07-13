@@ -24,9 +24,9 @@ using Rock.Web.Cache;
 namespace Rock.Model
 {
     /// <summary>
-    /// Service/Data access class for <see cref="StreakTypeAchievementType"/> entity objects.
+    /// Service/Data access class for <see cref="AchievementType"/> entity objects.
     /// </summary>
-    public partial class StreakTypeAchievementTypeService
+    public partial class AchievementTypeService
     {
         #region Overrides
 
@@ -35,12 +35,12 @@ namespace Rock.Model
         /// </summary>
         /// <param name="item">The item.</param>
         /// <returns></returns>
-        public override bool Delete( StreakTypeAchievementType item )
+        public override bool Delete( AchievementType item )
         {
             // Since Entity Framework cannot cascade delete dependent prerequisites because of a possible circular reference,
             // we need to delete them here
             var prerequisiteService = new StreakTypeAchievementTypePrerequisiteService( Context as RockContext );
-            var dependencyQuery = prerequisiteService.Queryable().Where( statp => statp.PrerequisiteStreakTypeAchievementTypeId == item.Id );
+            var dependencyQuery = prerequisiteService.Queryable().Where( statp => statp.PrerequisiteAchievementTypeId == item.Id );
             prerequisiteService.DeleteRange( dependencyQuery );
 
             // Now we can delete the item as normal
@@ -52,21 +52,21 @@ namespace Rock.Model
         /// <summary>
         /// Processes attempts for the specified streak type achievement type identifier. This adds new attempts and updates existing attempts.
         /// </summary>
-        /// <param name="streakTypeAchievementTypeId">The streak type achievement type identifier.</param>
-        public static void Process( int streakTypeAchievementTypeId )
+        /// <param name="achievementTypeId">The streak type achievement type identifier.</param>
+        public static void Process( int achievementTypeId )
         {
-            var achievementTypeCache = StreakTypeAchievementTypeCache.Get( streakTypeAchievementTypeId );
+            var achievementTypeCache = AchievementTypeCache.Get( achievementTypeId );
 
             if ( achievementTypeCache == null )
             {
-                throw new ArgumentException( $"The StreakTypeAchievementTypeCache did not resolve for record id {streakTypeAchievementTypeId}" );
+                throw new ArgumentException( $"The AchievementTypeCache did not resolve for record id {achievementTypeId}" );
             }
 
             var achievementComponent = achievementTypeCache.AchievementComponent;
 
             if ( achievementComponent == null )
             {
-                throw new ArgumentException( $"The AchievementComponent did not resolve for record id {streakTypeAchievementTypeId}" );
+                throw new ArgumentException( $"The AchievementComponent did not resolve for record id {achievementTypeId}" );
             }
 
             var streakTypeId = achievementTypeCache.StreakTypeId;
@@ -89,9 +89,9 @@ namespace Rock.Model
         /// </summary>
         /// <param name="achievementTypesToSort">The achievement types to sort.</param>
         /// <returns></returns>
-        public static List<StreakTypeAchievementTypeCache> SortAccordingToPrerequisites( List<StreakTypeAchievementTypeCache> achievementTypesToSort )
+        public static List<AchievementTypeCache> SortAccordingToPrerequisites( List<AchievementTypeCache> achievementTypesToSort )
         {
-            var sorted = new List<StreakTypeAchievementTypeCache>();
+            var sorted = new List<AchievementTypeCache>();
             var visitedIds = new HashSet<int>();
 
             foreach ( var achievementType in achievementTypesToSort )
@@ -105,13 +105,13 @@ namespace Rock.Model
         }
 
         /// <summary>
-        /// Visit for sort. Part of the <see cref="SortAccordingToPrerequisites(List{StreakTypeAchievementTypeCache})" /> algorithm
+        /// Visit for sort. Part of the <see cref="SortAccordingToPrerequisites(List{AchievementTypeCache})" /> algorithm
         /// </summary>
         /// <param name="currentAchievementType">The current achievement type being visited.</param>
         /// <param name="visitedIds">The IDs of achievement types that have been visited already.</param>
         /// <param name="sorted">The sorted achievement types thus far.</param>
         /// <exception cref="System.Exception">Attempting to sort achievement types according to prerequisites and encountered a cyclic dependency on id: {item.Id}</exception>
-        private static void VisitForSort( StreakTypeAchievementTypeCache currentAchievementType, HashSet<int> visitedIds, List<StreakTypeAchievementTypeCache> sorted )
+        private static void VisitForSort( AchievementTypeCache currentAchievementType, HashSet<int> visitedIds, List<AchievementTypeCache> sorted )
         {
             if ( !visitedIds.Contains( currentAchievementType.Id ) )
             {
@@ -138,7 +138,7 @@ namespace Rock.Model
         /// <returns></returns>
         public List<ProgressStatement> GetUnmetPrerequisites( int achievementTypeId, int personId )
         {
-            var achievementType = StreakTypeAchievementTypeCache.Get( achievementTypeId );
+            var achievementType = AchievementTypeCache.Get( achievementTypeId );
 
             if ( achievementType == null || !achievementType.Prerequisites.Any() )
             {
@@ -158,7 +158,7 @@ namespace Rock.Model
         /// <returns></returns>
         public List<ProgressStatement> GetProgressStatements( int personId )
         {
-            var achievementTypes = StreakTypeAchievementTypeCache.All().Where( stat => stat.IsActive ).ToList();
+            var achievementTypes = AchievementTypeCache.All().Where( stat => stat.IsActive ).ToList();
             var orderedAchievementTypes = SortAccordingToPrerequisites( achievementTypes );
             var progressStatementsDictionary = new Dictionary<int, ProgressStatement>();
             var progressStatements = new List<ProgressStatement>();
@@ -189,7 +189,7 @@ namespace Rock.Model
         /// <param name="streakTypeAchievementTypeCache">The streak type achievement type cache.</param>
         /// <param name="personId">The person identifier.</param>
         /// <returns></returns>
-        public ProgressStatement GetProgressStatement( StreakTypeAchievementTypeCache streakTypeAchievementTypeCache, int personId )
+        public ProgressStatement GetProgressStatement( AchievementTypeCache streakTypeAchievementTypeCache, int personId )
         {
             var progressStatement = GetFlatProgressStatement( streakTypeAchievementTypeCache, personId );
 
@@ -208,7 +208,7 @@ namespace Rock.Model
         /// <param name="streakTypeAchievementTypeCache">The streak type achievement type cache.</param>
         /// <param name="personId">The person identifier.</param>
         /// <returns></returns>
-        private ProgressStatement GetFlatProgressStatement( StreakTypeAchievementTypeCache streakTypeAchievementTypeCache, int personId )
+        private ProgressStatement GetFlatProgressStatement( AchievementTypeCache streakTypeAchievementTypeCache, int personId )
         {
             var rockContext = Context as RockContext;
             var attemptService = new StreakAchievementAttemptService( rockContext );
@@ -216,7 +216,7 @@ namespace Rock.Model
             var attempts = attemptService.Queryable()
                 .AsNoTracking()
                 .Where( saa =>
-                    saa.StreakTypeAchievementTypeId == streakTypeAchievementTypeCache.Id &&
+                    saa.AchievementTypeId == streakTypeAchievementTypeCache.Id &&
                     saa.Streak.PersonAlias.PersonId == personId )
                 .OrderByDescending( saa => saa.AchievementAttemptStartDateTime )
                 .ToList();
@@ -246,14 +246,14 @@ namespace Rock.Model
         /// </summary>
         /// <param name="streakTypeAchievementTypeCache">The Achievement Type for which prerequisites are required.</param>
         /// <returns></returns>
-        public static List<StreakTypeAchievementTypeCache> GetEligiblePrerequisiteAchievementTypeCaches( StreakTypeAchievementTypeCache streakTypeAchievementTypeCache )
+        public static List<AchievementTypeCache> GetEligiblePrerequisiteAchievementTypeCaches( AchievementTypeCache streakTypeAchievementTypeCache )
         {
             // Get achievement types of which the specified achievement type is not already a prerequisite.
-            return StreakTypeAchievementTypeCache.All()
+            return AchievementTypeCache.All()
                 .Where( stat =>
                     stat.IsActive &&
                     stat.Id != streakTypeAchievementTypeCache.Id &&
-                    stat.StreakTypeId == streakTypeAchievementTypeCache.StreakTypeId &&
+                    stat.SourceEntityQualifierValue == streakTypeAchievementTypeCache.SourceEntityQualifierValue &&
                     !stat.Prerequisites.Any( p => p.PrerequisiteStreakTypeAchievementTypeId == streakTypeAchievementTypeCache.Id ) )
                 .ToList();
         }
@@ -263,9 +263,10 @@ namespace Rock.Model
         /// </summary>
         /// <param name="streakTypeCache">The streak type cache.</param>
         /// <returns></returns>
-        public static List<StreakTypeAchievementTypeCache> GetEligiblePrerequisiteAchievementTypeCaches( StreakTypeCache streakTypeCache )
+        public static List<AchievementTypeCache> GetEligiblePrerequisiteAchievementTypeCaches( StreakTypeCache streakTypeCache )
         {
-            return StreakTypeAchievementTypeCache.All()
+            // TODO
+            return AchievementTypeCache.All()
                 .Where( stat =>
                     stat.IsActive &&
                     stat.StreakTypeId == streakTypeCache.Id )
@@ -282,7 +283,7 @@ namespace Rock.Model
         /// Initializes a new instance of the <see cref="ProgressStatement" /> class.
         /// </summary>
         /// <param name="streakTypeAchievementTypeCache">The streak type achievement type cache.</param>
-        public ProgressStatement( StreakTypeAchievementTypeCache streakTypeAchievementTypeCache )
+        public ProgressStatement( AchievementTypeCache streakTypeAchievementTypeCache )
         {
             UnmetPrerequisites = new List<ProgressStatement>();
             StreakTypeAchievementTypeId = streakTypeAchievementTypeCache.Id;

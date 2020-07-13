@@ -70,6 +70,14 @@ namespace Rock.Data
         #region Models
 
         /// <summary>
+        /// Gets or sets the AchievementTypes.
+        /// </summary>
+        /// <value>
+        /// The StreakTypeAchievementTypes.
+        /// </value>
+        public DbSet<AchievementType> AchievementTypes { get; set; }
+
+        /// <summary>
         /// Gets or sets the analytics dim attendance locations.
         /// </summary>
         /// <value>
@@ -1804,14 +1812,6 @@ namespace Rock.Data
         /// The StreakTypes.
         /// </value>
         public DbSet<StreakType> StreakTypes { get; set; }
-
-        /// <summary>
-        /// Gets or sets the StreakTypeAchievementTypes.
-        /// </summary>
-        /// <value>
-        /// The StreakTypeAchievementTypes.
-        /// </value>
-        public DbSet<StreakTypeAchievementType> StreakTypeAchievementTypes { get; set; }
 
         /// <summary>
         /// Gets or sets the streak type achievement type prerequisites.

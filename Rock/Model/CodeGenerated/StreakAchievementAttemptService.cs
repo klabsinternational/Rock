@@ -96,7 +96,7 @@ namespace Rock.Model
             target.IsSuccessful = source.IsSuccessful;
             target.Progress = source.Progress;
             target.StreakId = source.StreakId;
-            target.StreakTypeAchievementTypeId = source.StreakTypeAchievementTypeId;
+            target.AchievementTypeId = source.AchievementTypeId;
             target.CreatedDateTime = source.CreatedDateTime;
             target.ModifiedDateTime = source.ModifiedDateTime;
             target.CreatedByPersonAliasId = source.CreatedByPersonAliasId;

@@ -31,7 +31,7 @@ namespace Rock.Web.Cache
         #region Entity Properties
 
         /// <summary>
-        /// Gets or sets the Id of the <see cref="Model.StreakTypeAchievementType"/>.
+        /// Gets or sets the Id of the <see cref="Model.AchievementType"/>.
         /// </summary>
         [DataMember]
         public int StreakTypeAchievementTypeId { get; private set; }
@@ -49,14 +49,14 @@ namespace Rock.Web.Cache
         /// <summary>
         /// Gets the Achievement Type Cache.
         /// </summary>
-        public StreakTypeAchievementTypeCache StreakTypeAchievementType
-            => StreakTypeAchievementTypeCache.Get( StreakTypeAchievementTypeId );
+        public AchievementTypeCache StreakTypeAchievementType
+            => AchievementTypeCache.Get( StreakTypeAchievementTypeId );
 
         /// <summary>
         /// Gets the Prerequisite Achievement Type Cache.
         /// </summary>
-        public StreakTypeAchievementTypeCache PrerequisiteStreakTypeAchievementType
-             => StreakTypeAchievementTypeCache.Get( PrerequisiteStreakTypeAchievementTypeId );
+        public AchievementTypeCache PrerequisiteStreakTypeAchievementType
+             => AchievementTypeCache.Get( PrerequisiteStreakTypeAchievementTypeId );
 
         #endregion Related Cache Objects
 
@@ -76,8 +76,8 @@ namespace Rock.Web.Cache
                 return;
             }
 
-            PrerequisiteStreakTypeAchievementTypeId = prerequisite.PrerequisiteStreakTypeAchievementTypeId;
-            StreakTypeAchievementTypeId = prerequisite.StreakTypeAchievementTypeId;
+            PrerequisiteStreakTypeAchievementTypeId = prerequisite.PrerequisiteAchievementTypeId;
+            StreakTypeAchievementTypeId = prerequisite.AchievementTypeId;
         }
 
         #endregion Public Methods

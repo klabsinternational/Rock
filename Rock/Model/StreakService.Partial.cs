@@ -174,13 +174,13 @@ namespace Rock.Model
              * needs to be processed and changes saved to the database so that subsequent achievements will see the changes (for example: now met
              * prerequisites).
              */ 
-            var sortedAchievementTypes = StreakTypeAchievementTypeService.SortAccordingToPrerequisites( streakTypeCache.StreakTypeAchievementTypes );
+            var sortedAchievementTypes = AchievementTypeService.SortAccordingToPrerequisites( streakTypeCache.AchievementTypes );
 
-            foreach ( var streakTypeAchievementTypeCache in sortedAchievementTypes )
+            foreach ( var achievementTypeCache in sortedAchievementTypes )
             {
                 var loopRockContext = new RockContext();
-                var component = streakTypeAchievementTypeCache.AchievementComponent;
-                component.Process( loopRockContext, streakTypeAchievementTypeCache, streak );
+                var component = achievementTypeCache.AchievementComponent;
+                component.Process( loopRockContext, achievementTypeCache, streak );
                 loopRockContext.SaveChanges();
             }
         }

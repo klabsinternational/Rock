@@ -74,43 +74,43 @@ namespace Rock.Achievement
         }
 
         /// <summary>
-        /// Loads the attributes for the <see cref="StreakTypeAchievementType" />.
+        /// Loads the attributes for the <see cref="AchievementType" />.
         /// </summary>
-        /// <param name="streakTypeAchievementType"></param>
-        public void LoadAttributes( StreakTypeAchievementType streakTypeAchievementType )
+        /// <param name="achievementType"></param>
+        public void LoadAttributes( AchievementType achievementType )
         {
-            if ( streakTypeAchievementType is null )
+            if ( achievementType is null )
             {
-                throw new ArgumentNullException( nameof( streakTypeAchievementType ) );
+                throw new ArgumentNullException( nameof( achievementType ) );
             }
 
-            streakTypeAchievementType.LoadAttributes();
+            achievementType.LoadAttributes();
         }
 
         /// <summary>
-        /// Gets the value of an attribute key. Do not use this method. Use <see cref="GetAttributeValue(StreakTypeAchievementTypeCache, string)" />
+        /// Gets the value of an attribute key. Do not use this method. Use <see cref="GetAttributeValue(AchievementTypeCache, string)" />
         /// </summary>
         /// <param name="key">The key.</param>
         /// <returns></returns>
         public override string GetAttributeValue( string key )
         {
-            throw new Exception( "Use the GetAttributeValue( streakTypeAchievementTypeCache, key ) method instead." );
+            throw new Exception( "Use the GetAttributeValue( AchievementTypeCache, key ) method instead." );
         }
 
         /// <summary>
         /// Gets the attribute value for the achievement
         /// </summary>
-        /// <param name="streakTypeAchievementTypeCache"></param>
+        /// <param name="achievementTypeCache"></param>
         /// <param name="key">The key.</param>
         /// <returns></returns>
-        protected string GetAttributeValue( StreakTypeAchievementTypeCache streakTypeAchievementTypeCache, string key )
+        protected string GetAttributeValue( AchievementTypeCache achievementTypeCache, string key )
         {
-            if ( streakTypeAchievementTypeCache is null )
+            if ( achievementTypeCache is null )
             {
-                throw new ArgumentNullException( nameof( streakTypeAchievementTypeCache ) );
+                throw new ArgumentNullException( nameof( achievementTypeCache ) );
             }
 
-            return streakTypeAchievementTypeCache.GetAttributeValue( key );
+            return achievementTypeCache.GetAttributeValue( key );
         }
 
         /// <summary>
@@ -235,12 +235,12 @@ namespace Rock.Achievement
         /// Processes the specified streak type achievement type cache.
         /// </summary>
         /// <param name="rockContext">The rock context.</param>
-        /// <param name="streakTypeAchievementTypeCache">The streak type achievement type cache.</param>
+        /// <param name="achievementTypeCache">The streak type achievement type cache.</param>
         /// <param name="streak">The streak.</param>
-        public virtual void Process( RockContext rockContext, StreakTypeAchievementTypeCache streakTypeAchievementTypeCache, Streak streak )
+        public virtual void Process( RockContext rockContext, AchievementTypeCache achievementTypeCache, Streak streak )
         {
             // If the achievement type is not active (or null) then there is nothing to do
-            if ( streakTypeAchievementTypeCache?.IsActive != true )
+            if ( achievementTypeCache?.IsActive != true )
             {
                 return;
             }
@@ -252,13 +252,13 @@ namespace Rock.Achievement
             if ( !personId.HasValue )
             {
                 ExceptionLogService.LogException(
-                    $"Could not derive personId from personAliasId {streak.PersonAliasId} used on streak {streak.Id} when processing achievement {streakTypeAchievementTypeCache.Name}" );
+                    $"Could not derive personId from personAliasId {streak.PersonAliasId} used on streak {streak.Id} when processing achievement {achievementTypeCache.Name}" );
                 return;
             }
 
             // If there are unmet prerequisites, then there is nothing to do
-            var streakTypeAchievementTypeService = new StreakTypeAchievementTypeService( rockContext );
-            var unmetPrerequisites = streakTypeAchievementTypeService.GetUnmetPrerequisites( streakTypeAchievementTypeCache.Id, personId.Value );
+            var achievementTypeService = new AchievementTypeService( rockContext );
+            var unmetPrerequisites = achievementTypeService.GetUnmetPrerequisites( achievementTypeCache.Id, personId.Value );
 
             if ( unmetPrerequisites.Any() )
             {
@@ -271,19 +271,19 @@ namespace Rock.Achievement
             var attempts = streakAchievementAttemptService.Queryable()
                 .OrderByDescending( saa => saa.AchievementAttemptStartDateTime )
                 .Where( saa =>
-                    saa.StreakTypeAchievementTypeId == streakTypeAchievementTypeCache.Id &&
+                    saa.AchievementTypeId == achievementTypeCache.Id &&
                     saa.StreakId == streak.Id )
                 .ToList();
 
             var mostRecentSuccess = attempts.FirstOrDefault( saa => saa.AchievementAttemptEndDateTime.HasValue && saa.IsSuccessful );
-            var overachievementPossible = streakTypeAchievementTypeCache.AllowOverAchievement && mostRecentSuccess != null && !mostRecentSuccess.IsClosed;
+            var overachievementPossible = achievementTypeCache.AllowOverAchievement && mostRecentSuccess != null && !mostRecentSuccess.IsClosed;
             var successfulAttemptCount = attempts.Count( saa => saa.IsSuccessful );
-            var maxSuccessesAllowed = streakTypeAchievementTypeCache.MaxAccomplishmentsAllowed ?? int.MaxValue;
+            var maxSuccessesAllowed = achievementTypeCache.MaxAccomplishmentsAllowed ?? int.MaxValue;
 
             // If the most recent success is still open and overachievement is allowed, then update it
             if ( overachievementPossible )
             {
-                UpdateOpenAttempt( mostRecentSuccess, streakTypeAchievementTypeCache, streak );
+                UpdateOpenAttempt( mostRecentSuccess, achievementTypeCache, streak );
 
                 if ( !mostRecentSuccess.IsClosed )
                 {
@@ -311,7 +311,7 @@ namespace Rock.Achievement
                     .ToList();
             }
 
-            var newAttempts = CreateNewAttempts( streakTypeAchievementTypeCache, streak, mostRecentSuccess );
+            var newAttempts = CreateNewAttempts( achievementTypeCache, streak, mostRecentSuccess );
 
             if ( newAttempts != null && newAttempts.Any() )
             {
@@ -330,7 +330,7 @@ namespace Rock.Achievement
                     else
                     {
                         newAttempt.StreakId = streak.Id;
-                        newAttempt.StreakTypeAchievementTypeId = streakTypeAchievementTypeCache.Id;
+                        newAttempt.AchievementTypeId = achievementTypeCache.Id;
                         streakAchievementAttemptService.Add( newAttempt );
                     }
 
@@ -358,17 +358,17 @@ namespace Rock.Achievement
         /// progress on this open attempt.
         /// </summary>
         /// <param name="openAttempt">The open attempt.</param>
-        /// <param name="streakTypeAchievementTypeCache">The streak type achievement type cache.</param>
+        /// <param name="achievementTypeCache">The achievement type cache.</param>
         /// <param name="streak">The streak.</param>
-        protected abstract void UpdateOpenAttempt( StreakAchievementAttempt openAttempt, StreakTypeAchievementTypeCache streakTypeAchievementTypeCache, Streak streak );
+        protected abstract void UpdateOpenAttempt( StreakAchievementAttempt openAttempt, AchievementTypeCache achievementTypeCache, Streak streak );
 
         /// <summary>
         /// Create new attempt records and return them in a list. All new attempts should be after the most recent successful attempt.
         /// </summary>
-        /// <param name="streakTypeAchievementTypeCache">The streak type achievement type cache.</param>
+        /// <param name="achievementTypeCache">The achievement type cache.</param>
         /// <param name="streak">The streak.</param>
         /// <param name="mostRecentSuccess">The most recent successful attempt.</param>
         /// <returns></returns>
-        protected abstract List<StreakAchievementAttempt> CreateNewAttempts( StreakTypeAchievementTypeCache streakTypeAchievementTypeCache, Streak streak, StreakAchievementAttempt mostRecentSuccess );
+        protected abstract List<StreakAchievementAttempt> CreateNewAttempts( AchievementTypeCache achievementTypeCache, Streak streak, StreakAchievementAttempt mostRecentSuccess );
     }
 }

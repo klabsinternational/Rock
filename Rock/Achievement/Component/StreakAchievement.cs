@@ -102,16 +102,16 @@ namespace Rock.Achievement.Component
         /// Update the open attempt record if there are changes.
         /// </summary>
         /// <param name="openAttempt"></param>
-        /// <param name="streakTypeAchievementTypeCache">The streak type achievement type cache.</param>
+        /// <param name="achievementTypeCache">The achievement type cache.</param>
         /// <param name="streak">The streak.</param>
-        protected override void UpdateOpenAttempt( StreakAchievementAttempt openAttempt, StreakTypeAchievementTypeCache streakTypeAchievementTypeCache, Streak streak )
+        protected override void UpdateOpenAttempt( StreakAchievementAttempt openAttempt, AchievementTypeCache achievementTypeCache, Streak streak )
         {
             var rockContext = new RockContext();
             var streakTypeService = new StreakTypeService( rockContext );
-            var streakTypeCache = streakTypeAchievementTypeCache.StreakTypeCache;
+            var streakTypeCache = achievementTypeCache.StreakTypeCache;
 
             // Validate the attribute values
-            var numberToAchieve = GetAttributeValue( streakTypeAchievementTypeCache, AttributeKey.NumberToAchieve ).AsInteger();
+            var numberToAchieve = GetAttributeValue( achievementTypeCache, AttributeKey.NumberToAchieve ).AsInteger();
 
             if ( numberToAchieve <= 0 )
             {
@@ -119,7 +119,7 @@ namespace Rock.Achievement.Component
                 return;
             }
 
-            var attributeTimespanDays = GetAttributeValue( streakTypeAchievementTypeCache, AttributeKey.TimespanInDays ).AsIntegerOrNull();
+            var attributeTimespanDays = GetAttributeValue( achievementTypeCache, AttributeKey.TimespanInDays ).AsIntegerOrNull();
 
             if ( attributeTimespanDays.HasValue && attributeTimespanDays.Value <= 0 )
             {
@@ -128,7 +128,7 @@ namespace Rock.Achievement.Component
             }
 
             // Calculate the date range where the open attempt can be validly fulfilled
-            var attributeMaxDate = GetAttributeValue( streakTypeAchievementTypeCache, AttributeKey.EndDateTime ).AsDateTime();
+            var attributeMaxDate = GetAttributeValue( achievementTypeCache, AttributeKey.EndDateTime ).AsDateTime();
             var minDate = openAttempt.AchievementAttemptStartDateTime;
             var maxDate = CalculateMaxDateForAchievementAttempt( minDate, attributeMaxDate );
 
@@ -153,8 +153,8 @@ namespace Rock.Achievement.Component
                     // Check for a fulfilled attempt
                     if ( computedStreak.Count >= numberToAchieve )
                     {
-                        ApplyStreakToAttempt( computedStreak, openAttempt, numberToAchieve, !streakTypeAchievementTypeCache.AllowOverAchievement );
-                        iterationCanStop = !streakTypeAchievementTypeCache.AllowOverAchievement;
+                        ApplyStreakToAttempt( computedStreak, openAttempt, numberToAchieve, !achievementTypeCache.AllowOverAchievement );
+                        iterationCanStop = !achievementTypeCache.AllowOverAchievement;
                     }
                 }
                 else if ( hasOccurrence && !hasEngagement && !hasExclusion )
@@ -201,18 +201,18 @@ namespace Rock.Achievement.Component
         /// <summary>
         /// Create new attempt records and return them in a list. All new attempts should be after the most recent successful attempt.
         /// </summary>
-        /// <param name="streakTypeAchievementTypeCache">The streak type achievement type cache.</param>
+        /// <param name="achievementTypeCache">The achievement type cache.</param>
         /// <param name="streak">The streak.</param>
         /// <param name="mostRecentClosedAttempt">The most recent closed attempt.</param>
         /// <returns></returns>
-        protected override List<StreakAchievementAttempt> CreateNewAttempts( StreakTypeAchievementTypeCache streakTypeAchievementTypeCache, Streak streak, StreakAchievementAttempt mostRecentClosedAttempt )
+        protected override List<StreakAchievementAttempt> CreateNewAttempts( AchievementTypeCache achievementTypeCache, Streak streak, StreakAchievementAttempt mostRecentClosedAttempt )
         {
             var rockContext = new RockContext();
             var streakTypeService = new StreakTypeService( rockContext );
-            var streakTypeCache = streakTypeAchievementTypeCache.StreakTypeCache;
+            var streakTypeCache = achievementTypeCache.StreakTypeCache;
 
             // Validate the attribute values
-            var numberToAchieve = GetAttributeValue( streakTypeAchievementTypeCache, AttributeKey.NumberToAchieve ).AsInteger();
+            var numberToAchieve = GetAttributeValue( achievementTypeCache, AttributeKey.NumberToAchieve ).AsInteger();
 
             if ( numberToAchieve <= 0 )
             {
@@ -220,7 +220,7 @@ namespace Rock.Achievement.Component
                 return null;
             }
 
-            var attributeTimespanDays = GetAttributeValue( streakTypeAchievementTypeCache, AttributeKey.TimespanInDays ).AsIntegerOrNull();
+            var attributeTimespanDays = GetAttributeValue( achievementTypeCache, AttributeKey.TimespanInDays ).AsIntegerOrNull();
 
             if ( attributeTimespanDays.HasValue && attributeTimespanDays.Value <= 0 )
             {
@@ -229,8 +229,8 @@ namespace Rock.Achievement.Component
             }
 
             // Calculate the date range where new achievements can be validly found
-            var attributeMinDate = GetAttributeValue( streakTypeAchievementTypeCache, AttributeKey.StartDateTime ).AsDateTime();
-            var attributeMaxDate = GetAttributeValue( streakTypeAchievementTypeCache, AttributeKey.EndDateTime ).AsDateTime();
+            var attributeMinDate = GetAttributeValue( achievementTypeCache, AttributeKey.StartDateTime ).AsDateTime();
+            var attributeMaxDate = GetAttributeValue( achievementTypeCache, AttributeKey.EndDateTime ).AsDateTime();
             var minDate = CalculateMinDateForAchievementAttempt( streak.EnrollmentDate, mostRecentClosedAttempt, attributeMinDate, numberToAchieve );
             var maxDate = CalculateMaxDateForAchievementAttempt( minDate, attributeMaxDate );
 
@@ -275,14 +275,14 @@ namespace Rock.Achievement.Component
                         {
                             streaks.Clear();
 
-                            if( streakTypeAchievementTypeCache.AllowOverAchievement )
+                            if( achievementTypeCache.AllowOverAchievement )
                             {
                                 streaks.Add( computedStreak );
                                 i = 0;
                             }
                             else
                             {
-                                attempts.Add( GetAttemptFromStreak( computedStreak, numberToAchieve, !streakTypeAchievementTypeCache.AllowOverAchievement ) );
+                                attempts.Add( GetAttemptFromStreak( computedStreak, numberToAchieve, !achievementTypeCache.AllowOverAchievement ) );
                                 break;
                             }
                         }

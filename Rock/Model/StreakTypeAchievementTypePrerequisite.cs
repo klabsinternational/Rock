@@ -39,14 +39,14 @@ namespace Rock.Model
         /// </summary>
         [Required]
         [DataMember( IsRequired = true )]
-        public int StreakTypeAchievementTypeId { get; set; }
+        public int AchievementTypeId { get; set; }
 
         /// <summary>
         /// Gets or sets the Id of the <see cref="StreakTypeAchievementType"/> that is the prerequisite. This property is required.
         /// </summary>
         [Required]
         [DataMember( IsRequired = true )]
-        public int PrerequisiteStreakTypeAchievementTypeId { get; set; }
+        public int PrerequisiteAchievementTypeId { get; set; }
 
         #endregion Entity Properties
 
@@ -56,13 +56,13 @@ namespace Rock.Model
         /// Gets or sets the StreakTypeAchievementType.
         /// </summary>
         [DataMember]
-        public virtual StreakTypeAchievementType StreakTypeAchievementType { get; set; }
+        public virtual AchievementType StreakTypeAchievementType { get; set; }
 
         /// <summary>
         /// Gets or sets the Prerequisite StreakTypeAchievementType.
         /// </summary>
         [DataMember]
-        public virtual StreakTypeAchievementType PrerequisiteStreakTypeAchievementType { get; set; }
+        public virtual AchievementType PrerequisiteStreakTypeAchievementType { get; set; }
 
         #endregion Virtual Properties
 
@@ -100,7 +100,7 @@ namespace Rock.Model
             {
                 var isValid = base.IsValid;
 
-                if ( StreakTypeAchievementTypeId == PrerequisiteStreakTypeAchievementTypeId )
+                if ( AchievementTypeId == PrerequisiteAchievementTypeId )
                 {
                     ValidationResults.Add( new ValidationResult( "StreakTypeAchievementTypeId cannot be equal to PrerequisiteStreakTypeAchievementTypeId" ) );
                     isValid = false;
@@ -126,12 +126,12 @@ namespace Rock.Model
             {
                 HasRequired( statp => statp.StreakTypeAchievementType )
                     .WithMany( stat => stat.Prerequisites )
-                    .HasForeignKey( statp => statp.StreakTypeAchievementTypeId )
+                    .HasForeignKey( statp => statp.AchievementTypeId )
                     .WillCascadeOnDelete( true );
 
                 HasRequired( statp => statp.PrerequisiteStreakTypeAchievementType )
                     .WithMany( stat => stat.Dependencies )
-                    .HasForeignKey( statp => statp.PrerequisiteStreakTypeAchievementTypeId )
+                    .HasForeignKey( statp => statp.PrerequisiteAchievementTypeId )
                     // This has to be false because otherwise SQL server doesn't like the possibility of dependency cycles
                     .WillCascadeOnDelete( false );
             }

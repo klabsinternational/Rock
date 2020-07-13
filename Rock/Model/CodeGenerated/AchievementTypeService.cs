@@ -30,13 +30,13 @@ namespace Rock.Model
     /// <summary>
     /// StreakTypeAchievementType Service class
     /// </summary>
-    public partial class StreakTypeAchievementTypeService : Service<StreakTypeAchievementType>
+    public partial class AchievementTypeService : Service<AchievementType>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="StreakTypeAchievementTypeService"/> class
+        /// Initializes a new instance of the <see cref="AchievementTypeService"/> class
         /// </summary>
         /// <param name="context">The context.</param>
-        public StreakTypeAchievementTypeService(RockContext context) : base(context)
+        public AchievementTypeService(RockContext context) : base(context)
         {
         }
 
@@ -48,13 +48,13 @@ namespace Rock.Model
         /// <returns>
         ///   <c>true</c> if this instance can delete the specified item; otherwise, <c>false</c>.
         /// </returns>
-        public bool CanDelete( StreakTypeAchievementType item, out string errorMessage )
+        public bool CanDelete( AchievementType item, out string errorMessage )
         {
             errorMessage = string.Empty;
  
-            if ( new Service<StreakTypeAchievementTypePrerequisite>( Context ).Queryable().Any( a => a.PrerequisiteStreakTypeAchievementTypeId == item.Id ) )
+            if ( new Service<StreakTypeAchievementTypePrerequisite>( Context ).Queryable().Any( a => a.PrerequisiteAchievementTypeId == item.Id ) )
             {
-                errorMessage = string.Format( "This {0} is assigned to a {1}.", StreakTypeAchievementType.FriendlyTypeName, StreakTypeAchievementTypePrerequisite.FriendlyTypeName );
+                errorMessage = string.Format( "This {0} is assigned to a {1}.", AchievementType.FriendlyTypeName, StreakTypeAchievementTypePrerequisite.FriendlyTypeName );
                 return false;
             }  
             return true;
@@ -72,15 +72,15 @@ namespace Rock.Model
         /// <param name="source">The source.</param>
         /// <param name="deepCopy">if set to <c>true</c> a deep copy is made. If false, only the basic entity properties are copied.</param>
         /// <returns></returns>
-        public static StreakTypeAchievementType Clone( this StreakTypeAchievementType source, bool deepCopy )
+        public static AchievementType Clone( this AchievementType source, bool deepCopy )
         {
             if (deepCopy)
             {
-                return source.Clone() as StreakTypeAchievementType;
+                return source.Clone() as AchievementType;
             }
             else
             {
-                var target = new StreakTypeAchievementType();
+                var target = new AchievementType();
                 target.CopyPropertiesFrom( source );
                 return target;
             }
@@ -91,7 +91,7 @@ namespace Rock.Model
         /// </summary>
         /// <param name="target">The target.</param>
         /// <param name="source">The source.</param>
-        public static void CopyPropertiesFrom( this StreakTypeAchievementType target, StreakTypeAchievementType source )
+        public static void CopyPropertiesFrom( this AchievementType target, AchievementType source )
         {
             target.Id = source.Id;
             target.AchievementEntityTypeId = source.AchievementEntityTypeId;
@@ -111,7 +111,7 @@ namespace Rock.Model
             target.MaxAccomplishmentsAllowed = source.MaxAccomplishmentsAllowed;
             target.Name = source.Name;
             target.ResultsLavaTemplate = source.ResultsLavaTemplate;
-            target.StreakTypeId = source.StreakTypeId;
+            target.SourceEntityQualifierValue = source.SourceEntityQualifierValue;
             target.CreatedDateTime = source.CreatedDateTime;
             target.ModifiedDateTime = source.ModifiedDateTime;
             target.CreatedByPersonAliasId = source.CreatedByPersonAliasId;

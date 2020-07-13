@@ -61,7 +61,7 @@ namespace Rock.Rest.Controllers
                 }
             }
 
-            var achievementTypeService = Service as StreakTypeAchievementTypeService;
+            var achievementTypeService = Service as AchievementTypeService;
             var progressStatements = achievementTypeService.GetProgressStatements( personId );
 
             if ( includeOnlyEligible )

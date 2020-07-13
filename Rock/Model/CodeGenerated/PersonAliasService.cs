@@ -2542,15 +2542,15 @@ namespace Rock.Model
                 return false;
             }  
  
-            if ( new Service<StreakTypeAchievementType>( Context ).Queryable().Any( a => a.CreatedByPersonAliasId == item.Id ) )
+            if ( new Service<AchievementType>( Context ).Queryable().Any( a => a.CreatedByPersonAliasId == item.Id ) )
             {
-                errorMessage = string.Format( "This {0} is assigned to a {1}.", PersonAlias.FriendlyTypeName, StreakTypeAchievementType.FriendlyTypeName );
+                errorMessage = string.Format( "This {0} is assigned to a {1}.", PersonAlias.FriendlyTypeName, AchievementType.FriendlyTypeName );
                 return false;
             }  
  
-            if ( new Service<StreakTypeAchievementType>( Context ).Queryable().Any( a => a.ModifiedByPersonAliasId == item.Id ) )
+            if ( new Service<AchievementType>( Context ).Queryable().Any( a => a.ModifiedByPersonAliasId == item.Id ) )
             {
-                errorMessage = string.Format( "This {0} is assigned to a {1}.", PersonAlias.FriendlyTypeName, StreakTypeAchievementType.FriendlyTypeName );
+                errorMessage = string.Format( "This {0} is assigned to a {1}.", PersonAlias.FriendlyTypeName, AchievementType.FriendlyTypeName );
                 return false;
             }  
  

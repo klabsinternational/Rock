@@ -92,7 +92,7 @@ namespace Rock.Transactions
             IsNowStarting = entry.State == EntityState.Added;
             IsNowEnding = !wasClosed && streakAchievementAttempt.IsClosed;
             IsNowSuccessful = !wasSuccessful && streakAchievementAttempt.IsSuccessful;
-            StreakTypeAchievementTypeId = streakAchievementAttempt.StreakTypeAchievementTypeId;
+            StreakTypeAchievementTypeId = streakAchievementAttempt.AchievementTypeId;
             StartDate = streakAchievementAttempt.AchievementAttemptStartDateTime;
             EndDate = streakAchievementAttempt.AchievementAttemptEndDateTime;
         }
@@ -103,7 +103,7 @@ namespace Rock.Transactions
         /// <exception cref="System.NotImplementedException"></exception>
         public void Execute()
         {
-            var achievementTypeCache = StreakTypeAchievementTypeCache.Get( StreakTypeAchievementTypeId );
+            var achievementTypeCache = AchievementTypeCache.Get( StreakTypeAchievementTypeId );
 
             if ( achievementTypeCache == null || !achievementTypeCache.IsActive )
             {

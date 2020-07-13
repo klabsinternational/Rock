@@ -28,11 +28,11 @@ namespace Rock.Rest.Controllers
     /// <summary>
     /// StreakTypeAchievementTypes REST API
     /// </summary>
-    public partial class StreakTypeAchievementTypesController : Rock.Rest.ApiController<Rock.Model.StreakTypeAchievementType>
+    public partial class StreakTypeAchievementTypesController : Rock.Rest.ApiController<Rock.Model.AchievementType>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="StreakTypeAchievementTypesController"/> class.
         /// </summary>
-        public StreakTypeAchievementTypesController() : base( new Rock.Model.StreakTypeAchievementTypeService( new Rock.Data.RockContext() ) ) { } 
+        public StreakTypeAchievementTypesController() : base( new Rock.Model.AchievementTypeService( new Rock.Data.RockContext() ) ) { } 
     }
 }
