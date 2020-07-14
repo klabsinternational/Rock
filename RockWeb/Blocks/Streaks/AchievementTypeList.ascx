@@ -16,7 +16,6 @@
                 <div class="grid grid-panel">
                     <Rock:Grid ID="gAchievements" runat="server" AllowSorting="false" OnRowSelected="gAchievements_Edit">
                         <Columns>
-                            <Rock:ReorderField />
                             <Rock:RockTemplateField ExcelExportBehavior="NeverInclude" HeaderStyle-Width="48px">
                                 <ItemTemplate>
                                    <i class="fa-fw <%# Eval( "IconCssClass" ) %>"></i>
