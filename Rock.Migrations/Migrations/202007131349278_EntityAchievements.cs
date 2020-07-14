@@ -18,7 +18,7 @@ namespace Rock.Migrations
 {
     using System;
     using System.Data.Entity.Migrations;
-    
+
     /// <summary>
     ///
     /// </summary>
@@ -28,6 +28,26 @@ namespace Rock.Migrations
         /// Operations to be performed during the upgrade process.
         /// </summary>
         public override void Up()
+        {
+            TableChangesUp();
+
+            Sql( 
+@"UPDATE [AchievementType]
+SET
+    [SourceEntityTypeId] = (SELECT [Id] FROM [EntityType] WHERE [Name] = 'Rock.Model.Streak'),
+    [AchieverEntityTypeId] = (SELECT [Id] FROM [EntityType] WHERE [Name] = 'Rock.Model.PersonAlias'),
+    [SourceEntityQualifierColumn] = 'StreakTypeId'" );
+        }
+
+        /// <summary>
+        /// Operations to be performed during the downgrade process.
+        /// </summary>
+        public override void Down()
+        {
+            TableChangesDown();
+        }
+
+        private void TableChangesUp()
         {
             DropForeignKey( "dbo.StreakTypeAchievementType", "StreakTypeId", "dbo.StreakType" );
             DropIndex( "dbo.StreakTypeAchievementType", new[] { "StreakTypeId" } );
@@ -51,19 +71,14 @@ namespace Rock.Migrations
             AddColumn( "dbo.AchievementType", "SourceEntityTypeId", c => c.Int() );
             AddColumn( "dbo.AchievementType", "AchieverEntityTypeId", c => c.Int( nullable: false ) );
             AddColumn( "dbo.AchievementType", "SourceEntityQualifierColumn", c => c.String( maxLength: 50 ) );
-            AddColumn( "dbo.AchievementAttempt", "AchieverEntityId", c => c.Int( nullable: false ) );
+            RenameColumn( table: "dbo.AchievementType", name: "StreakId", newName: "AchieverEntityId" );
             AlterColumn( "dbo.AchievementType", "SourceEntityQualifierValue", c => c.String( maxLength: 200 ) );
-            DropColumn( "dbo.AchievementAttempt", "StreakId" );
         }
 
-        /// <summary>
-        /// Operations to be performed during the downgrade process.
-        /// </summary>
-        public override void Down()
+        private void TableChangesDown()
         {
-            AddColumn( "dbo.AchievementAttempt", "StreakId", c => c.Int( nullable: false ) );
             AlterColumn( "dbo.AchievementType", "SourceEntityQualifierValue", c => c.String() );
-            DropColumn( "dbo.AchievementAttempt", "AchieverEntityId" );
+            RenameColumn( table: "dbo.AchievementType", name: "AchieverEntityId", newName: "StreakId" );
             DropColumn( "dbo.AchievementType", "SourceEntityQualifierColumn" );
             DropColumn( "dbo.AchievementType", "AchieverEntityTypeId" );
             DropColumn( "dbo.AchievementType", "SourceEntityTypeId" );
@@ -73,7 +88,7 @@ namespace Rock.Migrations
             AddForeignKey( "dbo.StreakAchievementAttempt", "StreakId", "dbo.Streak", "Id" );
             RenameTable( name: "dbo.AchievementTypePrerequisite", newName: "StreakTypeAchievementTypePrerequisite" );
             RenameTable( name: "dbo.AchievementAttempt", newName: "StreakAchievementAttempt" );
-            
+
             AlterColumn( "dbo.AchievementType", "SourceEntityQualifierValue", c => c.Int( nullable: false ) );
             RenameColumn( "dbo.AchievementType", "SourceEntityQualifierValue", "StreakTypeId" );
             DropColumn( "dbo.EntityType", "IsAchievementsEnabled" );
