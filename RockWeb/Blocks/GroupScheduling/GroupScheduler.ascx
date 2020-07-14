@@ -70,15 +70,17 @@
                         <%-- AttendanceOccurrences - Filter Options (Header) --%>
                         <div class="group-scheduler-occurrence-filter occurrences-filter-options">
                             <asp:HiddenField ID="hfSelectedGroupId" runat="server" />
-                            <asp:HiddenField ID="hfListedGroupIds" runat="server" />
                             <div class="row">
-                                <div class="col-md-6">
-                                    <Rock:GroupPicker ID="gpListedGroups" runat="server" Label="" AllowMultiSelect="true" OnValueChanged="gpListedGroups_ValueChanged" CssClass="occurrences-groups-picker" LimitToSchedulingEnabledGroups="true" />
-                                    <Rock:RockCheckBox ID="cbShowChildGroups" runat="server" Text="Show Child Groups" CssClass="pull-right" AutoPostBack="true" OnCheckedChanged="gpListedGroups_ValueChanged" />
+                                <!-- Filter for Groups/ChildGroups -->
+                                <div class="col-md-3">
+                                    <Rock:GroupPicker ID="gpPickedGroups" runat="server" Label="" AllowMultiSelect="true" OnValueChanged="gpPickedGroups_ValueChanged" CssClass="occurrences-groups-picker" LimitToSchedulingEnabledGroups="true" />
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-3">
+                                    <Rock:RockCheckBox ID="cbShowChildGroups" runat="server" Text="Show Child Groups" AutoPostBack="true" OnCheckedChanged="gpPickedGroups_ValueChanged" />
+                                </div>
 
-                                    <!-- Filter for Week -->
+                                <!-- Filter for Week -->
+                                <div class="col-md-2">
                                     <asp:Panel ID="pnlWeekFilter" runat="server">
                                         <div class="btn-group">
                                             <div class="dropdown-toggle btn" data-toggle="dropdown">
@@ -97,56 +99,50 @@
                                             </ul>
                                         </div>
                                     </asp:Panel>
-
                                 </div>
-                                <div class="col-md-4">
-                                    <asp:Panel ID="pnlGroupScheduleLocations" runat="server">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <!-- Filter for Locations -->
-                                                <asp:Panel ID="pnlGroupLocationFilter" runat="server">
-                                                    <div class="btn-group">
-                                                        <div class="dropdown-toggle btn" data-toggle="dropdown">
-                                                            <asp:HiddenField ID="hfSelectedGroupLocationIds" runat="server" />
-                                                            <asp:Literal ID="lSelectedGroupLocationFilterText" runat="server" Text="Locations...." />
-                                                        </div>
 
-                                                        <ul class="dropdown-menu" role="menu">
-                                                            <asp:Repeater ID="rptGroupLocationSelector" runat="server" OnItemDataBound="rptGroupLocationSelector_ItemDataBound">
-                                                                <ItemTemplate>
-                                                                    <li>
-                                                                        <asp:LinkButton ID="btnSelectGroupLocation" runat="server" Text="-" CommandArgument="-" OnClick="btnSelectGroupLocation_Click" />
-                                                                    </li>
-                                                                </ItemTemplate>
-                                                            </asp:Repeater>
-                                                        </ul>
-                                                    </div>
-                                                </asp:Panel>
+                                <!-- Filter for Group Locations -->
+                                <div class="col-md-2">
+                                    <asp:Panel ID="pnlGroupLocationFilter" runat="server">
+                                        <div class="btn-group">
+
+                                            <div class="dropdown-toggle btn" data-toggle="dropdown">
+                                                <asp:HiddenField ID="hfSelectedGroupLocationIds" runat="server" />
+                                                <asp:Literal ID="lSelectedGroupLocationFilterText" runat="server" Text="Locations...." />
                                             </div>
-                                            <div class="col-md-6">
 
-                                                <!-- Filter for Schedules -->
-                                                <asp:Panel ID="pnlScheduleFilter" runat="server">
-                                                    <div class="btn-group">
-                                                        <div class="dropdown-toggle btn" data-toggle="dropdown">
-                                                            <asp:HiddenField ID="hfSelectedScheduleId" runat="server" />
-                                                            <asp:Literal ID="lScheduleFilterText" runat="server" Text="Schedule..." />
-                                                        </div>
 
-                                                        <ul class="dropdown-menu" role="menu">
-                                                            <asp:Repeater ID="rptScheduleSelector" runat="server" OnItemDataBound="rptScheduleSelector_ItemDataBound">
-                                                                <ItemTemplate>
-                                                                    <li>
-                                                                        <asp:LinkButton ID="btnSelectSchedule" runat="server" Text="-" CommandArgument="-" OnClick="btnSelectSchedule_Click" />
-                                                                    </li>
-                                                                </ItemTemplate>
-                                                            </asp:Repeater>
-                                                        </ul>
-                                                    </div>
-                                                </asp:Panel>
-                                                
+                                            <ul class="dropdown-menu" role="menu">
+                                                <asp:Repeater ID="rptGroupLocationSelector" runat="server" OnItemDataBound="rptGroupLocationSelector_ItemDataBound">
+                                                    <ItemTemplate>
+                                                        <li>
+                                                            <asp:LinkButton ID="btnSelectGroupLocation" runat="server" Text="-" CommandArgument="-" OnClick="btnSelectGroupLocation_Click" />
+                                                        </li>
+                                                    </ItemTemplate>
+                                                </asp:Repeater>
+                                            </ul>
+                                        </div>
+                                    </asp:Panel>
+                                </div>
+
+                                <!-- Filter for Schedules -->
+                                <div class="col-md-2">
+                                    <asp:Panel ID="pnlScheduleFilter" runat="server">
+                                        <div class="btn-group">
+                                            <div class="dropdown-toggle btn" data-toggle="dropdown">
+                                                <asp:HiddenField ID="hfSelectedScheduleId" runat="server" />
+                                                <asp:Literal ID="lScheduleFilterText" runat="server" Text="Schedule..." />
                                             </div>
-                                            
+
+                                            <ul class="dropdown-menu" role="menu">
+                                                <asp:Repeater ID="rptScheduleSelector" runat="server" OnItemDataBound="rptScheduleSelector_ItemDataBound">
+                                                    <ItemTemplate>
+                                                        <li>
+                                                            <asp:LinkButton ID="btnSelectSchedule" runat="server" Text="-" CommandArgument="-" OnClick="btnSelectSchedule_Click" />
+                                                        </li>
+                                                    </ItemTemplate>
+                                                </asp:Repeater>
+                                            </ul>
                                         </div>
                                     </asp:Panel>
                                 </div>
@@ -275,65 +271,90 @@
                                         </div>
                                     </div>
 
-
-
                                     <Rock:NotificationBox ID="nbGroupWarning" runat="server" NotificationBoxType="Warning" />
+
+
+
+
 
                                     <%-- containers for AttendanceOccurrence locations that resources can be dragged into --%>
                                     <asp:Panel ID="pnlSchedulerLocations" runat="server" CssClass="locations js-scheduled-occurrences">
-
-                                        <asp:Repeater ID="rptAttendanceOccurrences" runat="server" OnItemDataBound="rptAttendanceOccurrences_ItemDataBound">
+                                        <asp:Repeater ID="rptOccurrenceColumns" runat="server" OnItemDataBound="rptOccurrenceColumns_ItemDataBound">
                                             <ItemTemplate>
+                                                <div class="occurrence-column">
+                                                    <asp:Literal ID="lColumnHeader" runat="server" Text="ColumnHeader" />
+                                                    <asp:Repeater ID="rptAttendanceOccurrences" runat="server" OnItemDataBound="rptAttendanceOccurrences_ItemDataBound">
+                                                        <ItemTemplate>
 
-                                                <asp:Panel ID="pnlScheduledOccurrence" runat="server" CssClass="location js-scheduled-occurrence" data-hide-if-empty="0">
-                                                    <Rock:HiddenFieldWithClass ID="hfAttendanceOccurrenceId" runat="server" CssClass="js-attendanceoccurrence-id" />
-                                                    <Rock:HiddenFieldWithClass ID="hfAttendanceOccurrenceDate" runat="server" CssClass="js-attendanceoccurrence-date" />
-                                                    <Rock:HiddenFieldWithClass ID="hfLocationScheduleMinimumCapacity" runat="server" CssClass="js-minimum-capacity" />
-                                                    <Rock:HiddenFieldWithClass ID="hfLocationScheduleDesiredCapacity" runat="server" CssClass="js-desired-capacity" />
-                                                    <Rock:HiddenFieldWithClass ID="hfLocationScheduleMaximumCapacity" runat="server" CssClass="js-maximum-capacity" />
-                                                    <div class="panel panel-block">
-                                                        <div class="panel-heading">
-                                                            <h1 class="panel-title">
-                                                                <asp:Literal ID="lLocationTitle" runat="server" />
-                                                                <small>
-                                                                    <asp:Literal runat="server" ID="lOccurrenceScheduledDateTime" /></small>
-                                                            </h1>
-                                                            <asp:Panel ID="pnlStatusLabels" runat="server" CssClass="panel-labels">
-                                                                <div class="scheduling-status js-scheduling-status pull-right">
-                                                                    <div class="scheduling-status-progress">
-                                                                        <div class="progress js-scheduling-progress">
-                                                                            <div class="progress-bar scheduling-progress-confirmed js-scheduling-progress-confirmed" style="width: 0%">
-                                                                                <span class="sr-only"><span class="js-progress-text-percent"></span>% Complete (confirmed)</span>
+                                                            <asp:Panel ID="pnlScheduledOccurrence" runat="server" CssClass="location js-scheduled-occurrence" data-hide-if-empty="0">
+                                                                <Rock:HiddenFieldWithClass ID="hfAttendanceOccurrenceId" runat="server" CssClass="js-attendanceoccurrence-id" />
+                                                                <Rock:HiddenFieldWithClass ID="hfAttendanceOccurrenceDate" runat="server" CssClass="js-attendanceoccurrence-date" />
+                                                                <Rock:HiddenFieldWithClass ID="hfLocationScheduleMinimumCapacity" runat="server" CssClass="js-minimum-capacity" />
+                                                                <Rock:HiddenFieldWithClass ID="hfLocationScheduleDesiredCapacity" runat="server" CssClass="js-desired-capacity" />
+                                                                <Rock:HiddenFieldWithClass ID="hfLocationScheduleMaximumCapacity" runat="server" CssClass="js-maximum-capacity" />
+                                                                <div class="panel panel-block">
+                                                                    <div class="panel-heading">
+                                                                        <h1 class="panel-title">
+                                                                            <%-- Occurrence Panel Heading when in Multi-Group mode --%>
+                                                                            <asp:Panel ID="pnlMultiGroupModePanelHeading" runat="server">
+                                                                                <asp:Literal ID="lMultiGroupModeLocationTitle" runat="server" />
+                                                                                <br />
+
+                                                                                <small>
+                                                                                    <asp:Literal runat="server" ID="lMultiGroupModeOccurrenceScheduledDate" /></small>
+
+                                                                                <asp:Literal runat="server" ID="lMultiGroupModeOccurrenceScheduledTime" />
+                                                                            </asp:Panel>
+
+                                                                            <%-- Occurrence Panel Heading when in Single-Group mode --%>
+                                                                            <asp:Panel ID="pnlSingleGroupModePanelHeading" runat="server">
+                                                                                <asp:Literal ID="lSingleGroupModeLocationTitle" runat="server" />
+                                                                            </asp:Panel>
+                                                                        </h1>
+                                                                    </div>
+
+                                                                    <asp:Panel ID="pnlStatusLabels" runat="server" CssClass="panel-labels">
+                                                                        <div class="scheduling-status js-scheduling-status pull-right">
+                                                                            <div class="scheduling-status-progress">
+                                                                                <div class="progress js-scheduling-progress">
+                                                                                    <div class="progress-bar scheduling-progress-confirmed js-scheduling-progress-confirmed" style="width: 0%">
+                                                                                        <span class="sr-only"><span class="js-progress-text-percent"></span>% Complete (confirmed)</span>
+                                                                                    </div>
+                                                                                    <div class="progress-bar scheduling-progress-pending js-scheduling-progress-pending" style="width: 0%">
+                                                                                        <span class="sr-only"><span class="js-progress-text-percent"></span>% Complete (pending)</span>
+                                                                                    </div>
+                                                                                    <div class="minimum-indicator js-minimum-indicator" data-minimum-value="0" style="margin-left: 0%">
+                                                                                    </div>
+                                                                                    <div class="desired-indicator js-desired-indicator" data-desired-value="0" style="margin-left: 0%">
+                                                                                    </div>
+                                                                                </div>
                                                                             </div>
-                                                                            <div class="progress-bar scheduling-progress-pending js-scheduling-progress-pending" style="width: 0%">
-                                                                                <span class="sr-only"><span class="js-progress-text-percent"></span>% Complete (pending)</span>
-                                                                            </div>
-                                                                            <div class="minimum-indicator js-minimum-indicator" data-minimum-value="0" style="margin-left: 0%">
-                                                                            </div>
-                                                                            <div class="desired-indicator js-desired-indicator" data-desired-value="0" style="margin-left: 0%">
+                                                                            <div class="js-scheduling-status-light scheduling-status-light" data-status="none">
                                                                             </div>
                                                                         </div>
-                                                                    </div>
-                                                                    <div class="js-scheduling-status-light scheduling-status-light" data-status="none">
-                                                                    </div>
-                                                                </div>
 
-                                                                <div class="autoscheduler-warning js-autoscheduler-warning pull-right margin-r-md" data-original-title="Auto Schedule requires a desired capacity for this location.">
-                                                                    <i class="fa fa-exclamation-triangle"></i>
+                                                                        <div class="autoscheduler-warning js-autoscheduler-warning pull-right margin-r-md" data-original-title="Auto Schedule requires a desired capacity for this location.">
+                                                                            <i class="fa fa-exclamation-triangle"></i>
+                                                                        </div>
+                                                                    </asp:Panel>
+
+                                                                    <div class="panel-body">
+                                                                        <div class="scheduler-target-container js-scheduler-target-container dropzone"></div>
+                                                                    </div>
                                                                 </div>
                                                             </asp:Panel>
-                                                        </div>
-                                                        <div class="panel-body">
-                                                            <div class="scheduler-target-container js-scheduler-target-container dropzone"></div>
-                                                        </div>
-                                                    </div>
-                                                </asp:Panel>
+                                                        </ItemTemplate>
+                                                    </asp:Repeater>
+                                                </div>
                                             </ItemTemplate>
+
                                         </asp:Repeater>
+
+
                                     </asp:Panel>
                                 </div>
                             </div>
-                        </asp:Panel>
+            </asp:Panel>
                     </asp:Panel>
                 </div>
             </div>
