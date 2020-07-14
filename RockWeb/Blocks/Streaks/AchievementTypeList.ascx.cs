@@ -62,7 +62,7 @@ namespace RockWeb.Blocks.Streaks
             /// <summary>
             /// The streak type achievement type identifier
             /// </summary>
-            public const string StreakTypeAchievementTypeId = "StreakTypeAchievementTypeId";
+            public const string AchievementTypeId = "AchievementTypeId";
 
             /// <summary>
             /// The streak type identifier
@@ -123,7 +123,7 @@ namespace RockWeb.Blocks.Streaks
         protected void gAchievements_Add( object sender, EventArgs e )
         {
             NavigateToLinkedPage( AttributeKey.DetailPage, new Dictionary<string, string> {
-                { PageParamKey.StreakTypeAchievementTypeId, default(int).ToString() },
+                { PageParamKey.AchievementTypeId, default(int).ToString() },
                 { PageParamKey.StreakTypeId, PageParameter( PageParamKey.StreakTypeId ) }
             } );
         }
@@ -135,7 +135,7 @@ namespace RockWeb.Blocks.Streaks
         /// <param name="e">The <see cref="RowEventArgs" /> instance containing the event data.</param>
         protected void gAchievements_Edit( object sender, RowEventArgs e )
         {
-            NavigateToLinkedPage( AttributeKey.DetailPage, PageParamKey.StreakTypeAchievementTypeId, e.RowKeyId );
+            NavigateToLinkedPage( AttributeKey.DetailPage, PageParamKey.AchievementTypeId, e.RowKeyId );
         }
 
         /// <summary>

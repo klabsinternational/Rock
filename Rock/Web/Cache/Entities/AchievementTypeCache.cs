@@ -247,7 +247,7 @@ namespace Rock.Web.Cache
         /// The prerequisites.
         /// </value>
         public List<AchievementTypePrerequisiteCache> Prerequisites
-            => AchievementTypePrerequisiteCache.All().Where( statp => statp.StreakTypeAchievementTypeId == Id ).ToList();
+            => AchievementTypePrerequisiteCache.All().Where( statp => statp.AchievementTypeId == Id ).ToList();
 
         /// <summary>
         /// Gets the prerequisite achievement types.
@@ -256,7 +256,7 @@ namespace Rock.Web.Cache
         /// The prerequisite achievement types.
         /// </value>
         public List<AchievementTypeCache> PrerequisiteAchievementTypes
-            => Prerequisites.Select( statp => statp.PrerequisiteStreakTypeAchievementType ).ToList();
+            => Prerequisites.Select( statp => statp.PrerequisiteAchievementType ).ToList();
 
         #endregion Related Cache Objects
 

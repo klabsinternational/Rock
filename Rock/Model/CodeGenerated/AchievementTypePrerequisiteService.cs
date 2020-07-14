@@ -28,7 +28,7 @@ using Rock.Data;
 namespace Rock.Model
 {
     /// <summary>
-    /// StreakTypeAchievementTypePrerequisite Service class
+    /// AchievementTypePrerequisite Service class
     /// </summary>
     public partial class AchievementTypePrerequisiteService : Service<AchievementTypePrerequisite>
     {
@@ -58,10 +58,10 @@ namespace Rock.Model
     /// <summary>
     /// Generated Extension Methods
     /// </summary>
-    public static partial class StreakTypeAchievementTypePrerequisiteExtensionMethods
+    public static partial class AchievementTypePrerequisiteExtensionMethods
     {
         /// <summary>
-        /// Clones this StreakTypeAchievementTypePrerequisite object to a new StreakTypeAchievementTypePrerequisite object
+        /// Clones this AchievementTypePrerequisite object to a new AchievementTypePrerequisite object
         /// </summary>
         /// <param name="source">The source.</param>
         /// <param name="deepCopy">if set to <c>true</c> a deep copy is made. If false, only the basic entity properties are copied.</param>
@@ -81,7 +81,7 @@ namespace Rock.Model
         }
 
         /// <summary>
-        /// Copies the properties from another StreakTypeAchievementTypePrerequisite object to this StreakTypeAchievementTypePrerequisite object
+        /// Copies the properties from another AchievementTypePrerequisite object to this AchievementTypePrerequisite object
         /// </summary>
         /// <param name="target">The target.</param>
         /// <param name="source">The source.</param>

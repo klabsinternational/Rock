@@ -54,9 +54,9 @@ namespace RockWeb.Blocks.Streaks
             public const string StreakTypeId = "StreakTypeId";
 
             /// <summary>
-            /// The streak type achievement type identifier
+            /// The achievement type identifier
             /// </summary>
-            public const string StreakTypeAchievementTypeId = "StreakTypeAchievementTypeId";
+            public const string AchievementTypeId = "AchievementTypeId";
         }
 
         #endregion Keys
@@ -144,7 +144,7 @@ namespace RockWeb.Blocks.Streaks
             var achievementTypeCache = GetAchievementTypeCache();
             AchievementTypeService.Process( achievementTypeCache.Id );
             NavigateToCurrentPage( new Dictionary<string, string> {
-                { PageParameterKey.StreakTypeAchievementTypeId, achievementTypeCache.Id.ToString() }
+                { PageParameterKey.AchievementTypeId, achievementTypeCache.Id.ToString() }
             } );
         }
 
@@ -625,7 +625,7 @@ namespace RockWeb.Blocks.Streaks
 
             // If the save was successful, reload the page using the new record Id.
             NavigateToPage( RockPage.Guid, new Dictionary<string, string> {
-                { PageParameterKey.StreakTypeAchievementTypeId, achievementType.Id.ToString() }
+                { PageParameterKey.AchievementTypeId, achievementType.Id.ToString() }
             } );
         }
 
@@ -837,7 +837,7 @@ namespace RockWeb.Blocks.Streaks
 
             if ( !isNew )
             {
-                cblPrerequsities.SetValues( achievementTypeCache.Prerequisites.Select( statp => statp.PrerequisiteStreakTypeAchievementTypeId ) );
+                cblPrerequsities.SetValues( achievementTypeCache.Prerequisites.Select( statp => statp.PrerequisiteAchievementTypeId ) );
             }
         }
 
@@ -902,7 +902,7 @@ namespace RockWeb.Blocks.Streaks
         {
             if ( _achievementType == null )
             {
-                var achievementTypeId = PageParameter( PageParameterKey.StreakTypeAchievementTypeId ).AsIntegerOrNull();
+                var achievementTypeId = PageParameter( PageParameterKey.AchievementTypeId ).AsIntegerOrNull();
 
                 if ( achievementTypeId.HasValue && achievementTypeId.Value > 0 )
                 {
@@ -922,7 +922,7 @@ namespace RockWeb.Blocks.Streaks
         /// <returns></returns>
         private AchievementTypeCache GetAchievementTypeCache()
         {
-            return AchievementTypeCache.Get( PageParameter( PageParameterKey.StreakTypeAchievementTypeId ).AsInteger() );
+            return AchievementTypeCache.Get( PageParameter( PageParameterKey.AchievementTypeId ).AsInteger() );
         }
 
         /// <summary>

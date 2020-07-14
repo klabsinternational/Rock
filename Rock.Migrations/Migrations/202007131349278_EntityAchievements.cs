@@ -29,14 +29,9 @@ namespace Rock.Migrations
         /// </summary>
         public override void Up()
         {
+            EntityTypeChangesUp();
             TableChangesUp();
-
-            Sql( 
-@"UPDATE [AchievementType]
-SET
-    [SourceEntityTypeId] = (SELECT [Id] FROM [EntityType] WHERE [Name] = 'Rock.Model.Streak'),
-    [AchieverEntityTypeId] = (SELECT [Id] FROM [EntityType] WHERE [Name] = 'Rock.Model.PersonAlias'),
-    [SourceEntityQualifierColumn] = 'StreakTypeId'" );
+            DataMigrationUp();
         }
 
         /// <summary>
@@ -45,6 +40,45 @@ SET
         public override void Down()
         {
             TableChangesDown();
+            EntityTypeChangesDown();
+        }
+
+        private void DataMigrationUp()
+        {
+            Sql(
+@"UPDATE [AchievementType]
+SET
+    [SourceEntityTypeId] = (SELECT [Id] FROM [EntityType] WHERE [Name] = 'Rock.Model.Streak'),
+    [AchieverEntityTypeId] = (SELECT [Id] FROM [EntityType] WHERE [Name] = 'Rock.Model.PersonAlias'),
+    [SourceEntityQualifierColumn] = 'StreakTypeId'" );
+
+
+            Sql(
+@"UPDATE aa
+SET aa.[AchieverEntityId] = s.[PersonAliasId]
+FROM 
+	[AchievementAttempt] aa
+	JOIN [Streak] s ON s.Id = aa.[AchieverEntityId]" );
+        }
+
+        private void EntityTypeChangesUp()
+        {
+            RenameEntity( SystemGuid.EntityType.ACHIEVEMENT_ATTEMPT, "Rock.Model.StreakAchievementAttempt", "Rock.Model.AchievementAttempt", "Achievement Attempt" );
+            RenameEntity( SystemGuid.EntityType.ACHIEVEMENT_TYPE, "Rock.Model.StreakTypeAchievementType", "Rock.Model.AchievementType", "Achievement Type" );
+            RenameEntity( SystemGuid.EntityType.ACHIEVEMENT_TYPE_PREREQUISITE, "Rock.Model.StreakTypeAchievementTypePrerequisite", "Rock.Model.AchievementTypePrerequisite", "Achievement Type Prerequisite" );
+        }
+
+        private void EntityTypeChangesDown()
+        {
+            RenameEntity( SystemGuid.EntityType.ACHIEVEMENT_ATTEMPT, "Rock.Model.AchievementAttempt", "Rock.Model.StreakAchievementAttempt", "Streak Achievement Attempt" );
+            RenameEntity( SystemGuid.EntityType.ACHIEVEMENT_TYPE, "Rock.Model.AchievementType", "Rock.Model.StreakTypeAchievementType", "Streak Type Achievement Type" );
+            RenameEntity( SystemGuid.EntityType.ACHIEVEMENT_TYPE_PREREQUISITE, "Rock.Model.AchievementTypePrerequisite", "Rock.Model.StreakTypeAchievementTypePrerequisite", "Streak Type Achievement Type Prerequisite" );
+        }
+
+        private void RenameEntity( string guidString, string oldName, string newName, string friendlyName )
+        {
+            RockMigrationHelper.UpdateEntityType( oldName, guidString, true, true );
+            RockMigrationHelper.RenameEntityType( guidString, newName, friendlyName, newName + ", Rock, Version=1.11.0.20, Culture=neutral, PublicKeyToken=null", true, true );
         }
 
         private void TableChangesUp()
@@ -71,14 +105,14 @@ SET
             AddColumn( "dbo.AchievementType", "SourceEntityTypeId", c => c.Int() );
             AddColumn( "dbo.AchievementType", "AchieverEntityTypeId", c => c.Int( nullable: false ) );
             AddColumn( "dbo.AchievementType", "SourceEntityQualifierColumn", c => c.String( maxLength: 50 ) );
-            RenameColumn( table: "dbo.AchievementType", name: "StreakId", newName: "AchieverEntityId" );
+            RenameColumn( table: "dbo.AchievementAttempt", name: "StreakId", newName: "AchieverEntityId" );
             AlterColumn( "dbo.AchievementType", "SourceEntityQualifierValue", c => c.String( maxLength: 200 ) );
         }
 
         private void TableChangesDown()
         {
             AlterColumn( "dbo.AchievementType", "SourceEntityQualifierValue", c => c.String() );
-            RenameColumn( table: "dbo.AchievementType", name: "AchieverEntityId", newName: "StreakId" );
+            RenameColumn( table: "dbo.AchievementAttempt", name: "AchieverEntityId", newName: "StreakId" );
             DropColumn( "dbo.AchievementType", "SourceEntityQualifierColumn" );
             DropColumn( "dbo.AchievementType", "AchieverEntityTypeId" );
             DropColumn( "dbo.AchievementType", "SourceEntityTypeId" );

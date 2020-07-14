@@ -22,6 +22,21 @@ namespace Rock.SystemGuid
     public static class EntityType
     {
         /// <summary>
+        /// The achievement attempt
+        /// </summary>
+        public const string ACHIEVEMENT_ATTEMPT = "5C144B51-3D2E-4BC2-B6C7-7E4CB890E15F";
+
+        /// <summary>
+        /// The achievement type
+        /// </summary>
+        public const string ACHIEVEMENT_TYPE = "0E99356C-0DEA-4F24-944E-21CD5FA83B9E";
+
+        /// <summary>
+        /// The achievement type prerequisite
+        /// </summary>
+        public const string ACHIEVEMENT_TYPE_PREREQUISITE = "5362DB19-B8E1-4378-A66A-FB097CE3AB90";
+
+        /// <summary>
         /// The guid for the Rock.Model.Attribute entity.
         /// </summary>
         public const string ATTRIBUTE = "5997C8D3-8840-4591-99A5-552919F90CBD";

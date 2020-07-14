@@ -81,7 +81,7 @@ namespace Rock.Data
         /// Gets or sets the AchievementTypes.
         /// </summary>
         /// <value>
-        /// The StreakTypeAchievementTypes.
+        /// The AchievementTypes.
         /// </value>
         public DbSet<AchievementType> AchievementTypes { get; set; }
 

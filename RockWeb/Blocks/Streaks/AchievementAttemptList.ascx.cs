@@ -68,7 +68,7 @@ namespace RockWeb.Blocks.Streaks
             /// <summary>
             /// The achievement type id page parameter key
             /// </summary>
-            public const string StreakTypeAchievementTypeId = "StreakTypeAchievementTypeId";
+            public const string AchievementTypeId = "AchievementTypeId";
 
             /// <summary>
             /// The streak identifier
@@ -218,7 +218,7 @@ namespace RockWeb.Blocks.Streaks
             var person = achievementViewModel.Person;
 
             var lFullName = e.Row.FindControl( _fullNameFieldId ) as Literal;
-            if ( lFullName != null )
+            if ( lFullName != null && person != null )
             {
                 lFullName.Text = person.FullNameReversed;
             }
@@ -230,7 +230,7 @@ namespace RockWeb.Blocks.Streaks
             }
 
             var lNameWithHtml = e.Row.FindControl( _nameWithHtmlFieldId ) as Literal;
-            if ( lNameWithHtml != null )
+            if ( lNameWithHtml != null && person != null )
             {
                 var sbNameHtml = new StringBuilder();
 
@@ -245,7 +245,7 @@ namespace RockWeb.Blocks.Streaks
                 lNameWithHtml.Text = sbNameHtml.ToString();
             }
 
-            if ( person.IsDeceased )
+            if ( person != null && person.IsDeceased )
             {
                 e.Row.AddCssClass( "is-deceased" );
             }
@@ -374,7 +374,7 @@ namespace RockWeb.Blocks.Streaks
 
             if ( achievementType != null )
             {
-                parameters[PageParameterKey.StreakTypeAchievementTypeId] = achievementType.Id.ToString();
+                parameters[PageParameterKey.AchievementTypeId] = achievementType.Id.ToString();
             }
 
             NavigateToLinkedPage( AttributeKey.DetailPage, parameters );
@@ -485,7 +485,7 @@ namespace RockWeb.Blocks.Streaks
         {
             if ( _achievementType == null )
             {
-                var achievementTypeId = PageParameter( PageParameterKey.StreakTypeAchievementTypeId ).AsIntegerOrNull();
+                var achievementTypeId = PageParameter( PageParameterKey.AchievementTypeId ).AsIntegerOrNull();
 
                 if ( achievementTypeId.HasValue )
                 {
@@ -754,8 +754,8 @@ namespace RockWeb.Blocks.Streaks
         protected void BindGrid()
         {
             var achievementType = GetAchievementType();
-            var isAchieverPerson = achievementType.AchieverEntityTypeId == EntityTypeCache.GetId<Person>();
-            var isAchieverPersonAlias = !isAchieverPerson && achievementType.AchieverEntityTypeId == EntityTypeCache.GetId<PersonAlias>();
+            var isAchieverPerson = achievementType != null && achievementType.AchieverEntityTypeId == EntityTypeCache.GetId<Person>();
+            var isAchieverPersonAlias = achievementType != null && achievementType.AchieverEntityTypeId == EntityTypeCache.GetId<PersonAlias>();
 
             if ( achievementType != null )
             {
@@ -826,41 +826,55 @@ namespace RockWeb.Blocks.Streaks
                 }
             }
 
-            if (isAchieverPerson)
+            IQueryable<JoinedQueryViewModel> joinedQuery;
+
+            if ( isAchieverPerson )
             {
-                query.Join(
+                joinedQuery = query.Join(
                     personAliasQuery,
                     aa => aa.AchieverEntityId,
                     pa => pa.PersonId,
-                    (aa, pa) => new {
+                    ( aa, pa ) => new JoinedQueryViewModel
+                    {
                         AchievementAttempt = aa,
-                        pa.Person
+                        Person = pa.Person
                     } );
             }
-
-            var viewModelQuery = query.Join(
+            else if ( isAchieverPersonAlias )
+            {
+                joinedQuery = query.Join(
                     personAliasQuery,
                     aa => aa.AchieverEntityId,
-                    pa => pa.PersonId,
-                    ( aa, pa ) => new
+                    pa => pa.Id,
+                    ( aa, pa ) => new JoinedQueryViewModel
                     {
                         AchievementAttempt = aa,
-                        pa.Person
-                    }
-                ).Select( aa => new AttemptViewModel
-                    {
-                        Id = aa.AchievementAttempt.Id,
-                        PersonId = aa.Person.Id,
-                        LastName = aa.Person.LastName,
-                        NickName = aa.Person.NickName,
-                        StartDate = aa.AchievementAttempt.AchievementAttemptStartDateTime,
-                        Person = aa.Person,
-                        EndDate = aa.AchievementAttempt.AchievementAttemptEndDateTime,
-                        IsSuccessful = aa.AchievementAttempt.IsSuccessful,
-                        IsClosed = aa.AchievementAttempt.IsClosed,
-                        Progress = aa.AchievementAttempt.Progress,
-                        AchievementName = aa.AchievementAttempt.AchievementType.Name
+                        Person = pa.Person
                     } );
+            }
+            else
+            {
+                joinedQuery = query.Select( aa => new JoinedQueryViewModel
+                {
+                    AchievementAttempt = aa,
+                    Person = null
+                } );
+            }
+
+            var viewModelQuery = joinedQuery.Select( aa => new AttemptViewModel
+            {
+                Id = aa.AchievementAttempt.Id,
+                PersonId = aa.Person.Id,
+                LastName = aa.Person.LastName,
+                NickName = aa.Person.NickName,
+                StartDate = aa.AchievementAttempt.AchievementAttemptStartDateTime,
+                Person = aa.Person,
+                EndDate = aa.AchievementAttempt.AchievementAttemptEndDateTime,
+                IsSuccessful = aa.AchievementAttempt.IsSuccessful,
+                IsClosed = aa.AchievementAttempt.IsClosed,
+                Progress = aa.AchievementAttempt.Progress,
+                AchievementName = aa.AchievementAttempt.AchievementType.Name
+            } );
 
             // Sort the grid
             var sortProperty = gAttempts.SortProperty;
@@ -913,7 +927,7 @@ namespace RockWeb.Blocks.Streaks
         public class AttemptViewModel
         {
             public int Id { get; set; }
-            public int PersonId { get; set; }
+            public int? PersonId { get; set; }
             public string LastName { get; set; }
             public string NickName { get; set; }
             public DateTime StartDate { get; set; }
@@ -923,6 +937,22 @@ namespace RockWeb.Blocks.Streaks
             public Person Person { get; set; }
             public decimal Progress { get; set; }
             public string AchievementName { get; set; }
+        }
+
+        /// <summary>
+        /// View Model for when the attempt qu
+        /// </summary>
+        public class JoinedQueryViewModel
+        {
+            /// <summary>
+            /// Gets or sets the achievement attempt.
+            /// </summary>
+            public AchievementAttempt AchievementAttempt { get; set; }
+
+            /// <summary>
+            /// Gets or sets the person.
+            /// </summary>
+            public Person Person { get; set; }
         }
 
         #endregion View Models

@@ -67,7 +67,7 @@
                             <Rock:PersonPicker ID="ppPerson" runat="server" Required="true" Label="Person" />
                         </div>
                         <div class="col-md-6" id="divAchievement" runat="server">
-                            <Rock:StreakTypeAchievementTypePicker ID="atpAchievementType" runat="server" Required="true" Label="Achievement" />
+                            <Rock:AchievementTypePicker ID="atpAchievementType" runat="server" Required="true" Label="Achievement" />
                         </div>
                     </div>
 

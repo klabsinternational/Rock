@@ -704,7 +704,7 @@
     <Compile Include="Web\Cache\Entities\DocumentTypeCache.cs" />
     <Compile Include="Web\Cache\Entities\PersistedDatasetCache.cs" />
     <Compile Include="Web\Cache\Entities\Obsolete\PersonBadgeCache.cs" />
-    <Compile Include="Web\Cache\Entities\StreakTypeAchievementTypePrerequisiteCache.cs" />
+    <Compile Include="Web\Cache\Entities\AchievementTypePrerequisiteCache.cs" />
     <Compile Include="Web\Cache\Entities\AchievementTypeCache.cs" />
     <Compile Include="Web\Cache\NonEntities\EntityDocumentTypesCache.cs" />
     <Compile Include="Web\Cache\NonEntities\PersistedDatasetValueCache.cs" />
@@ -2168,7 +2168,7 @@
     <Compile Include="Web\UI\Controls\Pickers\InteractionChannelPicker.cs" />
     <Compile Include="Web\UI\Controls\Pickers\InteractionComponentPicker.cs" />
     <Compile Include="Web\UI\Controls\Pickers\InteractionChannelInteractionComponentPicker.cs" />
-    <Compile Include="Web\UI\Controls\Pickers\StreakTypeAchievementTypePicker.cs" />
+    <Compile Include="Web\UI\Controls\Pickers\AchievementTypePicker.cs" />
     <Compile Include="Web\UI\Controls\Pickers\StreakTypePicker.cs" />
     <Compile Include="Web\UI\Controls\Pickers\StepProgramStepStatusPicker.cs" />
     <Compile Include="Web\UI\Controls\Pickers\StepProgramStepTypePicker.cs" />

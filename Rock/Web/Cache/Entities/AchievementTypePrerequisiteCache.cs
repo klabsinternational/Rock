@@ -34,13 +34,13 @@ namespace Rock.Web.Cache
         /// Gets or sets the Id of the <see cref="Model.AchievementType"/>.
         /// </summary>
         [DataMember]
-        public int StreakTypeAchievementTypeId { get; private set; }
+        public int AchievementTypeId { get; private set; }
 
         /// <summary>
-        /// Gets or sets the Id of the prerequisite <see cref="StreakTypeAchievementType"/>
+        /// Gets or sets the Id of the prerequisite <see cref="Model.AchievementType"/>
         /// </summary>
         [DataMember]
-        public int PrerequisiteStreakTypeAchievementTypeId { get; private set; }
+        public int PrerequisiteAchievementTypeId { get; private set; }
 
         #endregion Entity Properties
 
@@ -49,14 +49,14 @@ namespace Rock.Web.Cache
         /// <summary>
         /// Gets the Achievement Type Cache.
         /// </summary>
-        public AchievementTypeCache StreakTypeAchievementType
-            => AchievementTypeCache.Get( StreakTypeAchievementTypeId );
+        public AchievementTypeCache AchievementType
+            => AchievementTypeCache.Get( AchievementTypeId );
 
         /// <summary>
         /// Gets the Prerequisite Achievement Type Cache.
         /// </summary>
-        public AchievementTypeCache PrerequisiteStreakTypeAchievementType
-             => AchievementTypeCache.Get( PrerequisiteStreakTypeAchievementTypeId );
+        public AchievementTypeCache PrerequisiteAchievementType
+             => AchievementTypeCache.Get( PrerequisiteAchievementTypeId );
 
         #endregion Related Cache Objects
 
@@ -76,8 +76,8 @@ namespace Rock.Web.Cache
                 return;
             }
 
-            PrerequisiteStreakTypeAchievementTypeId = prerequisite.PrerequisiteAchievementTypeId;
-            StreakTypeAchievementTypeId = prerequisite.AchievementTypeId;
+            PrerequisiteAchievementTypeId = prerequisite.PrerequisiteAchievementTypeId;
+            AchievementTypeId = prerequisite.AchievementTypeId;
         }
 
         #endregion Public Methods

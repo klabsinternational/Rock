@@ -77,9 +77,9 @@ namespace RockWeb.Blocks.Streaks
         private static class PageParameterKey
         {
             /// <summary>
-            /// The streak type achievement type identifier
+            /// The achievement type identifier
             /// </summary>
-            public const string StreakTypeAchievementTypeId = "StreakTypeAchievementTypeId";
+            public const string AchievementTypeId = "AchievementTypeId";
 
             /// <summary>
             /// The streak id page parameter key
@@ -220,7 +220,7 @@ namespace RockWeb.Blocks.Streaks
             }
 
             NavigateToLinkedPage( AttributeKey.AchievementPage, new Dictionary<string, string> {
-                { PageParameterKey.StreakTypeAchievementTypeId, attempt.AchievementTypeId.ToString() }
+                { PageParameterKey.AchievementTypeId, attempt.AchievementTypeId.ToString() }
             } );
         }
 
@@ -366,7 +366,7 @@ namespace RockWeb.Blocks.Streaks
                     return;
                 }
 
-                parameters[PageParameterKey.StreakTypeAchievementTypeId] = attempt.AchievementTypeId.ToString();
+                parameters[PageParameterKey.AchievementTypeId] = attempt.AchievementTypeId.ToString();
                 var streak = GetStreak();
 
                 if ( streak != null )
@@ -772,7 +772,7 @@ namespace RockWeb.Blocks.Streaks
             }
 
             var attempt = GetAttempt();
-            var achievementTypeId = PageParameter( PageParameterKey.StreakTypeAchievementTypeId ).AsIntegerOrNull();
+            var achievementTypeId = PageParameter( PageParameterKey.AchievementTypeId ).AsIntegerOrNull();
 
             if ( attempt != null )
             {

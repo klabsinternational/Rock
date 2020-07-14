@@ -66,11 +66,11 @@ namespace Rock.Model
                 (
                     (
                         aa.AchievementType.AchieverEntityTypeId == personEntityTypeId &&
-                        streakQuery.Select( s => s.PersonAliasId ).Contains( aa.AchieverEntityId )
+                        streakQuery.Select( s => s.PersonAlias.PersonId ).Contains( aa.AchieverEntityId )
                     ) ||
                     (
                         aa.AchievementType.AchieverEntityTypeId == personAliasEntityTypeId &&
-                        streakQuery.Select( s => s.PersonAlias.PersonId ).Contains( aa.AchieverEntityId )
+                        streakQuery.Select( s => s.PersonAliasId ).Contains( aa.AchieverEntityId )
                     )
                 )
             );

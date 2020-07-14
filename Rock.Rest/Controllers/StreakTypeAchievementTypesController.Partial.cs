@@ -31,9 +31,9 @@ using Rock.Web.Cache;
 namespace Rock.Rest.Controllers
 {
     /// <summary>
-    /// StreakTypeAchievementTypes REST API
+    /// AchievementTypes REST API
     /// </summary>
-    public partial class StreakTypeAchievementTypesController
+    public partial class AchievementTypesController
     {
         /// <summary>
         /// Gets the progress for the person.
@@ -44,7 +44,7 @@ namespace Rock.Rest.Controllers
         /// <exception cref="HttpResponseException"></exception>
         [Authenticate, Secured]
         [HttpGet]
-        [System.Web.Http.Route( "api/StreakTypeAchievementTypes/Progress" )]
+        [System.Web.Http.Route( "api/AchievementTypes/Progress" )]
         public virtual List<ProgressStatement> GetProgressForPerson( [FromUri]int personId = default, [FromUri]bool includeOnlyEligible = default )
         {
             var rockContext = Service.Context as RockContext;
