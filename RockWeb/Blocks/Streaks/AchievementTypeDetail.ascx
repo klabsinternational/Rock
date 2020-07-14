@@ -78,12 +78,14 @@
                     <Rock:DataTextBox ID="tbDescription" runat="server" SourceTypeName="Rock.Model.AchievementType, Rock" PropertyName="Description" TextMode="MultiLine" Rows="4" />
 
                     <div class="row">
-                        <div class="col-sm-12">
+                        <div class="col-md-6">
                             <Rock:StreakTypePicker ID="stpStreakType" runat="server" Label="Streak Type" />
                         </div>
                         <div class="col-md-6">
                             <Rock:CategoryPicker ID="cpCategory" runat="server" Label="Category" EntityTypeName="Rock.Model.AchievementType" />
-                            <Rock:DataTextBox ID="tbIconCssClass" runat="server" SourceTypeName="Rock.Model.AchievementType, Rock" Label="Icon CSS Class" PropertyName="AchievementIconCssClass" ValidateRequestMode="Disabled" Help="The font awesome icon class to use for this achievement." />                            
+                        </div>
+                        <div class="col-md-6">
+                            <Rock:DataTextBox ID="tbIconCssClass" runat="server" SourceTypeName="Rock.Model.AchievementType, Rock" Label="Icon CSS Class" PropertyName="AchievementIconCssClass" ValidateRequestMode="Disabled" Help="The font awesome icon class to use for this achievement." />
                         </div>
                         <div class="col-md-3 col-sm-6">
                             <Rock:RockCheckBox ID="cbAllowOverachievement" runat="server" SourceTypeName="Rock.Model.AchievementType, Rock" PropertyName="AllowOverAchievement" Label="Allow Overachievement" Checked="false" Text="Yes" AutoPostBack="true" OnCheckedChanged="cbAllowOverachievement_CheckedChanged" Help="When enabled, achievement beyond the defined goal will be tracked so it is possible for progress to be greater than 100%. Only one achievement is allowed when this is enabled." />

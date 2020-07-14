@@ -78,7 +78,7 @@ namespace RockWeb.Blocks.Streaks
             /// <summary>
             /// The streak achievement attempt identifier
             /// </summary>
-            public const string StreakAchievementAttemptId = "StreakAchievementAttemptId";
+            public const string AchievementAttemptId = "AchievementAttemptId";
         }
 
         /// <summary>
@@ -267,7 +267,7 @@ namespace RockWeb.Blocks.Streaks
 
             var attemptId = e.RowKeyId;
             NavigateToLinkedPage( AttributeKey.DetailPage, new Dictionary<string, string> {
-                { PageParameterKey.StreakAchievementAttemptId, attemptId.ToString() }
+                { PageParameterKey.AchievementAttemptId, attemptId.ToString() }
             } );
         }
 

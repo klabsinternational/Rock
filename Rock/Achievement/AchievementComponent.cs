@@ -267,8 +267,8 @@ namespace Rock.Achievement
 
             // Get all of the attempts for this streak and achievement combo, ordered by start date DESC so that
             // the most recent attempts can be found with FirstOrDefault
-            var streakAchievementAttemptService = new AchievementAttemptService( rockContext );
-            var attempts = streakAchievementAttemptService.QueryByStreakId( streak.Id )
+            var achievementAttemptService = new AchievementAttemptService( rockContext );
+            var attempts = achievementAttemptService.QueryByStreakId( streak.Id )
                 .Where( saa => saa.AchievementTypeId == achievementTypeCache.Id )
                 .OrderByDescending( saa => saa.AchievementAttemptStartDateTime )
                 .ToList();
@@ -329,7 +329,7 @@ namespace Rock.Achievement
                     {
                         newAttempt.AchieverEntityId = streak.PersonAliasId;
                         newAttempt.AchievementTypeId = achievementTypeCache.Id;
-                        streakAchievementAttemptService.Add( newAttempt );
+                        achievementAttemptService.Add( newAttempt );
                     }
 
                     // If this attempt was successful then make re-check the max success limit
@@ -347,7 +347,7 @@ namespace Rock.Achievement
 
             if ( attemptsToDelete.Any() )
             {
-                streakAchievementAttemptService.DeleteRange( attemptsToDelete );
+                achievementAttemptService.DeleteRange( attemptsToDelete );
             }
         }
 

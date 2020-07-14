@@ -89,7 +89,7 @@ namespace RockWeb.Blocks.Streaks
             /// <summary>
             /// The streak achievement attempt identifier
             /// </summary>
-            public const string StreakAchievementAttemptId = "StreakAchievementAttemptId";
+            public const string AchievementAttemptId = "AchievementAttemptId";
         }
 
         #endregion Keys
@@ -474,7 +474,7 @@ namespace RockWeb.Blocks.Streaks
 
             // If the save was successful, reload the page using the new record Id.
             NavigateToPage( RockPage.Guid, new Dictionary<string, string> {
-                { PageParameterKey.StreakAchievementAttemptId, attempt.Id.ToString() }
+                { PageParameterKey.AchievementAttemptId, attempt.Id.ToString() }
             } );
         }
 
@@ -796,7 +796,7 @@ namespace RockWeb.Blocks.Streaks
         {
             if ( _attempt == null )
             {
-                var attemptId = PageParameter( PageParameterKey.StreakAchievementAttemptId ).AsIntegerOrNull();
+                var attemptId = PageParameter( PageParameterKey.AchievementAttemptId ).AsIntegerOrNull();
 
                 if ( attemptId.HasValue && attemptId.Value > 0 )
                 {

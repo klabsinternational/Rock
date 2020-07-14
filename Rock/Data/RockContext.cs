@@ -70,10 +70,10 @@ namespace Rock.Data
         #region Models
 
         /// <summary>
-        /// Gets or sets the StreakAchievementAttempts.
+        /// Gets or sets the AchievementAttempts.
         /// </summary>
         /// <value>
-        /// The StreakAchievementAttempts.
+        /// The AchievementAttempts.
         /// </value>
         public DbSet<AchievementAttempt> AchievementAttempts { get; set; }
 

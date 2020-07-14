@@ -28,7 +28,7 @@ using Rock.Data;
 namespace Rock.Model
 {
     /// <summary>
-    /// StreakAchievementAttempt Service class
+    /// AchievementAttempt Service class
     /// </summary>
     public partial class AchievementAttemptService : Service<AchievementAttempt>
     {
@@ -58,10 +58,10 @@ namespace Rock.Model
     /// <summary>
     /// Generated Extension Methods
     /// </summary>
-    public static partial class StreakAchievementAttemptExtensionMethods
+    public static partial class AchievementAttemptExtensionMethods
     {
         /// <summary>
-        /// Clones this StreakAchievementAttempt object to a new StreakAchievementAttempt object
+        /// Clones this AchievementAttempt object to a new AchievementAttempt object
         /// </summary>
         /// <param name="source">The source.</param>
         /// <param name="deepCopy">if set to <c>true</c> a deep copy is made. If false, only the basic entity properties are copied.</param>
@@ -81,7 +81,7 @@ namespace Rock.Model
         }
 
         /// <summary>
-        /// Copies the properties from another StreakAchievementAttempt object to this StreakAchievementAttempt object
+        /// Copies the properties from another AchievementAttempt object to this AchievementAttempt object
         /// </summary>
         /// <param name="target">The target.</param>
         /// <param name="source">The source.</param>

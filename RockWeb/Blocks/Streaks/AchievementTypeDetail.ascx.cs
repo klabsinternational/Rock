@@ -679,7 +679,7 @@ namespace RockWeb.Blocks.Streaks
             pnlViewDetails.Visible = false;
             HideSecondaryBlocks( true );
 
-            stpStreakType.Visible = false; // Cannot change the streak type
+            stpStreakType.Enabled = false; // Cannot change the streak type
             cpAchievementComponent.Enabled = false; // Cannot change the component type
 
             var achievementTypeCache = GetAchievementTypeCache();
@@ -742,7 +742,7 @@ namespace RockWeb.Blocks.Streaks
             cbActive.Checked = true;
 
             var streakTypeCache = GetStreakTypeCache();
-            stpStreakType.Visible = streakTypeCache == null;
+            stpStreakType.Enabled = streakTypeCache == null;
 
             if ( streakTypeCache != null )
             {

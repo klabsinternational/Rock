@@ -165,7 +165,7 @@
     <Compile Include="Controllers\CodeGenerated\StepTypesController.cs" />
     <Compile Include="Controllers\CodeGenerated\StepWorkflowsController.cs" />
     <Compile Include="Controllers\CodeGenerated\StepWorkflowTriggersController.cs" />
-    <Compile Include="Controllers\CodeGenerated\StreakAchievementAttemptsController.cs" />
+    <Compile Include="Controllers\CodeGenerated\AchievementAttemptsController.cs" />
     <Compile Include="Controllers\CodeGenerated\StreaksController.cs" />
     <Compile Include="Controllers\CodeGenerated\AchievementTypePrerequisitesController.cs" />
     <Compile Include="Controllers\CodeGenerated\StreakTypeAchievementTypesController.cs" />

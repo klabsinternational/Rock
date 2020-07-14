@@ -45,6 +45,7 @@ namespace Rock.Migrations
 
         private void DataMigrationUp()
         {
+            // Set defaults on achievement type knowing all existing records are related to streaks
             Sql(
 @"UPDATE [AchievementType]
 SET
@@ -52,13 +53,24 @@ SET
     [AchieverEntityTypeId] = (SELECT [Id] FROM [EntityType] WHERE [Name] = 'Rock.Model.PersonAlias'),
     [SourceEntityQualifierColumn] = 'StreakTypeId'" );
 
-
+            // Transform the streak id value stored in AchieverEntityId (because of field rename) to a person alias id value
             Sql(
 @"UPDATE aa
 SET aa.[AchieverEntityId] = s.[PersonAliasId]
 FROM 
 	[AchievementAttempt] aa
 	JOIN [Streak] s ON s.Id = aa.[AchieverEntityId]" );
+
+            // Fix qualifier column values because of renamed fields
+            Sql(
+$@"UPDATE a
+SET a.[EntityTypeQualifierColumn] = 'ComponentEntityTypeId'
+FROM
+    [Attribute] a
+    JOIN [EntityType] et ON et.Id = a.EntityTypeId
+WHERE
+    a.[EntityTypeQualifierColumn] = 'AchievementEntityTypeId' AND
+    et.[Guid] = '{SystemGuid.EntityType.ACHIEVEMENT_TYPE}'" );
         }
 
         private void EntityTypeChangesUp()

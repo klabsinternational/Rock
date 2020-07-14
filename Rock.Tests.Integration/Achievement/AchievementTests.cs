@@ -12,10 +12,10 @@ using Rock.Tests.Shared;
 namespace Rock.Tests.Integration.RockTests.Model
 {
     /// <summary>
-    /// Tests for Streak Achievements that use the database
+    /// Tests for Achievements that use the database
     /// </summary>
     [TestClass]
-    public class StreakAchievementTests
+    public class AchievementTests
     {
         private const string ComponentEntityTypeName = "Rock.Achievement.Component.StreakAchievement";
         private const string StreakTypeGuidString = "93050DB0-82FC-4EBE-9AB8-8BB8BADFB2F0";
