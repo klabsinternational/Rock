@@ -137,7 +137,7 @@ namespace Rock.Lava
                 return HttpContext.Current.Server.MapPath( templatePath );
             }
 
-            return Path.Combine( AppDomain.CurrentDomain.BaseDirectory, templatePath.Replace( "~/", "" ) );
+            return Path.Combine( AppDomain.CurrentDomain.BaseDirectory, templatePath.Replace("~~", "Themes/Rock").Replace( "~/", "" ) );
         }
     }
 }
