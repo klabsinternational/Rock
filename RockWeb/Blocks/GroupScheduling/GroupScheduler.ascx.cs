@@ -592,7 +592,10 @@ btnCopyToClipboard.ClientID );
             }
             else
             {
-                selectedLocationFilterText = "Multiple Locations";
+                selectedLocationFilterText = string.Format(
+                    "<span title='{0}'>{1} Locations</span>",
+                    selectedLocations.Select( a => a.ToString() ).ToList().AsDelimited( ", " ).EncodeHtml(),
+                    selectedLocations.Count() );
             }
 
             lSelectedLocationFilterText.Text = string.Format( "<i class='fa fa-building'></i> {0}", selectedLocationFilterText );
