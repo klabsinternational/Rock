@@ -1163,6 +1163,12 @@ namespace Rock.Model
                 s.OccurrenceDate
             } );
 
+            if ( attendanceOccurrenceInfo == null )
+            {
+                // if an invalid occurrenceId was specified, just send back an empty list
+                return new List<SchedulerResourceAttend>();
+            }
+
             int scheduleId = attendanceOccurrenceInfo.Schedule?.Id ?? 0;
             var groupId = attendanceOccurrenceInfo.GroupId ?? 0;
             DateTime occurrenceDate = attendanceOccurrenceInfo.OccurrenceDate;

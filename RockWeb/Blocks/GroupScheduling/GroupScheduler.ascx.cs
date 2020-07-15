@@ -28,6 +28,7 @@ using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
 using Rock.Security;
+using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
@@ -73,7 +74,7 @@ namespace RockWeb.Blocks.GroupScheduling
             public const string SelectedDate = "SelectedDate";
             public const string SelectAllSchedules = "SelectAllSchedules";
             public const string IndividualScheduleId = "ScheduleId";
-            public const string GroupLocationIds = "GroupLocationIds";
+            public const string LocationIds = "LocationIds";
             public const string ResourceListSourceType = "ResourceListSourceType";
             public const string GroupMemberFilterType = "GroupMemberFilterType";
             public const string AlternateGroupId = "AlternateGroupId";
@@ -98,7 +99,7 @@ namespace RockWeb.Blocks.GroupScheduling
             public const string SelectedDate = "SelectedDate";
             public const string SelectAllSchedules = "SelectAllSchedules";
             public const string SelectedIndividualScheduleId = "SelectedIndividualScheduleId";
-            public const string SelectedGroupLocationIds = "SelectedGroupLocationIds";
+            public const string SelectedLocationIds = "SelectedLocationIds";
             public const string SelectedResourceListSourceType = "SelectedResourceListSourceType";
             public const string GroupMemberFilterType = "GroupMemberFilterType";
             public const string AlternateGroupId = "AlternateGroupId";
@@ -214,29 +215,14 @@ btnCopyToClipboard.ClientID );
                 return;
             }
 
-            nbGroupWarning.Visible = false;
-            pnlGroupLocationFilter.Visible = false;
+            pnlLocationFilter.Visible = false;
             pnlScheduleFilter.Visible = false;
             ShowScheduler( false );
 
             List<Schedule> groupSchedules = GetGroupSchedules( authorizedListedGroups );
 
-            if ( !groupSchedules.Any() )
-            {
-                if ( authorizedListedGroups.Count > 1 )
-                {
-                    nbGroupWarning.Text = "The selected groups do not have any locations or schedules";
-                }
-                else
-                {
-                    nbGroupWarning.Text = "The group does not have any locations or schedules";
-                }
 
-                nbGroupWarning.Visible = true;
-                return;
-            }
-
-            pnlGroupLocationFilter.Visible = true;
+            pnlLocationFilter.Visible = true;
             pnlScheduleFilter.Visible = true;
 
             ShowScheduler( true );
@@ -245,14 +231,20 @@ btnCopyToClipboard.ClientID );
             var selectedScheduleId = hfSelectedScheduleId.Value.AsIntegerOrNull();
 
             var listedSchedules = groupSchedules.ToList();
+            var hasGroupSchedules = listedSchedules.Any();
 
-            // add null for "All Schedules"
+            // TODO, are we going to support an "All Schedules" option?
             listedSchedules.Insert( 0, null );
 
             rptScheduleSelector.DataSource = listedSchedules;
             rptScheduleSelector.DataBind();
+            lScheduleFilterText.Visible = true;
 
-            if ( selectedScheduleId.HasValue && listedSchedules.Any( s => s != null && s.Id == selectedScheduleId.Value ) )
+            if ( !hasGroupSchedules )
+            {
+                lScheduleFilterText.Visible = false;
+            }
+            else if ( selectedScheduleId.HasValue && listedSchedules.Any( s => s != null && s.Id == selectedScheduleId.Value ) )
             {
                 hfSelectedScheduleId.Value = selectedScheduleId.ToString();
             }
@@ -306,15 +298,33 @@ btnCopyToClipboard.ClientID );
         }
 
         /// <summary>
-        /// Gets the authorized listed groups, with an option to show a warning if there are some unauthorized groups
+        /// Gets the authorized listed groups
         /// </summary>
         /// <returns></returns>
-        private List<Group> GetAuthorizedListedGroups( bool showWarnings )
+        private List<Group> GetAuthorizedListedGroups()
         {
-            string warning = string.Empty;
+            List<Group> listedGroups = GetListedGroups();
 
+            var authorizedGroups = listedGroups.Where( g =>
+            {
+                var isAuthorized = g.IsAuthorized( Authorization.EDIT, this.CurrentPerson ) || g.IsAuthorized( Authorization.SCHEDULE, this.CurrentPerson );
+                return isAuthorized;
+            } ).ToList();
+
+            var authorizedGroupCount = authorizedGroups.Count();
+            var listedGroupCount = listedGroups.Count();
+
+            return authorizedGroups;
+        }
+
+        /// <summary>
+        /// Gets the listed groups, including ones that might not be authorized
+        /// </summary>
+        /// <returns></returns>
+        private List<Group> GetListedGroups()
+        {
             // get the selected listed groups (not including ones determined from IncludeChildGroups)
-            var pickedGroupIds = gpPickedGroups.SelectedValuesAsInt().ToList();
+            var pickedGroupIds = gpPickedGroups.SelectedIds;
 
             var rockContext = new RockContext();
             var groupService = new GroupService( rockContext );
@@ -334,41 +344,7 @@ btnCopyToClipboard.ClientID );
             List<int> groupIdsToQuery = pickedGroupIds.Union( childGroupIds ).ToList();
 
             var listedGroups = groupService.GetByIds( groupIdsToQuery ).AsNoTracking().ToList();
-
-            var authorizedGroups = listedGroups.Where( g =>
-            {
-                var isAuthorized = g.IsAuthorized( Authorization.EDIT, this.CurrentPerson ) || g.IsAuthorized( Authorization.SCHEDULE, this.CurrentPerson );
-                return isAuthorized;
-            } ).ToList();
-
-            var authorizedGroupCount = authorizedGroups.Count();
-            var listedGroupCount = listedGroups.Count();
-
-            if ( listedGroupCount > 0 )
-            {
-                if ( authorizedGroupCount == 0 )
-                {
-                    warning = "You're not authorized to schedule resources for these groups";
-                }
-                else
-                {
-                    warning = "You're not authorized to schedule resources for some of these groups";
-                }
-            }
-
-            if ( showWarnings && warning.IsNotNullOrWhiteSpace() )
-            {
-                nbNotice.Text = string.Format( "<p>{0}</p>", warning );
-                nbNotice.NotificationBoxType = NotificationBoxType.Warning;
-                nbNotice.Dismissable = true;
-                nbNotice.Visible = true;
-            }
-            else
-            {
-                nbNotice.Visible = false;
-            }
-
-            return authorizedGroups;
+            return listedGroups;
         }
 
         /// <summary>
@@ -396,8 +372,10 @@ btnCopyToClipboard.ClientID );
 
             if ( !selectedGroupId.HasValue && pickedGroupIds.Any() )
             {
-                // if there isn't a specific group specified, default to the first one
-                selectedGroupId = pickedGroupIds.FirstOrDefault();
+                // if there isn't a specific group specified, default to the first one that has scheduling enabled
+                int firstScheduleEnabledGroupId = GetSchedulingEnabledGroupIds( pickedGroupIds ).FirstOrDefault();
+
+                selectedGroupId = firstScheduleEnabledGroupId;
             }
 
             if ( selectedGroupId.HasValue )
@@ -423,7 +401,7 @@ btnCopyToClipboard.ClientID );
 
             hfSelectedGroupId.Value = selectedGroupId.ToString();
 
-            var authorizedListedGroups = GetAuthorizedListedGroups( true );
+            var authorizedListedGroups = GetAuthorizedListedGroups();
 
             UpdateScheduleList( authorizedListedGroups );
             bool selectAllSchedules = this.GetUrlSettingOrBlockUserPreference( PageParameterKey.SelectAllSchedules, UserPreferenceKey.SelectAllSchedules ).AsBoolean();
@@ -438,8 +416,8 @@ btnCopyToClipboard.ClientID );
                 hfSelectedScheduleId.Value = selectedIndividualScheduleId.ToString();
             }
 
-            UpdateGroupLocationList( authorizedListedGroups );
-            hfSelectedGroupLocationIds.Value = this.GetUrlSettingOrBlockUserPreference( PageParameterKey.GroupLocationIds, UserPreferenceKey.SelectedGroupLocationIds );
+            UpdateLocationList( authorizedListedGroups );
+            hfSelectedLocationIds.Value = this.GetUrlSettingOrBlockUserPreference( PageParameterKey.LocationIds, UserPreferenceKey.SelectedLocationIds );
 
             var resourceListSourceType = this.GetUrlSettingOrBlockUserPreference( PageParameterKey.ResourceListSourceType, UserPreferenceKey.SelectedResourceListSourceType ).ConvertToEnumOrNull<SchedulerResourceListSourceType>() ?? SchedulerResourceListSourceType.GroupMembers;
             var groupMemberFilterType = this.GetUrlSettingOrBlockUserPreference( PageParameterKey.GroupMemberFilterType, UserPreferenceKey.GroupMemberFilterType ).ConvertToEnumOrNull<SchedulerResourceGroupMemberFilterType>() ?? SchedulerResourceGroupMemberFilterType.ShowAllGroupMembers;
@@ -448,6 +426,18 @@ btnCopyToClipboard.ClientID );
 
             gpResourceListAlternateGroup.SetValue( this.GetUrlSettingOrBlockUserPreference( PageParameterKey.AlternateGroupId, UserPreferenceKey.AlternateGroupId ).AsIntegerOrNull() );
             dvpResourceListDataView.SetValue( this.GetUrlSettingOrBlockUserPreference( PageParameterKey.DataViewId, UserPreferenceKey.DataViewId ).AsIntegerOrNull() );
+        }
+
+        private static int[] GetSchedulingEnabledGroupIds( List<int> authorizedGroupIds )
+        {
+            var schedulingEnabledGroupIds =
+             new GroupService( new RockContext() )
+                .GetByIds( authorizedGroupIds )
+                .Where( a => a.GroupType.IsSchedulingEnabled && !a.DisableScheduling )
+                .Select( a => a.Id )
+                .ToArray();
+
+            return schedulingEnabledGroupIds;
         }
 
         /// <summary>
@@ -471,7 +461,7 @@ btnCopyToClipboard.ClientID );
         /// </summary>
         private void ApplyFilter()
         {
-            var authorizedListedGroups = this.GetAuthorizedListedGroups( false );
+            var authorizedListedGroups = this.GetAuthorizedListedGroups();
 
             List<int> listedGroupIds = authorizedListedGroups.Select( a => a.Id ).ToList();
 
@@ -489,12 +479,12 @@ btnCopyToClipboard.ClientID );
             lWeekFilterText.Text = string.Format( "<i class='fa fa-calendar-alt'></i> Week: {0}", sundayDate.ToShortDateString() );
 
             this.SetBlockUserPreference( UserPreferenceKey.SelectedGroupId, selectedGroupId.ToString() );
-            this.SetBlockUserPreference( UserPreferenceKey.PickedGroupIds, gpPickedGroups.SelectedValues.ToList().AsDelimited( "," ) );
+            this.SetBlockUserPreference( UserPreferenceKey.PickedGroupIds, gpPickedGroups.SelectedIds.ToList().AsDelimited( "," ) );
             this.SetBlockUserPreference( UserPreferenceKey.ShowChildGroups, cbShowChildGroups.Checked.ToString() );
 
             this.SetBlockUserPreference( UserPreferenceKey.SelectedDate, sundayDate.ToISO8601DateString() );
 
-            this.SetBlockUserPreference( UserPreferenceKey.SelectedGroupLocationIds, hfSelectedGroupLocationIds.Value );
+            this.SetBlockUserPreference( UserPreferenceKey.SelectedLocationIds, hfSelectedLocationIds.Value );
             bool selectAllSchedules = hfSelectedScheduleId.Value.AsIntegerOrNull() == null;
             int? selectedScheduleId = hfSelectedScheduleId.Value.AsIntegerOrNull();
             this.SetBlockUserPreference( UserPreferenceKey.SelectAllSchedules, selectAllSchedules.ToString() );
@@ -569,63 +559,61 @@ btnCopyToClipboard.ClientID );
             pnlResourceFilterAlternateGroup.Visible = resourceListSourceType == SchedulerResourceListSourceType.AlternateGroup;
             pnlResourceFilterDataView.Visible = resourceListSourceType == SchedulerResourceListSourceType.DataView;
 
-            var listedGroupLocations = GetListedGroupLocations( authorizedListedGroups, scheduleIds );
-            var selectedGroupLocationIds = hfSelectedGroupLocationIds.Value.Split( ',' ).AsIntegerList();
+            var listedLocations = GetListedLocations( authorizedListedGroups, scheduleIds );
+            var selectedLocationIds = hfSelectedLocationIds.Value.Split( ',' ).AsIntegerList();
 
             // fix up the list of selectedGroupLocationIds to only include ones that are listed
-            selectedGroupLocationIds = selectedGroupLocationIds.Where( a => listedGroupLocations.Any( l => l.Id == a ) ).ToList();
-            hfSelectedGroupLocationIds.Value = selectedGroupLocationIds.AsDelimited( "," );
+            selectedLocationIds = selectedLocationIds.Where( a => listedLocations.Any( l => l.Id == a ) ).ToList();
+            hfSelectedLocationIds.Value = selectedLocationIds.AsDelimited( "," );
 
-            List<GroupLocation> selectedGroupLocations = new GroupLocationService( rockContext )
-                .GetByIds( selectedGroupLocationIds )
-                .OrderBy( a => a.Order )
-                .ThenBy( a => a.Location.Name )
+            List<Location> selectedLocations = new LocationService( rockContext )
+                .GetByIds( selectedLocationIds )
+                .OrderBy( a => a.Name )
                 .AsNoTracking()
                 .ToList();
 
             bool selectAllLocations = false;
 
-            string selectedGroupLocationFilterText;
+            string selectedLocationFilterText;
 
-            if ( !selectedGroupLocations.Any() )
+            // if no locations are selected(because 'all' was selected), or if all the listed locations are selected, then all locations will be selected
+            var allLocationsSelected = !selectedLocations.Any() || listedLocations.All( sl => selectedLocations.Any( ll => ll.Id == sl.Id ) );
+
+            if ( allLocationsSelected )
             {
-                selectedGroupLocationFilterText = "All Locations";
-                selectedGroupLocationIds = listedGroupLocations.Where( a => a != null ).Select( a => a.Id ).ToList();
-                hfSelectedGroupLocationIds.Value = selectedGroupLocationIds.AsDelimited( "," );
+                selectedLocationFilterText = "All Locations";
+                selectedLocationIds = listedLocations.Where( a => a != null ).Select( a => a.Id ).ToList();
+                hfSelectedLocationIds.Value = selectedLocationIds.AsDelimited( "," );
                 selectAllLocations = true;
             }
-            else if ( selectedGroupLocations.Count() == 1 )
+            else if ( selectedLocations.Count() == 1 )
             {
-                selectedGroupLocationFilterText = selectedGroupLocations.First().Location.ToString();
+                selectedLocationFilterText = selectedLocations.First().ToString();
             }
             else
             {
-                selectedGroupLocationFilterText = string.Format(
-                    "<span title='{0}'>{1} (+{2})</span>",
-                    selectedGroupLocations.Select( a => a.Location.ToString() ).ToList().AsDelimited( ", " ).EncodeHtml(),
-                    selectedGroupLocations.First().Location.ToString(),
-                    selectedGroupLocations.Count() - 1 );
+                selectedLocationFilterText = "Multiple Locations";
             }
 
-            lSelectedGroupLocationFilterText.Text = string.Format( "<i class='fa fa-building'></i> {0}", selectedGroupLocationFilterText );
+            lSelectedLocationFilterText.Text = string.Format( "<i class='fa fa-building'></i> {0}", selectedLocationFilterText );
 
-            var groupLocationButtons = rptGroupLocationSelector.ControlsOfTypeRecursive<LinkButton>().ToList();
-            var groupLocationService = new GroupLocationService( rockContext );
-            foreach ( var groupLocationButton in groupLocationButtons )
+            var locationButtons = rptLocationSelector.ControlsOfTypeRecursive<LinkButton>().ToList();
+            var locationService = new LocationService( rockContext );
+            foreach ( var locationButton in locationButtons )
             {
-                var groupLocationId = groupLocationButton.CommandArgument.AsIntegerOrNull();
-                if ( groupLocationId.HasValue )
+                var locationId = locationButton.CommandArgument.AsIntegerOrNull();
+                if ( locationId.HasValue )
                 {
-                    var groupLocation = listedGroupLocations.Where( a => a != null ).Where( a => a.Id == groupLocationId.Value ).FirstOrDefault();
-                    if ( groupLocation != null )
+                    var location = listedLocations.Where( a => a != null ).Where( a => a.Id == locationId.Value ).FirstOrDefault();
+                    if ( location != null )
                     {
-                        if ( selectedGroupLocationIds.Contains( groupLocationId.Value ) )
+                        if ( selectedLocationIds.Contains( locationId.Value ) )
                         {
-                            groupLocationButton.Text = string.Format( "<i class='fa fa-check'></i> {0}", groupLocation.Location.ToString().EncodeHtml() );
+                            locationButton.Text = string.Format( "<i class='fa fa-check'></i> {0}", location.ToString().EncodeHtml() );
                         }
                         else
                         {
-                            groupLocationButton.Text = string.Format( " {0}", groupLocation.Location.ToString() );
+                            locationButton.Text = string.Format( " {0}", location.ToString() );
                         }
                     }
                 }
@@ -634,31 +622,23 @@ btnCopyToClipboard.ClientID );
                     // all locations button
                     if ( selectAllLocations )
                     {
-                        groupLocationButton.Text = "<i class='fa fa-check'></i> All Locations";
+                        locationButton.Text = "<i class='fa fa-check'></i> All Locations";
                     }
                     else
                     {
-                        groupLocationButton.Text = " All Locations";
+                        locationButton.Text = " All Locations";
                     }
                 }
             }
 
-            bool filterIsValid = authorizedListedGroups.Any() && scheduleIds.Any() && selectedGroupLocationIds.Any();
-            ShowScheduler( filterIsValid && !selectedGroup.DisableScheduling );
-            nbFilterInstructions.Visible = !filterIsValid;
+            bool filterIsValid = ValidateFilter( authorizedListedGroups, selectedGroup, scheduleIds, listedLocations, selectedLocationIds );
 
-            var disableSchedulingForSelectedGroup = selectedGroup != null && selectedGroup.DisableScheduling;
-            nbSchedulingDisabled.Visible = disableSchedulingForSelectedGroup;
+            ShowScheduler( filterIsValid );
 
-            if ( disableSchedulingForSelectedGroup )
-            {
-                nbSchedulingDisabled.Text = string.Format( "Scheduling is disabled for the {0} group.", selectedGroup.Name );
-            }
-
-            pnlGroupLocationFilter.Visible = authorizedListedGroups.Any();
+            pnlLocationFilter.Visible = authorizedListedGroups.Any();
             pnlScheduleFilter.Visible = authorizedListedGroups.Any();
 
-            if ( filterIsValid && !selectedGroup.DisableScheduling )
+            if ( filterIsValid )
             {
                 InitResourceList( authorizedListedGroups );
                 BindAttendanceOccurrences( authorizedListedGroups );
@@ -674,6 +654,96 @@ btnCopyToClipboard.ClientID );
             Uri uri = new Uri( Request.Url.ToString() );
             btnCopyToClipboard.Attributes["data-clipboard-text"] = uri.GetLeftPart( UriPartial.Authority ) + pageReference.BuildUrl();
             btnCopyToClipboard.Disabled = false;
+        }
+
+        /// <summary>
+        /// Validates the filter and shows filter warnings if the filter is not valid
+        /// </summary>
+        /// <param name="authorizedListedGroups">The authorized listed groups.</param>
+        /// <param name="selectedGroup">The selected group.</param>
+        /// <param name="scheduleIds">The schedule ids.</param>
+        /// <param name="listedLocations">The listed locations.</param>
+        /// <param name="selectedGroupLocationIds">The selected group location ids.</param>
+        /// <returns></returns>
+        private bool ValidateFilter( List<Group> authorizedListedGroups, Group selectedGroup, List<int> scheduleIds, List<Location> listedLocations, List<int> selectedLocationIds )
+        {
+            bool filterIsValid = false;
+
+            var pickedGroupCount = gpPickedGroups.SelectedIds.Count();
+
+            var hasMultipleGroupsSelected = authorizedListedGroups.Count() > 1;
+            var authorizedGroupsWarning = string.Empty;
+
+            if ( pickedGroupCount > 0 && authorizedListedGroups.Count == 0 )
+            {
+                if ( hasMultipleGroupsSelected )
+                {
+                    authorizedGroupsWarning = "You're not authorized to schedule resources for these groups";
+                }
+                else
+                {
+                    authorizedGroupsWarning = "You're not authorized to schedule resources for this group";
+                }
+            }
+            else if ( pickedGroupCount > 0 && authorizedListedGroups.Count < pickedGroupCount )
+            {
+                authorizedGroupsWarning = "You're not authorized to schedule resources for some of these groups";
+            }
+
+            nbAuthorizedGroupsWarning.Visible = authorizedGroupsWarning.IsNotNullOrWhiteSpace();
+            nbAuthorizedGroupsWarning.Text = authorizedGroupsWarning;
+
+            string filterMessage;
+            NotificationBoxType filterNotificationBoxType = NotificationBoxType.Warning;
+            if ( pickedGroupCount == 0 )
+            {
+                filterMessage = "Please select as least one group";
+                filterNotificationBoxType = NotificationBoxType.Info;
+            }
+            else if ( !listedLocations.Any() )
+            {
+                if ( hasMultipleGroupsSelected )
+                {
+                    filterMessage = "The selected groups do not have any locations";
+                }
+                else
+                {
+                    filterMessage = "The selected group does not have any locations";
+                }
+            }
+            else if ( !selectedLocationIds.Any() )
+            {
+                filterMessage = "Please select as least one location";
+                filterNotificationBoxType = NotificationBoxType.Info;
+            }
+            else if ( !scheduleIds.Any() )
+            {
+                if ( hasMultipleGroupsSelected )
+                {
+                    filterMessage = "The selected groups do not have any schedules";
+                }
+                else
+                {
+                    filterMessage = "The selected group does not have any schedules";
+                }
+            }
+            else
+            {
+                filterMessage = string.Empty;
+                filterIsValid = true;
+            }
+
+            var schedulingDisabledForSelectedGroup = selectedGroup != null && selectedGroup.DisableScheduling;
+            nbSchedulingDisabledWarning.Visible = schedulingDisabledForSelectedGroup;
+            if ( schedulingDisabledForSelectedGroup )
+            {
+                nbSchedulingDisabledWarning.Text = string.Format( "Scheduling is disabled for the {0} group.", selectedGroup.Name );
+            }
+
+            nbFilterMessage.Visible = !filterIsValid;
+            nbFilterMessage.Text = filterMessage;
+            nbFilterMessage.NotificationBoxType = filterNotificationBoxType;
+            return filterIsValid;
         }
 
         /// <summary>
@@ -704,9 +774,9 @@ btnCopyToClipboard.ClientID );
         }
 
         /// <summary>
-        /// Updates the list of group locations for the selected group
+        /// Updates the list of locations for the selected groups
         /// </summary>
-        private void UpdateGroupLocationList( List<Group> authorizedListedGroups )
+        private void UpdateLocationList( List<Group> authorizedListedGroups )
         {
             if ( !authorizedListedGroups.Any() )
             {
@@ -719,40 +789,30 @@ btnCopyToClipboard.ClientID );
                 ShowScheduler( true );
                 List<int> scheduleIds = GetSelectedScheduleIds( authorizedListedGroups );
 
-                var listedGroupLocations = GetListedGroupLocations( authorizedListedGroups, scheduleIds );
+                var listedLocations = GetListedLocations( authorizedListedGroups, scheduleIds );
 
-                if ( !listedGroupLocations.Any() && scheduleIds.Any() )
+                if ( listedLocations.Any() )
                 {
-                    if ( authorizedListedGroups.Count > 1 )
-                    {
-                        nbGroupWarning.Text = "The selected groups do not have any locations or schedules";
-                    }
-                    else
-                    {
-                        nbGroupWarning.Text = "The group does not have any locations or schedules";
-                    }
-
-                    nbGroupWarning.Visible = true;
+                    listedLocations.Insert( 0, null );
+                    lSelectedLocationFilterText.Visible = true;
                 }
-                else if ( scheduleIds.Any() )
+                else
                 {
-                    nbGroupWarning.Visible = false;
+                    lSelectedLocationFilterText.Visible = false;
                 }
 
-                listedGroupLocations.Insert( 0, null );
-
-                rptGroupLocationSelector.DataSource = listedGroupLocations;
-                rptGroupLocationSelector.DataBind();
+                rptLocationSelector.DataSource = listedLocations;
+                rptLocationSelector.DataBind();
             }
         }
 
         /// <summary>
-        /// Gets the listed group locations.
+        /// Gets the listed locations.
         /// </summary>
         /// <param name="group">The group.</param>
         /// <param name="scheduleIds">The schedule ids.</param>
         /// <returns></returns>
-        private List<GroupLocation> GetListedGroupLocations( List<Group> listedGroups, List<int> scheduleIds )
+        private List<Location> GetListedLocations( List<Group> listedGroups, List<int> scheduleIds )
         {
             var rockContext = new RockContext();
             var listedGroupIds = listedGroups.Select( a => a.Id ).ToList();
@@ -765,7 +825,9 @@ btnCopyToClipboard.ClientID );
                 .OrderBy( a => new { a.Order, a.Location.Name } )
                 .AsNoTracking();
 
-            return groupLocationsQuery.ToList();
+            var listedLocations = groupLocationsQuery.Select( a => a.Location ).ToList().DistinctBy( a => a.Id ).ToList();
+
+            return listedLocations;
         }
 
         /// <summary>
@@ -849,7 +911,7 @@ btnCopyToClipboard.ClientID );
             }
 
             // get all the occurrences for the selected week for the selected schedules (It could be more than once a week if it is a daily scheduled, or it might not be in the selected week if it is every 2 weeks, etc)
-            List<DateTime> scheduleOccurrenceDateTimeList = new List<DateTime>();
+            /*List<DateTime> scheduleOccurrenceDateTimeList = new List<DateTime>();
             foreach ( var occurrenceSchedule in occurrenceSchedules )
             {
                 var occurrenceStartTimes = occurrenceSchedule.GetScheduledStartTimes( occurrenceSundayWeekStartDate, occurrenceSundayDate.AddDays( 1 ) );
@@ -857,6 +919,7 @@ btnCopyToClipboard.ClientID );
             }
 
             scheduleOccurrenceDateTimeList = scheduleOccurrenceDateTimeList.Distinct().ToList();
+            
 
             if ( !scheduleOccurrenceDateTimeList.Any() )
             {
@@ -865,19 +928,45 @@ btnCopyToClipboard.ClientID );
             }
 
             var occurrenceDateList = scheduleOccurrenceDateTimeList.Select( a => a.Date ).Distinct().ToList();
+
+            */
+
             btnAutoSchedule.Visible = true;
 
             var attendanceOccurrenceService = new AttendanceOccurrenceService( rockContext );
-            var selectedGroupLocationIds = hfSelectedGroupLocationIds.Value.Split( ',' ).AsIntegerList();
+            var selectedLocationIds = hfSelectedLocationIds.Value.Split( ',' ).AsIntegerList();
 
-            foreach ( var scheduleId in scheduleIds )
+            var groupIds = authorizedListedGroups.Select( a => a.Id ).ToList();
+
+            var selectedGroupLocationIds = new GroupLocationService( rockContext ).Queryable()
+                .Where( a => groupIds.Contains( a.GroupId ) && selectedLocationIds.Contains( a.LocationId ) )
+                .Select( a => a.Id ).ToList();
+
+
+            List<DateTime> occurrenceDatesForAllSchedules = new List<DateTime>();
+
+            foreach ( var occurrenceSchedule in occurrenceSchedules )
             {
+                // get all the occurrences for the selected week for the selected schedule.
+                // we only want create occurrences start times for this specific schedule
+                // Note that it could be more than once a week if it is a daily scheduled, or it might not be in the selected week if it is every 2 weeks, etc
+                // 
+                var scheduleOccurrenceDates = occurrenceSchedule
+                    .GetScheduledStartTimes( occurrenceSundayWeekStartDate, occurrenceSundayDate.AddDays( 1 ) )
+                    .Select( a => a.Date )
+                    .Distinct()
+                    .ToList();
+
                 List<AttendanceOccurrence> missingAttendanceOccurrenceListForSchedule =
-                    attendanceOccurrenceService.CreateMissingAttendanceOccurrences( occurrenceDateList, scheduleId, selectedGroupLocationIds );
+                    attendanceOccurrenceService.CreateMissingAttendanceOccurrences( scheduleOccurrenceDates, occurrenceSchedule.Id, selectedGroupLocationIds );
 
                 attendanceOccurrenceService.AddRange( missingAttendanceOccurrenceListForSchedule );
                 rockContext.SaveChanges();
+
+                occurrenceDatesForAllSchedules.AddRange( scheduleOccurrenceDates );
             }
+
+            var occurrenceDateList = occurrenceDatesForAllSchedules.Select( a => a.Date ).Distinct().ToList();
 
             IQueryable<AttendanceOccurrenceService.AttendanceOccurrenceGroupLocationScheduleConfigJoinResult> attendanceOccurrenceGroupLocationScheduleConfigQuery
                 = attendanceOccurrenceService.AttendanceOccurrenceGroupLocationScheduleConfigJoinQuery( occurrenceDateList, scheduleIds, selectedGroupLocationIds );
@@ -914,7 +1003,7 @@ btnCopyToClipboard.ClientID );
 
             var selectedGroupId = hfSelectedGroupId.Value.AsInteger();
 
-            _attendanceOccurrencesOrderedList = attendanceOccurrencesList.OrderBy( a => a.ScheduledDateTime ).ThenBy( a => a.GroupLocationOrder ).ThenBy( a => a.LocationName ).ToList();
+            var attendanceOccurrencesOrderedList = attendanceOccurrencesList.OrderBy( a => a.ScheduledDateTime ).ThenBy( a => a.GroupLocationOrder ).ThenBy( a => a.LocationName ).ToList();
 
             // if there are any people that signed up with no location preference, add the to a special list of "No Location Preference" occurrences to the top of the list
             var unassignedLocationOccurrenceList = attendanceOccurrenceService.Queryable()
@@ -939,55 +1028,86 @@ btnCopyToClipboard.ClientID );
                 .OrderBy( a => a.ScheduledDateTime )
                 .ToList();
 
-            _attendanceOccurrencesOrderedList.InsertRange( 0, unassignedLocationOccurrenceList );
+            int maxOccurrences = 250;
+            if ( attendanceOccurrencesOrderedList.Count > maxOccurrences )
+            {
+                nbFilterMessage.Visible = true;
+                nbFilterMessage.NotificationBoxType = NotificationBoxType.Warning;
+                nbFilterMessage.Text = string.Format(
+                    "There are {0} attendance occurrences for selected filter. Please change the filter so that less than {1} occurrences are shown.",
+                    attendanceOccurrencesOrderedList.Count,
+                    maxOccurrences );
+                return;
+            }
 
+            lDebug.Text = string.Format( "<pre><code>{0}</code></pre>", "attendanceOccurrencesCount:" + attendanceOccurrencesOrderedList.Count.ToString() );
 
-            List<OccurrenceColumnItem> occurrenceColumnData;
+            attendanceOccurrencesOrderedList.InsertRange( 0, unassignedLocationOccurrenceList );
+
+            List<OccurrenceColumnItem> occurrenceColumnDataList;
 
             var sundayDate = RockDateTime.Now.SundayDate();
 
             if ( occurrenceDisplayMode == OccurrenceDisplayMode.MultiGroup )
             {
-                occurrenceColumnData = _attendanceOccurrencesOrderedList
-                    .GroupBy( a => a.Group )
-                    .Select( a => new OccurrenceColumnItem
+                // sort the occurrenceColumns so the selected Group is in the first column, then order by Group.Order/Name
+                occurrenceColumnDataList = attendanceOccurrencesOrderedList
+                    .GroupBy( a => a.Group.Id )
+                    .Select( a =>
                     {
-                        OccurrenceDisplayMode = occurrenceDisplayMode,
-                        Group = a.Key,
-                        Schedule = ( Schedule ) null,
-                        OccurrenceDate = ( DateTime? ) null,
+
+                        // we are grouping by GroupId but we need Group.
+                        // since all of these will have the same Group, we can just grab the first one
+                        var group = a.Select( s => s.Group ).FirstOrDefault();
+
+                        var item = new OccurrenceColumnItem
+                        {
+                            OccurrenceDisplayMode = occurrenceDisplayMode,
+                            Group = group,
+                            Schedule = ( Schedule ) null,
+                            OccurrenceDate = ( DateTime? ) null,
+                            AttendanceOccurrenceItems = a.ToList()
+                        };
+
+                        return item;
                     } )
-                    .OrderBy( a => a.Group.Order ).ThenBy( a => a.Group.Name ).ToList();
+                    .OrderBy( a => a.Group.Id == selectedGroupId ? 0 : 1 )
+                    .ThenBy( a => a.Group.Order ).ThenBy( a => a.Group.Name ).ToList();
             }
             else
             {
-                occurrenceColumnData = _attendanceOccurrencesOrderedList
-                    .GroupBy( a => new { a.Schedule, a.OccurrenceDate } )
-                    .Select( a => new OccurrenceColumnItem
+                occurrenceColumnDataList = attendanceOccurrencesOrderedList
+                    .GroupBy( a => new { ScheduleId = a.Schedule.Id, a.OccurrenceDate } )
+                    .Select( a =>
                     {
-                        OccurrenceDisplayMode = occurrenceDisplayMode,
-                        Group = null,
-                        Schedule = a.Key.Schedule,
-                        OccurrenceDate = a.Key.OccurrenceDate
-                    } )
-                    .OrderBy( a => a.Schedule.Order )
+                        // we are grouping by ScheduleId but we need Schedule.
+                        // since all of these will have the same Schedule, we can just grab the first one
+                        var schedule = a.Select( s => s.Schedule ).FirstOrDefault();
+
+                        var item = new OccurrenceColumnItem
+                        {
+                            OccurrenceDisplayMode = occurrenceDisplayMode,
+                            Group = null,
+                            Schedule = schedule,
+                            OccurrenceDate = a.Key.OccurrenceDate,
+                            AttendanceOccurrenceItems = a.ToList()
+
+                        };
+
+                        return item;
+                    }
+                    )
+                    .OrderBy( a => a.OccurrenceDate )
+                    .ThenBy( a => a.Schedule.Order )
                     .ThenBy( a => a.Schedule.GetNextStartDateTime( sundayDate ) )
-                    .ThenBy( a => a.OccurrenceDate )
                     .ToList();
             }
 
 
-            hfDisplayedOccurrenceIds.Value = _attendanceOccurrencesOrderedList.Select( a => a.AttendanceOccurrenceId ).ToList().AsDelimited( "," );
-            rptOccurrenceColumns.DataSource = occurrenceColumnData;
+            hfDisplayedOccurrenceIds.Value = attendanceOccurrencesOrderedList.Select( a => a.AttendanceOccurrenceId ).ToList().AsDelimited( "," );
+            rptOccurrenceColumns.DataSource = occurrenceColumnDataList;
             rptOccurrenceColumns.DataBind();
-
-
-
-
-
         }
-
-        List<AttendanceOccurrenceRowItem> _attendanceOccurrencesOrderedList;
 
         /// <summary>
         /// 
@@ -1028,17 +1148,41 @@ btnCopyToClipboard.ClientID );
             MultiGroup
         }
 
+        [System.Diagnostics.DebuggerDisplay( "{Group} {Schedule} {OccurrenceDate}" )]
         private class OccurrenceColumnItem
         {
             public OccurrenceDisplayMode OccurrenceDisplayMode { get; set; }
+
             public Group Group { get; set; }
             public Schedule Schedule { get; set; }
             public DateTime? OccurrenceDate { get; set; }
+
+            /// <summary>
+            /// Gets the Schedule's scheduled date time the Occurrence Date
+            /// </summary>
+            /// <value>
+            /// The scheduled date time.
+            /// </value>
+            public DateTime? ScheduledDateTime
+            {
+                get
+                {
+                    if ( this.OccurrenceDate.HasValue )
+                    {
+                        return Schedule.GetNextStartDateTime( this.OccurrenceDate.Value );
+                    }
+
+                    return null;
+                }
+            }
+
+            public List<AttendanceOccurrenceRowItem> AttendanceOccurrenceItems { get; set; }
         }
 
         /// <summary>
         ///
         /// </summary>
+        [System.Diagnostics.DebuggerDisplay( "{Schedule} {OccurrenceDate} {ScheduledDateTime}" )]
         private class AttendanceOccurrenceRowItem
         {
             public OccurrenceDisplayMode OccurrenceDisplayMode { get; set; }
@@ -1126,27 +1270,64 @@ btnCopyToClipboard.ClientID );
         protected void rptOccurrenceColumns_ItemDataBound( object sender, RepeaterItemEventArgs e )
         {
             var rptAttendanceOccurrences = e.Item.FindControl( "rptAttendanceOccurrences" ) as Repeater;
-            var lColumnHeader = e.Item.FindControl( "lColumnHeader" ) as Literal;
+            var pnlMultiGroupModeColumnHeading = e.Item.FindControl( "pnlMultiGroupModeColumnHeading" ) as Panel;
 
-            List<AttendanceOccurrenceRowItem> attendanceOccurrencesForColumn;
+
+
+
+            var pnlSingleGroupModeColumnHeading = e.Item.FindControl( "pnlSingleGroupModeColumnHeading" ) as Panel;
+
             OccurrenceColumnItem occurrenceColumnItem = e.Item.DataItem as OccurrenceColumnItem;
+            pnlMultiGroupModeColumnHeading.Visible = occurrenceColumnItem.OccurrenceDisplayMode == OccurrenceDisplayMode.MultiGroup;
+            pnlSingleGroupModeColumnHeading.Visible = occurrenceColumnItem.OccurrenceDisplayMode == OccurrenceDisplayMode.ScheduleOccurrenceDate;
+            var columnCssClasses = new List<string>();
+            columnCssClasses.Add( "occurrence-column" );
+
             if ( occurrenceColumnItem.OccurrenceDisplayMode == OccurrenceDisplayMode.MultiGroup )
             {
-                attendanceOccurrencesForColumn = _attendanceOccurrencesOrderedList.Where( a => a.Group.Id == occurrenceColumnItem.Group.Id ).ToList();
-                lColumnHeader.Text = occurrenceColumnItem.Group.ToString();
+                columnCssClasses.Add( "occurrence-column-group" );
+                var groupType = GroupTypeCache.Get( occurrenceColumnItem.Group.GroupTypeId );
+                var lMultiGroupModeColumnGroupNameHtml = e.Item.FindControl( "lMultiGroupModeColumnGroupNameHtml" ) as Literal;
+                lMultiGroupModeColumnGroupNameHtml.Text = string.Format(
+                    "<i class='{0}'></i> {1}",
+                    groupType.IconCssClass,
+                    occurrenceColumnItem.Group.Name );
+
+                var selectedGroupId = hfSelectedGroupId.Value.AsInteger();
+
+                bool isSelectedColumn = hfSelectedGroupId.Value.AsInteger() == occurrenceColumnItem.Group.Id;
+                if ( isSelectedColumn )
+                {
+                    columnCssClasses.Add( "occurrence-column-selected" );
+                }
+
+                var cbMultiGroupModeColumnSelectedGroup = e.Item.FindControl( "cbMultiGroupModeColumnSelectedGroup" ) as RockCheckBox;
+                cbMultiGroupModeColumnSelectedGroup.Checked = isSelectedColumn;
+                cbMultiGroupModeColumnSelectedGroup.Attributes["data-group-id"] = occurrenceColumnItem.Group.Id.ToString();
+            }
+            else if ( occurrenceColumnItem.OccurrenceDisplayMode == OccurrenceDisplayMode.ScheduleOccurrenceDate )
+            {
+                columnCssClasses.Add( "occurrence-column-schedule" );
+                // Single Group mode, so show column header with Schedule Info
+
+                var lSingleGroupModeColumnHeadingOccurrenceDate = e.Item.FindControl( "lSingleGroupModeColumnHeadingOccurrenceDate" ) as Literal;
+                var lSingleGroupModeColumnHeadingOccurrenceTime = e.Item.FindControl( "lSingleGroupModeColumnHeadingOccurrenceTime" ) as Literal;
+
+                // show date in 'Sunday, June 15' format
+                lSingleGroupModeColumnHeadingOccurrenceDate.Text = occurrenceColumnItem.ScheduledDateTime.Value.ToString( "dddd, MMMM dd" );
+
+                // show time in '10:30 AM' format
+                lSingleGroupModeColumnHeadingOccurrenceTime.Text = occurrenceColumnItem.ScheduledDateTime.Value.ToString( "h:mm tt" );
             }
             else
             {
-                attendanceOccurrencesForColumn = _attendanceOccurrencesOrderedList
-                    .Where( a =>
-                        a.Schedule.Id == occurrenceColumnItem.Schedule.Id &&
-                        a.OccurrenceDate == occurrenceColumnItem.OccurrenceDate
-                    ).ToList();
-
-                lColumnHeader.Text = occurrenceColumnItem.Schedule.Name;
+                // shouldn't happen
             }
 
-            rptAttendanceOccurrences.DataSource = attendanceOccurrencesForColumn;
+            var pnlOccurrenceColumn = e.Item.FindControl( "pnlOccurrenceColumn" ) as Panel;
+            pnlOccurrenceColumn.CssClass = columnCssClasses.AsDelimited( " " );
+
+            rptAttendanceOccurrences.DataSource = occurrenceColumnItem.AttendanceOccurrenceItems;
             rptAttendanceOccurrences.DataBind();
         }
 
@@ -1184,8 +1365,8 @@ btnCopyToClipboard.ClientID );
                 var lMultiGroupModeOccurrenceScheduledDate = e.Item.FindControl( "lMultiGroupModeOccurrenceScheduledDate" ) as Literal;
                 var lMultiGroupModeOccurrenceScheduledTime = e.Item.FindControl( "lMultiGroupModeOccurrenceScheduledTime" ) as Literal;
 
-                // show date in 'Sunday June 15' format
-                lMultiGroupModeOccurrenceScheduledDate.Text = attendanceOccurrenceRowItem.ScheduledDateTime.Value.ToString( "dddd MMMM dd" );
+                // show date in 'Sunday, June 15' format
+                lMultiGroupModeOccurrenceScheduledDate.Text = attendanceOccurrenceRowItem.ScheduledDateTime.Value.ToString( "dddd, MMMM dd" );
 
                 // show time in '10:30 AM' format
                 lMultiGroupModeOccurrenceScheduledTime.Text = attendanceOccurrenceRowItem.ScheduledDateTime.Value.ToString( "h:mm tt" );
@@ -1229,29 +1410,32 @@ btnCopyToClipboard.ClientID );
         protected void gpPickedGroups_ValueChanged( object sender, EventArgs e )
         {
             // the glListedGroups picker selected the groups that we show in the Scheduler, but only one Group can be the active/selected one
-            var pickedGroupIds = gpPickedGroups.SelectedValues.AsIntegerList();
+            var pickedGroupIds = gpPickedGroups.SelectedIds.ToList();
+
+            var authorizedListedGroups = GetAuthorizedListedGroups();
+
+            // if there isn't a currently selected group, default to the first one
+            var schedulingEnabledGroupIds = GetSchedulingEnabledGroupIds( authorizedListedGroups.Select( a => a.Id ).ToList() );
 
             var selectedGroupId = hfSelectedGroupId.Value.AsIntegerOrNull();
+
             if ( selectedGroupId.HasValue )
             {
                 // if the currently selectedGroupId is not in the updated listedGroupIds, default the selectedGroupId to the first listed Groupid
-                if ( !pickedGroupIds.Contains( selectedGroupId.Value ) )
+                if ( !pickedGroupIds.Contains( selectedGroupId.Value ) || !schedulingEnabledGroupIds.Contains( selectedGroupId.Value ) )
                 {
-                    selectedGroupId = pickedGroupIds.FirstOrDefault();
+                    selectedGroupId = schedulingEnabledGroupIds.FirstOrDefault();
                 }
             }
             else
             {
-                // if there isn't a currently selected group, default to the first one
-                selectedGroupId = pickedGroupIds.FirstOrDefault();
+                selectedGroupId = schedulingEnabledGroupIds.FirstOrDefault();
             }
 
             hfSelectedGroupId.Value = selectedGroupId.ToString();
 
-            var authorizedListedGroups = GetAuthorizedListedGroups( true );
-
             UpdateScheduleList( authorizedListedGroups );
-            UpdateGroupLocationList( authorizedListedGroups );
+            UpdateLocationList( authorizedListedGroups );
             ApplyFilter();
         }
 
@@ -1343,12 +1527,15 @@ btnCopyToClipboard.ClientID );
                 case SchedulerResourceListSourceType.ParentGroup:
                     {
                         lSelectedResourceTypeDropDownText.Text = "Parent Group";
+                        sfResource.Placeholder = "Search Parent Group";
                         break;
                     }
 
                 default:
                     {
+                        // another case statement should have done this, but just in case
                         lSelectedResourceTypeDropDownText.Text = "Group Members";
+                        sfResource.Placeholder = "Search";
                         break;
                     }
             }
@@ -1533,9 +1720,9 @@ btnCopyToClipboard.ClientID );
             var btnSelectSchedule = sender as LinkButton;
             hfSelectedScheduleId.Value = btnSelectSchedule.CommandArgument;
 
-            var authorizedListedGroups = GetAuthorizedListedGroups( false );
+            var authorizedListedGroups = GetAuthorizedListedGroups();
 
-            UpdateGroupLocationList( authorizedListedGroups );
+            UpdateLocationList( authorizedListedGroups );
             ApplyFilter();
         }
 
@@ -1569,36 +1756,36 @@ btnCopyToClipboard.ClientID );
         }
 
         /// <summary>
-        /// Handles the Click event of the btnSelectGroupLocation control.
+        /// Handles the Click event of the btnSelectLocation control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
-        protected void btnSelectGroupLocation_Click( object sender, EventArgs e )
+        protected void btnSelectLocation_Click( object sender, EventArgs e )
         {
-            var btnSelectGroupLocation = sender as LinkButton;
+            var btnSelectLocation = sender as LinkButton;
 
-            var selectedGroupLocationId = btnSelectGroupLocation.CommandArgument.AsIntegerOrNull();
+            var selectedLocationId = btnSelectLocation.CommandArgument.AsIntegerOrNull();
 
-            if ( selectedGroupLocationId.HasValue )
+            if ( selectedLocationId.HasValue )
             {
-                var selectedGroupLocationIds = hfSelectedGroupLocationIds.Value.Split( ',' ).AsIntegerList();
+                var selectedLocationIds = hfSelectedLocationIds.Value.Split( ',' ).AsIntegerList();
 
                 // toggle if the selected group location is in the selected group locations
-                if ( selectedGroupLocationIds.Contains( selectedGroupLocationId.Value ) )
+                if ( selectedLocationIds.Contains( selectedLocationId.Value ) )
                 {
-                    selectedGroupLocationIds.Remove( selectedGroupLocationId.Value );
+                    selectedLocationIds.Remove( selectedLocationId.Value );
                 }
                 else
                 {
-                    selectedGroupLocationIds.Add( selectedGroupLocationId.Value );
+                    selectedLocationIds.Add( selectedLocationId.Value );
                 }
 
-                hfSelectedGroupLocationIds.Value = selectedGroupLocationIds.AsDelimited( "," );
+                hfSelectedLocationIds.Value = selectedLocationIds.AsDelimited( "," );
             }
             else
             {
-                hfSelectedGroupLocationIds.Value = "all";
+                hfSelectedLocationIds.Value = "all";
             }
 
             ApplyFilter();
@@ -1609,23 +1796,34 @@ btnCopyToClipboard.ClientID );
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="RepeaterItemEventArgs"/> instance containing the event data.</param>
-        protected void rptGroupLocationSelector_ItemDataBound( object sender, RepeaterItemEventArgs e )
+        protected void rptLocationSelector_ItemDataBound( object sender, RepeaterItemEventArgs e )
         {
-            LinkButton btnSelectGroupLocation = e.Item.FindControl( "btnSelectGroupLocation" ) as LinkButton;
-            GroupLocation groupLocation = e.Item.DataItem as GroupLocation;
-            if ( groupLocation != null )
+            LinkButton btnSelectLocation = e.Item.FindControl( "btnSelectLocation" ) as LinkButton;
+            Location location = e.Item.DataItem as Location;
+            if ( location != null )
             {
-                btnSelectGroupLocation.CommandArgument = groupLocation.Id.ToString();
-                btnSelectGroupLocation.Text = groupLocation.Location.ToString();
+                btnSelectLocation.CommandArgument = location.Id.ToString();
+                btnSelectLocation.Text = location.ToString();
             }
             else
             {
-                btnSelectGroupLocation.CommandArgument = "all";
-                btnSelectGroupLocation.Text = "All Locations";
+                btnSelectLocation.CommandArgument = "all";
+                btnSelectLocation.Text = "All Locations";
             }
         }
 
+        /// <summary>
+        /// Handles the CheckedChanged event of the cbMultiGroupModeColumnSelectedGroup control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void cbMultiGroupModeColumnSelectedGroup_CheckedChanged( object sender, EventArgs e )
+        {
+            var cbMultiGroupModeColumnSelectedGroup = sender as RockCheckBox;
 
-
+            var groupId = cbMultiGroupModeColumnSelectedGroup.Attributes["data-group-id"].AsInteger();
+            hfSelectedGroupId.Value = groupId.ToString();
+            ApplyFilter();
+        }
     }
 }

@@ -530,6 +530,7 @@ namespace Rock.Model
         public List<AttendanceOccurrence> CreateMissingAttendanceOccurrences( List<DateTime> occurrenceDateList, int scheduleId, List<int> groupLocationIds )
         {
             var groupLocationQuery = new GroupLocationService( this.Context as RockContext ).GetByIds( groupLocationIds );
+            var schedule = new ScheduleService( this.Context as RockContext ).Get( scheduleId );
 
             List<AttendanceOccurrence> missingAttendanceOccurrenceList = new List<AttendanceOccurrence>();
             foreach ( var occurrenceDate in occurrenceDateList )
@@ -550,6 +551,7 @@ namespace Rock.Model
                                     LocationId = gl.LocationId,
                                     Location = gl.Location,
                                     ScheduleId = scheduleId,
+                                    Schedule = schedule,
                                     OccurrenceDate = occurrenceDate
                                 } ).ToList();
 

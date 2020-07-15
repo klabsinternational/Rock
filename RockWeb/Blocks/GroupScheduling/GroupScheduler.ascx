@@ -33,7 +33,7 @@
 
             <%-- Panel Body --%>
             <div class="panel-body">
-                <Rock:NotificationBox ID="nbNotice" runat="server" />
+                
                 <div class="visible-xs-block">
                     <div class="alert alert-warning">
                         This block is not supported on mobile.
@@ -101,22 +101,22 @@
                                     </asp:Panel>
                                 </div>
 
-                                <!-- Filter for Group Locations -->
+                                <!-- Filter for Locations -->
                                 <div class="col-md-2">
-                                    <asp:Panel ID="pnlGroupLocationFilter" runat="server">
+                                    <asp:Panel ID="pnlLocationFilter" runat="server">
                                         <div class="btn-group">
 
                                             <div class="dropdown-toggle btn" data-toggle="dropdown">
-                                                <asp:HiddenField ID="hfSelectedGroupLocationIds" runat="server" />
-                                                <asp:Literal ID="lSelectedGroupLocationFilterText" runat="server" Text="Locations...." />
+                                                <asp:HiddenField ID="hfSelectedLocationIds" runat="server" />
+                                                <asp:Literal ID="lSelectedLocationFilterText" runat="server" Text="Locations...." />
                                             </div>
 
 
                                             <ul class="dropdown-menu" role="menu">
-                                                <asp:Repeater ID="rptGroupLocationSelector" runat="server" OnItemDataBound="rptGroupLocationSelector_ItemDataBound">
+                                                <asp:Repeater ID="rptLocationSelector" runat="server" OnItemDataBound="rptLocationSelector_ItemDataBound">
                                                     <ItemTemplate>
                                                         <li>
-                                                            <asp:LinkButton ID="btnSelectGroupLocation" runat="server" Text="-" CommandArgument="-" OnClick="btnSelectGroupLocation_Click" />
+                                                            <asp:LinkButton ID="btnSelectLocation" runat="server" Text="-" CommandArgument="-" OnClick="btnSelectLocation_Click" />
                                                         </li>
                                                     </ItemTemplate>
                                                 </asp:Repeater>
@@ -151,11 +151,13 @@
                     </div>
                 </div>
 
+                <Rock:NotificationBox ID="nbFilterMessage" runat="server" />
+                <Rock:NotificationBox ID="nbAuthorizedGroupsWarning" runat="server" NotificationBoxType="Warning" Dismissable="true" />
+                <Rock:NotificationBox ID="nbSchedulingDisabledWarning" runat="server" NotificationBoxType="Warning" Dismissable="true" />
+                <asp:Literal ID="lDebug" runat="server" />
+
                 <div class="">
                     <asp:Panel ID="pnlSchedulerContainer" runat="server" CssClass="">
-
-                        <Rock:NotificationBox ID="nbFilterInstructions" runat="server" CssClass="margin-all-md" NotificationBoxType="Info" Visible="true" Text="Select a group, schedule and at least one location to start scheduling." />
-                        <Rock:NotificationBox ID="nbSchedulingDisabled" runat="server" CssClass="margin-all-md" NotificationBoxType="Warning" Visible="false" />
 
                         <%-- Scheduling: container for the scheduler scheduled containers --%>
                         <asp:Panel ID="pnlScheduler" runat="server" CssClass="resource-area">
@@ -271,18 +273,35 @@
                                         </div>
                                     </div>
 
-                                    <Rock:NotificationBox ID="nbGroupWarning" runat="server" NotificationBoxType="Warning" />
-
-
-
-
+                                    
 
                                     <%-- containers for AttendanceOccurrence locations that resources can be dragged into --%>
                                     <asp:Panel ID="pnlSchedulerLocations" runat="server" CssClass="locations js-scheduled-occurrences">
                                         <asp:Repeater ID="rptOccurrenceColumns" runat="server" OnItemDataBound="rptOccurrenceColumns_ItemDataBound">
                                             <ItemTemplate>
-                                                <div class="occurrence-column">
-                                                    <asp:Literal ID="lColumnHeader" runat="server" Text="ColumnHeader" />
+                                                <%-- pnlOccurrenceColumn can have the following classes
+                                                    - occurrence-column (always)
+                                                    - occurrence-column-selected (if in multi-group mode, and this is the selected group)
+                                                    - occurrence-column-group (if in multi-group mode)
+                                                    - occurrence-column-schedule (if in single-group mode, where each column is a schedule/day)
+                                                --%>
+                                                <asp:Panel ID="pnlOccurrenceColumn" runat="server" CssClass="occurrence-column">
+                                                    <%-- Occurrence Column Heading when in Multi-Group mode (should Group name with Checkbox --%>
+                                                    <asp:Panel ID="pnlMultiGroupModeColumnHeading" runat="server">
+                                                        <h1><asp:Literal ID="lMultiGroupModeColumnGroupNameHtml" runat="server" /></h1>
+                                                        <Rock:RockCheckBox ID="cbMultiGroupModeColumnSelectedGroup" runat="server"
+                                                            SelectedIconCssClass = "fa fa-check-square-o" 
+                                                            UnSelectedIconCssClass = "fa fa-square-o"
+                                                            AutoPostBack = true
+                                                            OnCheckedChanged="cbMultiGroupModeColumnSelectedGroup_CheckedChanged"/>
+                                                    </asp:Panel>
+
+                                                    <%-- Occurrence Column Heading when in Single-Group mode (should schedule information) --%>
+                                                    <asp:Panel ID="pnlSingleGroupModeColumnHeading" runat="server">
+                                                        <h1><asp:Literal ID="lSingleGroupModeColumnHeadingOccurrenceDate" runat="server" /></h1>
+                                                        <asp:Literal ID="lSingleGroupModeColumnHeadingOccurrenceTime" runat="server" />
+                                                    </asp:Panel>
+
                                                     <asp:Repeater ID="rptAttendanceOccurrences" runat="server" OnItemDataBound="rptAttendanceOccurrences_ItemDataBound">
                                                         <ItemTemplate>
 
@@ -345,7 +364,7 @@
                                                             </asp:Panel>
                                                         </ItemTemplate>
                                                     </asp:Repeater>
-                                                </div>
+                                                </asp:Panel>
                                             </ItemTemplate>
 
                                         </asp:Repeater>
