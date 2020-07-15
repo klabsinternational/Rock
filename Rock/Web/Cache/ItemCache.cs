@@ -321,6 +321,16 @@ namespace Rock.Web.Cache
             RockCacheManager<List<string>>.Instance.Cache.Remove( AllKey, _AllRegion );
         }
 
+        /// <summary>
+        /// Returns a flag indicating if the specified key exists in the cache.
+        /// </summary>
+        /// <param name="key">The key.</param>
+        public static bool ContainsKey( string key )
+        {
+            var qualifiedKey = QualifiedKey( key );
+
+            return RockCacheManager<T>.Instance.Cache.Exists( qualifiedKey );
+        }
 
         /// <summary>
         /// Method that is called by the framework immediately after being added to cache
